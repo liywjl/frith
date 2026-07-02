@@ -21,6 +21,7 @@ export const channels = pgTable('channels', {
   name: text('name').notNull(),
   type: channelType('type').notNull(),
   topic: text('topic'),
+  archivedAt: timestamp('archived_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 

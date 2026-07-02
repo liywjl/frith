@@ -19,6 +19,12 @@ export const api = {
   login: (handle: string) =>
     request<UserDto>('/api/dev/login', { method: 'POST', body: JSON.stringify({ handle }) }),
   channels: () => request<ChannelDto[]>('/api/channels'),
+  createChannel: (input: { name: string; type: 'public' | 'private'; topic?: string | null }) =>
+    request<{ channelId: string }>('/api/channels', { method: 'POST', body: JSON.stringify(input) }),
+  setArchived: (channelId: string, archived: boolean) =>
+    request<{ ok: boolean }>(`/api/channels/${channelId}/${archived ? 'archive' : 'unarchive'}`, {
+      method: 'POST',
+    }),
   createGroup: (userIds: string[]) =>
     request<{ channelId: string }>('/api/groups', { method: 'POST', body: JSON.stringify({ userIds }) }),
   messages: (channelId: string) => request<MessageDto[]>(`/api/channels/${channelId}/messages`),

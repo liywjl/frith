@@ -26,11 +26,13 @@ export function QuickSwitcher({
   const [sel, setSel] = useState(0);
 
   const items = useMemo<Item[]>(() => {
-    const channelItems: Item[] = channels.map((c) => ({
-      kind: 'channel',
-      channel: c,
-      label: c.type === 'dm' ? (c.dmPartnerNames ?? []).join(', ') : c.name,
-    }));
+    const channelItems: Item[] = channels
+      .filter((c) => !c.archivedAt)
+      .map((c) => ({
+        kind: 'channel',
+        channel: c,
+        label: c.type === 'dm' ? (c.dmPartnerNames ?? []).join(', ') : c.name,
+      }));
     // Unread first — ⌘K doubles as "what did I miss".
     channelItems.sort((a, b) => {
       const ua = a.kind === 'channel' ? a.channel.unreadCount : 0;

@@ -87,6 +87,7 @@ export async function visibleChannels(userId: string): Promise<ChannelDto[]> {
     name: c.name,
     type: c.type,
     topic: c.topic,
+    archivedAt: c.archivedAt?.toISOString() ?? null,
     unreadCount: unread.get(c.id) ?? 0,
     ...(c.type === 'dm'
       ? {
@@ -95,6 +96,49 @@ export async function visibleChannels(userId: string): Promise<ChannelDto[]> {
         }
       : {}),
   }));
+}
+
+export async function getChannel(id: string) {
+  const [row] = await db.select().from(channels).where(eq(channels.id, id));
+  return row ?? null;
+}
+
+/** Slack-style channel names: lowercase, dashes, nothing weird. */
+function normalizeChannelName(name: string): string {
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60);
+}
+
+export async function createChannel(
+  creatorId: string,
+  input: { name: string; type: 'public' | 'private'; topic?: string | null },
+): Promise<{ id: string } | 'invalid-name' | 'name-taken'> {
+  const name = normalizeChannelName(input.name);
+  if (!name) return 'invalid-name';
+  const [existing] = await db
+    .select({ id: channels.id })
+    .from(channels)
+    .where(and(eq(channels.name, name), ne(channels.type, 'dm'), isNull(channels.archivedAt)));
+  if (existing) return 'name-taken';
+  const [row] = await db
+    .insert(channels)
+    .values({ name, type: input.type, topic: input.topic ?? null })
+    .returning({ id: channels.id });
+  if (input.type === 'private') {
+    await db.insert(channelMembers).values({ channelId: row!.id, userId: creatorId });
+  }
+  return { id: row!.id };
+}
+
+export async function setChannelArchived(channelId: string, archived: boolean): Promise<void> {
+  await db
+    .update(channels)
+    .set({ archivedAt: archived ? new Date() : null })
+    .where(eq(channels.id, channelId));
 }
 
 export async function markChannelRead(userId: string, channelId: string): Promise<void> {

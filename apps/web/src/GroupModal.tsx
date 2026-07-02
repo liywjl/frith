@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { UserDto } from '@app/shared';
 import { api } from './api';
 import { Avatar } from './Avatar';
+import { Modal } from './Modal';
 
 export function GroupModal({
   me,
@@ -38,14 +39,11 @@ export function GroupModal({
   }
 
   return (
-    <div className="overlay" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-head">
-          <div>
-            <div className="modal-title">New group conversation</div>
-            <div className="modal-sub">Pick at least two people — it stays private to the group.</div>
-          </div>
-        </div>
+    <Modal
+      title="New group conversation"
+      subtitle="Pick at least two people — it stays private to the group."
+      onClose={onClose}
+    >
         <div className="group-list">
           {others.map((u) => (
             <label key={u.id} className="group-row">
@@ -67,7 +65,6 @@ export function GroupModal({
             {creating ? 'Creating…' : `Start group (${selected.size})`}
           </button>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

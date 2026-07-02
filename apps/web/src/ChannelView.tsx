@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useRef } from 'react';
 import type { ChannelDto, MessageDto } from '@app/shared';
+import { api } from './api';
 import { Composer } from './Composer';
 import { Message } from './Message';
 
@@ -40,11 +41,21 @@ export function ChannelView({
     <main className="main">
       <header className="topbar">
         <span className="chan">{label}</span>
+        {channel.archivedAt && <span className="archived-chip">archived</span>}
         {channel.topic && <span className="topic">{channel.topic}</span>}
         <button className="askbtn" onClick={onOpenAsk}>
           <span className="askbtn-hint">Ask Lore — people, threads, decisions…</span>
           <kbd>⌘J</kbd>
         </button>
+        {channel.type !== 'dm' && !channel.archivedAt && (
+          <button
+            className="archive-btn"
+            title="Archive this channel — it becomes read-only but stays searchable"
+            onClick={() => void api.setArchived(channel.id, true)}
+          >
+            🗄
+          </button>
+        )}
       </header>
       <div className="feed" ref={feedRef}>
         {messages.map((m, i) => {
@@ -69,7 +80,16 @@ export function ChannelView({
           <div className="feed-empty">Nothing here yet — say something.</div>
         )}
       </div>
-      <Composer channelId={channel.id} placeholder={`Message ${label}`} />
+      {channel.archivedAt ? (
+        <div className="archived-banner">
+          <span>This channel is archived — read-only, but its history still feeds Ask.</span>
+          <button className="btn" onClick={() => void api.setArchived(channel.id, false)}>
+            Unarchive
+          </button>
+        </div>
+      ) : (
+        <Composer channelId={channel.id} placeholder={`Message ${label}`} />
+      )}
     </main>
   );
 }

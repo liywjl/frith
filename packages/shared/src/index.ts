@@ -38,6 +38,8 @@ export interface ChannelDto {
   name: string;
   type: ChannelType;
   topic: string | null;
+  /** Archived channels are read-only and tucked away, but stay searchable. */
+  archivedAt: string | null;
   unreadCount: number;
   /** For DMs: the other participants' names, used as the display label. */
   dmPartnerNames?: string[];
@@ -106,4 +108,6 @@ export type ServerEvent =
   | { type: 'message.created'; message: MessageDto }
   | { type: 'reaction.changed'; channelId: string; messageId: string; emoji: string; userId: string; added: boolean }
   | { type: 'presence.changed'; onlineUserIds: string[] }
-  | { type: 'user.updated'; user: UserDto };
+  | { type: 'user.updated'; user: UserDto }
+  /** A channel was created, archived, or unarchived — refetch the list. */
+  | { type: 'channels.changed' };

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { THEMES, type MeDto, type Theme } from '@app/shared';
 import { api } from './api';
 import { Avatar } from './Avatar';
+import { Modal } from './Modal';
 
 const AVATAR_SUGGESTIONS = ['🦊', '🐙', '🌵', '🚀', '🍕', '🎸', '🧠', '🐝'];
 
@@ -79,16 +80,12 @@ export function ProfileModal({
   }
 
   return (
-    <div className="overlay" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-head">
-          <Avatar name={form.name || me.name} emoji={form.avatarEmoji || null} />
-          <div>
-            <div className="modal-title">Your profile</div>
-            <div className="modal-sub">@{me.handle}</div>
-          </div>
-        </div>
-
+    <Modal
+      title="Your profile"
+      subtitle={`@${me.handle}`}
+      headExtra={<Avatar name={form.name || me.name} emoji={form.avatarEmoji || null} />}
+      onClose={onClose}
+    >
         <label className="field">
           <span>Name</span>
           <input value={form.name} onChange={(e) => set('name')(e.target.value)} />
@@ -181,7 +178,6 @@ export function ProfileModal({
             {saving ? 'Saving…' : 'Save profile'}
           </button>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

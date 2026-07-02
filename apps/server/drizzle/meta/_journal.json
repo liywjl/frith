@@ -36,6 +36,13 @@
       "when": 1783026542635,
       "tag": "0004_status_expiry",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1783026905533,
+      "tag": "0005_channel_archive",
+      "breakpoints": true
     }
   ]
 }

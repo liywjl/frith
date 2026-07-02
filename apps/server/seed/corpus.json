@@ -19,12 +19,16 @@
     { "name": "incident-4021", "type": "public", "topic": "Payments provider rate-limit incident — resolved" },
     { "name": "design", "type": "public", "topic": "Product design and critique" },
     { "name": "leadership", "type": "private", "topic": "Managers only", "members": ["sofia", "priya"] },
+    { "name": "proj-checkout-v1", "type": "public", "topic": "The original checkout build — shipped Q1", "archived": true },
     { "name": "dm-priya-marco", "type": "dm", "members": ["priya", "marco"] },
     { "name": "group-payments-crew", "type": "dm", "members": ["priya", "marco", "amara"] },
     { "name": "group-lunch", "type": "dm", "members": ["tomas", "jonas", "elena", "kwame"] }
   ],
   "messages": [
     { "channel": "general", "author": "sofia", "daysAgo": 120, "body": "Welcome to the new workspace, everyone. Channels are open by default — keep decisions where people can find them later." },
+
+    { "channel": "proj-checkout-v1", "author": "jonas", "daysAgo": 160, "body": "Checkout v1 is live. Known debt: the retry state is a bare spinner and the error banner is bespoke — filed for the redesign." },
+    { "channel": "proj-checkout-v1", "author": "marco", "daysAgo": 158, "body": "Payment provider integration notes are in the runbook. The 3DS fallback path is the fragile part — do not touch without tests." },
 
     { "id": "rfc", "channel": "eng-payments", "author": "priya", "daysAgo": 110, "body": "First draft of the payments migration RFC is up. Short version: we move billing off the nightly cron pipeline onto event-driven processing. Comments welcome on the doc." },
     { "channel": "eng-payments", "author": "marco", "daysAgo": 110, "replyTo": "rfc", "body": "Biggest risk I see is the reconciliation job — if we replay events after a failure we could double-charge." },

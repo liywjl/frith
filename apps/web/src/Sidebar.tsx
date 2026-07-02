@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { ChannelDto, UserDto } from '@app/shared';
 import { Avatar } from './Avatar';
 
@@ -28,6 +29,7 @@ export function Sidebar({
   onSelect,
   onOpenDm,
   onNewGroup,
+  onNewChannel,
   onOpenProfile,
 }: {
   me: UserDto;
@@ -38,9 +40,12 @@ export function Sidebar({
   onSelect: (id: string) => void;
   onOpenDm: (userId: string) => void;
   onNewGroup: () => void;
+  onNewChannel: () => void;
   onOpenProfile: () => void;
 }) {
-  const rooms = channels.filter((c) => c.type !== 'dm');
+  const [showArchived, setShowArchived] = useState(false);
+  const rooms = channels.filter((c) => c.type !== 'dm' && !c.archivedAt);
+  const archived = channels.filter((c) => c.type !== 'dm' && c.archivedAt);
   const dms = channels.filter((c) => c.type === 'dm');
   const byId = new Map(users.map((u) => [u.id, u]));
   // Users without an existing 1:1 conversation (groups don't count).
@@ -55,7 +60,12 @@ export function Sidebar({
         Lore <span className="ws-sub">Acme</span>
       </div>
 
-      <div className="side-h">Channels</div>
+      <div className="side-h side-h-action">
+        <span>Channels</span>
+        <button className="side-add" title="Create a channel" onClick={onNewChannel}>
+          +
+        </button>
+      </div>
       {rooms.map((c) => (
         <button
           key={c.id}
@@ -67,6 +77,25 @@ export function Sidebar({
           <Unread count={c.unreadCount} />
         </button>
       ))}
+      {archived.length > 0 && (
+        <>
+          <button className="side-item muted archived-toggle" onClick={() => setShowArchived((v) => !v)}>
+            <span className="side-label">
+              {showArchived ? '▾' : '▸'} Archived ({archived.length})
+            </span>
+          </button>
+          {showArchived &&
+            archived.map((c) => (
+              <button
+                key={c.id}
+                className={`side-item muted ${c.id === activeId ? 'active' : ''}`}
+                onClick={() => onSelect(c.id)}
+              >
+                <span className="side-label">🗄 {c.name}</span>
+              </button>
+            ))}
+        </>
+      )}
 
       <div className="side-h side-h-action" title="Direct messages are never indexed by the AI">
         <span>Direct messages 🔒</span>

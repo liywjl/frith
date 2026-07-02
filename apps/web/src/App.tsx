@@ -10,6 +10,7 @@ import { QuickSwitcher } from './QuickSwitcher';
 import { AskPanel } from './AskPanel';
 import { ProfileModal } from './ProfileModal';
 import { GroupModal } from './GroupModal';
+import { CreateChannelModal } from './CreateChannelModal';
 
 export function App() {
   const [me, setMe] = useState<MeDto | null>(null);
@@ -67,6 +68,7 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
   const [askOpen, setAskOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [groupOpen, setGroupOpen] = useState(false);
+  const [createChannelOpen, setCreateChannelOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -99,6 +101,10 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
       }
       if (event.type === 'user.updated') {
         setUsers((cur) => cur.map((u) => (u.id === event.user.id ? event.user : u)));
+        return;
+      }
+      if (event.type === 'channels.changed') {
+        void api.channels().then(setChannels);
         return;
       }
       if (event.type === 'reaction.changed') {
@@ -156,6 +162,15 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
     [openChannel],
   );
 
+  const onChannelCreated = useCallback(
+    async (channelId: string) => {
+      setCreateChannelOpen(false);
+      setChannels(await api.channels());
+      openChannel(channelId);
+    },
+    [openChannel],
+  );
+
   const openThread = useCallback(
     async (rootId: string, channelId: string) => {
       openChannel(channelId);
@@ -181,19 +196,21 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
         else if (askOpen) setAskOpen(false);
         else if (profileOpen) setProfileOpen(false);
         else if (groupOpen) setGroupOpen(false);
+        else if (createChannelOpen) setCreateChannelOpen(false);
         else setThreadRoot(null);
       } else if (e.altKey && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
         e.preventDefault();
         setActiveId((cur) => {
-          const idx = channels.findIndex((c) => c.id === cur);
-          const next = channels[(idx + (e.key === 'ArrowDown' ? 1 : channels.length - 1)) % channels.length];
+          const cycle = channels.filter((c) => !c.archivedAt || c.id === cur);
+          const idx = cycle.findIndex((c) => c.id === cur);
+          const next = cycle[(idx + (e.key === 'ArrowDown' ? 1 : cycle.length - 1)) % cycle.length];
           return next?.id ?? cur;
         });
       }
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [channels, switcherOpen, askOpen, profileOpen, groupOpen]);
+  }, [channels, switcherOpen, askOpen, profileOpen, groupOpen, createChannelOpen]);
 
   const active = channels.find((c) => c.id === activeId) ?? null;
 
@@ -208,6 +225,7 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
         onSelect={openChannel}
         onOpenDm={openDm}
         onNewGroup={() => setGroupOpen(true)}
+        onNewChannel={() => setCreateChannelOpen(true)}
         onOpenProfile={() => setProfileOpen(true)}
       />
       {active && (
@@ -238,6 +256,9 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
       {profileOpen && <ProfileModal me={me} onSaved={onMeChange} onClose={() => setProfileOpen(false)} />}
       {groupOpen && (
         <GroupModal me={me} users={users} onCreated={onGroupCreated} onClose={() => setGroupOpen(false)} />
+      )}
+      {createChannelOpen && (
+        <CreateChannelModal onCreated={onChannelCreated} onClose={() => setCreateChannelOpen(false)} />
       )}
     </div>
   );

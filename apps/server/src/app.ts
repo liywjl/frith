@@ -6,7 +6,9 @@ import { THEMES } from '@app/shared';
 import {
   canReadChannel,
   channelAudience,
+  createChannel,
   createMessage,
+  getChannel,
   getMessage,
   getOrCreateGroup,
   getThread,
@@ -15,6 +17,7 @@ import {
   listChannelMessages,
   listUsers,
   markChannelRead,
+  setChannelArchived,
   toggleReaction,
   updateProfile,
   visibleChannels,
@@ -100,6 +103,34 @@ export async function buildApp() {
 
   app.get('/api/channels', async (req) => visibleChannels(req.userId));
 
+  app.post('/api/channels', async (req, reply) => {
+    const input = z
+      .object({
+        name: z.string().min(1).max(80),
+        type: z.enum(['public', 'private']),
+        topic: z.string().trim().max(250).nullable().optional(),
+      })
+      .parse(req.body);
+    const result = await createChannel(req.userId, input);
+    if (result === 'invalid-name') return reply.code(400).send({ error: 'channel name is invalid' });
+    if (result === 'name-taken') return reply.code(409).send({ error: 'a channel with that name already exists' });
+    publish({ type: 'channels.changed' }, 'all');
+    return { channelId: result.id };
+  });
+
+  for (const action of ['archive', 'unarchive'] as const) {
+    app.post(`/api/channels/:id/${action}`, async (req, reply) => {
+      const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+      const channel = await getChannel(id);
+      if (!channel) return reply.code(404).send({ error: 'no such channel' });
+      if (channel.type === 'dm') return reply.code(400).send({ error: 'conversations cannot be archived' });
+      if (!(await requireChannelAccess(req, reply, id))) return reply;
+      await setChannelArchived(id, action === 'archive');
+      publish({ type: 'channels.changed' }, 'all');
+      return { ok: true };
+    });
+  }
+
   app.get('/api/channels/:id/messages', async (req, reply) => {
     const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
     if (!(await requireChannelAccess(req, reply, id))) return reply;
@@ -112,6 +143,10 @@ export async function buildApp() {
       .object({ body: z.string().min(1).max(10_000), parentMessageId: z.string().uuid().optional() })
       .parse(req.body);
     if (!(await requireChannelAccess(req, reply, id))) return reply;
+    const channel = await getChannel(id);
+    if (channel?.archivedAt) {
+      return reply.code(409).send({ error: 'this channel is archived' });
+    }
     const message = await createMessage({
       channelId: id,
       authorId: req.userId,

@@ -13,7 +13,13 @@ interface Corpus {
     statusEmoji?: string | null;
     statusText?: string | null;
   }[];
-  channels: { name: string; type: 'public' | 'private' | 'dm'; topic: string; members?: string[] }[];
+  channels: {
+    name: string;
+    type: 'public' | 'private' | 'dm';
+    topic: string;
+    members?: string[];
+    archived?: boolean;
+  }[];
   messages: { id?: string; channel: string; author: string; daysAgo: number; replyTo?: string; body: string }[];
 }
 
@@ -33,7 +39,12 @@ const channelIds = new Map<string, string>();
 for (const c of corpus.channels) {
   const [row] = await db
     .insert(channels)
-    .values({ name: c.name, type: c.type, topic: c.topic })
+    .values({
+      name: c.name,
+      type: c.type,
+      topic: c.topic,
+      archivedAt: c.archived ? new Date(Date.now() - 150 * 86_400_000) : null,
+    })
     .returning({ id: channels.id });
   channelIds.set(c.name, row!.id);
   for (const handle of c.members ?? []) {

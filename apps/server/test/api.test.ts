@@ -323,6 +323,104 @@ describe('group conversations', () => {
   });
 });
 
+describe('channel lifecycle', () => {
+  it('creates a channel with a normalized name and opens it to everyone', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/channels',
+      payload: { name: '  Project Phoenix!  ', type: 'public', topic: 'rebuild' },
+      ...as(alice),
+    });
+    expect(res.statusCode).toBe(200);
+    const channelId = res.json().channelId;
+
+    const list = await app.inject({ method: 'GET', url: '/api/channels', ...as(bob) });
+    const created = list.json().find((c: { id: string }) => c.id === channelId);
+    expect(created.name).toBe('project-phoenix');
+    expect(created.archivedAt).toBeNull();
+  });
+
+  it('rejects duplicate and unusable names', async () => {
+    const dup = await app.inject({
+      method: 'POST',
+      url: '/api/channels',
+      payload: { name: 'Project Phoenix', type: 'public' },
+      ...as(bob),
+    });
+    expect(dup.statusCode).toBe(409);
+    const bad = await app.inject({
+      method: 'POST',
+      url: '/api/channels',
+      payload: { name: '!!!', type: 'public' },
+      ...as(bob),
+    });
+    expect(bad.statusCode).toBe(400);
+  });
+
+  it('makes the creator a member of a new private channel, and only them', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/channels',
+      payload: { name: 'skunkworks', type: 'private' },
+      ...as(alice),
+    });
+    const channelId = res.json().channelId;
+    const mine = await app.inject({ method: 'GET', url: `/api/channels/${channelId}/messages`, ...as(alice) });
+    expect(mine.statusCode).toBe(200);
+    const theirs = await app.inject({ method: 'GET', url: `/api/channels/${channelId}/messages`, ...as(bob) });
+    expect(theirs.statusCode).toBe(403);
+  });
+
+  it('archived channels are read-only but stay readable and searchable', async () => {
+    await app.inject({
+      method: 'POST',
+      url: `/api/channels/${publicChannel}/messages`,
+      payload: { body: 'the zeppelin launch procedure lives here' },
+      ...as(alice),
+    });
+    const archive = await app.inject({ method: 'POST', url: `/api/channels/${publicChannel}/archive`, ...as(alice) });
+    expect(archive.statusCode).toBe(200);
+
+    const post = await app.inject({
+      method: 'POST',
+      url: `/api/channels/${publicChannel}/messages`,
+      payload: { body: 'should bounce' },
+      ...as(bob),
+    });
+    expect(post.statusCode).toBe(409);
+
+    const read = await app.inject({ method: 'GET', url: `/api/channels/${publicChannel}/messages`, ...as(bob) });
+    expect(read.statusCode).toBe(200);
+
+    const searched = await app.inject({ method: 'GET', url: '/api/ask?q=zeppelin', ...as(bob) });
+    expect(searched.json().messages.length).toBeGreaterThan(0);
+
+    const unarchive = await app.inject({
+      method: 'POST',
+      url: `/api/channels/${publicChannel}/unarchive`,
+      ...as(alice),
+    });
+    expect(unarchive.statusCode).toBe(200);
+    const postAgain = await app.inject({
+      method: 'POST',
+      url: `/api/channels/${publicChannel}/messages`,
+      payload: { body: 'back in business' },
+      ...as(bob),
+    });
+    expect(postAgain.statusCode).toBe(200);
+  });
+
+  it('refuses to archive a DM', async () => {
+    const dm = await app.inject({ method: 'POST', url: `/api/dms/${bob}`, ...as(alice) });
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/channels/${dm.json().channelId}/archive`,
+      ...as(alice),
+    });
+    expect(res.statusCode).toBe(400);
+  });
+});
+
 describe('ask retrieval — the ACL applies to search too', () => {
   it('finds public messages and ranks their authors with evidence', async () => {
     const res = await app.inject({ method: 'GET', url: '/api/ask?q=hello', ...as(bob) });
@@ -339,11 +437,12 @@ describe('ask retrieval — the ACL applies to search too', () => {
   });
 
   it('never leaks private content into search results for non-members', async () => {
-    const res = await app.inject({ method: 'GET', url: '/api/ask?q=launch', ...as(bob) });
+    // 'friday' only appears in the private channel's message.
+    const res = await app.inject({ method: 'GET', url: '/api/ask?q=friday', ...as(bob) });
     const body = res.json();
     expect(body.messages).toEqual([]);
     expect(body.threads).toEqual([]);
     expect(body.people).toEqual([]);
-    expect(JSON.stringify(body)).not.toContain('friday');
+    expect(JSON.stringify(body)).not.toContain('launch is friday');
   });
 });
