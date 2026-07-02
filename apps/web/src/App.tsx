@@ -13,8 +13,10 @@ import { GroupModal } from './GroupModal';
 import { CreateChannelModal } from './CreateChannelModal';
 import { HomeView } from './HomeView';
 import { ProfileView } from './ProfileView';
+import { TaskView } from './TaskView';
+import { UserActionsContext, type UserActions } from './userActions';
 
-type View = { kind: 'home' } | { kind: 'channel' } | { kind: 'profile'; userId: string };
+type View = { kind: 'home' } | { kind: 'task' } | { kind: 'channel' } | { kind: 'profile'; userId: string };
 
 export function App() {
   const [me, setMe] = useState<MeDto | null>(null);
@@ -120,6 +122,12 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
     setThreadRoot(null);
     setHomeTick((t) => t + 1);
     setView({ kind: 'home' });
+  }, [closeOverlays]);
+
+  const openTask = useCallback(() => {
+    closeOverlays();
+    setThreadRoot(null);
+    setView({ kind: 'task' });
   }, [closeOverlays]);
 
   const openProfile = useCallback(
@@ -250,7 +258,15 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
 
   const active = channels.find((c) => c.id === activeId) ?? null;
 
+  const userActions: UserActions = {
+    openDm: (userId) => void openDm(userId),
+    openProfile,
+    getUser: (userId) => users.find((u) => u.id === userId),
+    isOnline: (userId) => online.has(userId),
+  };
+
   return (
+    <UserActionsContext.Provider value={userActions}>
     <div className="app">
       <Sidebar
         me={me}
@@ -259,12 +275,14 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
         online={online}
         activeId={view.kind === 'channel' ? activeId : null}
         homeActive={view.kind === 'home'}
+        taskActive={view.kind === 'task'}
         onHome={openHome}
+        onTask={openTask}
         onSelect={openChannel}
-        onOpenProfile={openProfile}
         onNewGroup={() => setGroupOpen(true)}
         onNewChannel={() => setCreateChannelOpen(true)}
       />
+      {view.kind === 'task' && <TaskView onOpenChannel={openChannel} onOpenThread={openThread} />}
       {view.kind === 'home' && (
         <HomeView
           me={me}
@@ -290,17 +308,10 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
           messages={messages}
           onOpenThread={setThreadRoot}
           onOpenAsk={() => setAskOpen(true)}
-          onOpenProfile={openProfile}
         />
       )}
       {view.kind === 'channel' && threadRoot && active && (
-        <ThreadPanel
-          me={me}
-          channel={active}
-          root={threadRoot}
-          onClose={() => setThreadRoot(null)}
-          onOpenProfile={openProfile}
-        />
+        <ThreadPanel me={me} channel={active} root={threadRoot} onClose={() => setThreadRoot(null)} />
       )}
       {switcherOpen && (
         <QuickSwitcher
@@ -324,5 +335,6 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
         <CreateChannelModal onCreated={onChannelCreated} onClose={() => setCreateChannelOpen(false)} />
       )}
     </div>
+    </UserActionsContext.Provider>
   );
 }

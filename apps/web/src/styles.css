@@ -452,3 +452,52 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
 .profile-chip small { color: var(--ink-soft); margin-left: 4px; }
 .profile-recent { display: flex; flex-direction: column; }
 .profile-privacy { color: var(--ink-soft); font-size: 12px; margin-top: 10px; }
+
+/* hover cards */
+.uh-wrap { display: inline-block; }
+.sidebar .uh-wrap { display: block; width: 100%; }
+.hovercard {
+  position: fixed; z-index: 30; width: 260px;
+  background: var(--paper); border: 1px solid var(--line); border-radius: 12px;
+  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.18); padding: 12px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.hovercard-top { display: flex; gap: 10px; align-items: center; }
+.hovercard-id { display: flex; flex-direction: column; min-width: 0; font-size: 13px; }
+.hovercard-id b { font-size: 14px; }
+.hovercard-id span { color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hovercard-actions { display: flex; gap: 8px; }
+.hovercard-actions .btn { flex: 1; padding: 6px 10px; font-size: 13.5px; }
+
+/* org chart */
+.org-chart { display: flex; gap: 10px; flex-wrap: wrap; }
+.org-node {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  border: 1px solid var(--line); border-radius: 10px; background: var(--card);
+  padding: 10px 14px; min-width: 92px;
+}
+.org-node:hover { border-color: var(--ai); }
+.org-node.current { border-color: var(--ai); background: var(--ai-soft); }
+.org-node b { font-size: 13px; }
+.org-node small { color: var(--ink-soft); font-size: 10.5px; max-width: 100px; text-align: center; }
+
+/* task view */
+.task-input textarea {
+  width: 100%; font: inherit; color: inherit; resize: vertical; min-height: 74px;
+  border: 1.5px solid var(--ai); border-radius: 12px; padding: 13px 15px; background: var(--card);
+}
+.task-input textarea:focus { outline: none; }
+.task-input-foot { display: flex; justify-content: space-between; gap: 10px; margin: 10px 0 22px; }
+.btn.ghost { border-style: dashed; color: var(--ink-soft); }
+.task-count { color: var(--ink-soft); font-size: 13.5px; margin-bottom: 18px; }
+.task-person {
+  display: flex; align-items: center; gap: 12px; border: 1px solid var(--line);
+  border-radius: 10px; background: var(--card); padding: 11px 13px; margin-bottom: 8px;
+}
+.task-person-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.task-person .btn { flex: none; }
+.task-foot { border-top: none; padding: 14px 0 0; }
+
+/* engagement chips */
+.home-engagement { display: flex; gap: 10px; color: var(--ink-soft); font-size: 12.5px; }
+.home-engagement span { white-space: nowrap; }

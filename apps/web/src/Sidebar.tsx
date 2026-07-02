@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import type { ChannelDto, UserDto } from '@app/shared';
 import { Avatar } from './Avatar';
+import { UserHover } from './UserHover';
+import { useUserActions } from './userActions';
 
 function Presence({ online }: { online: boolean }) {
   return <span className={`presence ${online ? 'on' : ''}`} aria-label={online ? 'online' : 'offline'} />;
@@ -27,11 +29,12 @@ export function Sidebar({
   online,
   activeId,
   homeActive,
+  taskActive,
   onHome,
+  onTask,
   onSelect,
   onNewGroup,
   onNewChannel,
-  onOpenProfile,
 }: {
   me: UserDto;
   channels: ChannelDto[];
@@ -39,12 +42,14 @@ export function Sidebar({
   online: Set<string>;
   activeId: string | null;
   homeActive: boolean;
+  taskActive: boolean;
   onHome: () => void;
+  onTask: () => void;
   onSelect: (id: string) => void;
   onNewGroup: () => void;
   onNewChannel: () => void;
-  onOpenProfile: (userId: string) => void;
 }) {
+  const { openDm, openProfile } = useUserActions();
   const [showArchived, setShowArchived] = useState(false);
   const rooms = channels.filter((c) => c.type !== 'dm' && !c.archivedAt);
   const archived = channels.filter((c) => c.type !== 'dm' && c.archivedAt);
@@ -64,6 +69,9 @@ export function Sidebar({
 
       <button className={`side-item home-item ${homeActive ? 'active' : ''}`} onClick={onHome}>
         <span className="side-label">🏠 Home</span>
+      </button>
+      <button className={`side-item home-item ${taskActive ? 'active' : ''}`} onClick={onTask}>
+        <span className="side-label">🎯 Start a task</span>
       </button>
 
       <div className="side-h side-h-action">
@@ -113,7 +121,7 @@ export function Sidebar({
         const partnerIds = c.dmPartnerIds ?? [];
         const isGroup = partnerIds.length > 1;
         const solo = !isGroup ? byId.get(partnerIds[0] ?? '') : undefined;
-        return (
+        const row = (
           <button
             key={c.id}
             className={`side-item ${c.id === activeId ? 'active' : ''} ${c.unreadCount > 0 ? 'has-unread' : ''}`}
@@ -129,16 +137,25 @@ export function Sidebar({
             <Unread count={c.unreadCount} />
           </button>
         );
+        return solo ? (
+          <UserHover key={c.id} userId={solo.id} name={solo.name}>
+            {row}
+          </UserHover>
+        ) : (
+          row
+        );
       })}
       {others.map((u) => (
-        <button key={u.id} className="side-item muted" title={`View ${u.name}'s profile`} onClick={() => onOpenProfile(u.id)}>
-          <Presence online={online.has(u.id)} />
-          <span className="side-label">{u.name}</span>
-          <Status user={u} />
-        </button>
+        <UserHover key={u.id} userId={u.id} name={u.name}>
+          <button className="side-item muted" title={`Message ${u.name}`} onClick={() => openDm(u.id)}>
+            <Presence online={online.has(u.id)} />
+            <span className="side-label">{u.name}</span>
+            <Status user={u} />
+          </button>
+        </UserHover>
       ))}
 
-      <button className="side-me" title="View your profile" onClick={() => onOpenProfile(me.id)}>
+      <button className="side-me" title="View your profile" onClick={() => openProfile(me.id)}>
         <Avatar name={me.name} emoji={me.avatarEmoji} />
         <span className="side-me-text">
           <b>

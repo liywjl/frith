@@ -103,6 +103,25 @@ export interface AskResponse {
   messages: AskEvidence[];
 }
 
+/** A code path, repo, or link that conversations keep referring to. */
+export interface ArtifactRef {
+  ref: string;
+  kind: 'code' | 'link';
+  mentions: number;
+  /** Where it was (most recently) mentioned, for click-through. */
+  channelId: string;
+  channelName: string;
+}
+
+/** Task scoping: feed in requirements, get who/what/where to start from. */
+export interface TaskScopeDto {
+  query: string;
+  matchCount: number;
+  people: AskPerson[];
+  threads: AskThread[];
+  artifacts: ArtifactRef[];
+}
+
 /**
  * A user's productivity profile page. Everything is filtered to what the
  * *viewer* may read, and DM content never appears regardless of viewer.
@@ -115,7 +134,24 @@ export interface ProfilePageDto {
     channelsActive: number;
   };
   topChannels: { id: string; name: string; count: number }[];
+  /** Everyone on the same team — the mini org chart. */
+  teammates: UserDto[];
+  /** Their most-engaged messages (reactions + replies). */
+  popular: MessageDto[];
+  /** Code paths and links they keep referencing. */
+  artifacts: ArtifactRef[];
   recent: MessageDto[];
+}
+
+/** A widely-engaged thread for the Home digest. */
+export interface HomePopular {
+  rootId: string;
+  channelId: string;
+  channelName: string;
+  authorName: string;
+  snippet: string;
+  replyCount: number;
+  reactionCount: number;
 }
 
 /** One unread conversation on the Home screen, with its latest message. */
@@ -145,6 +181,7 @@ export interface HomeThread {
 export interface HomeDto {
   unread: HomeUnread[];
   threads: HomeThread[];
+  popular: HomePopular[];
 }
 
 /** Server → client realtime events. */

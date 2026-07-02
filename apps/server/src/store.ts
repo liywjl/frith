@@ -10,6 +10,13 @@ import type {
 } from '@app/shared';
 import { db } from './db/client.js';
 import { channelMembers, channelReads, channels, messages, reactions, users } from './db/schema.js';
+import { extractArtifacts } from './artifacts.js';
+
+/** Reactions + replies a message has drawn — the "engagement" score. */
+const engagement = raw`(
+  (select count(*) from reactions r where r.message_id = ${messages.id})
+  + (select count(*) from messages x where x.parent_message_id = ${messages.id})
+)`;
 
 /**
  * ACL rule (v0): public channels are readable by everyone in the workspace;
@@ -394,8 +401,20 @@ export async function getProfilePage(viewerId: string, targetId: string): Promis
             .where(and(inArray(channels.id, visible), ne(channels.type, 'dm')))
         ).map((c) => c.id);
 
+  const teammates = target.team
+    ? await db.select(userColumns).from(users).where(eq(users.team, target.team)).orderBy(asc(users.name))
+    : [];
+
   if (scope.length === 0) {
-    return { user: target, stats: { messages: 0, reactionsReceived: 0, channelsActive: 0 }, topChannels: [], recent: [] };
+    return {
+      user: target,
+      stats: { messages: 0, reactionsReceived: 0, channelsActive: 0 },
+      topChannels: [],
+      teammates,
+      popular: [],
+      artifacts: [],
+      recent: [],
+    };
   }
 
   const authored = and(eq(messages.authorId, targetId), inArray(messages.channelId, scope));
@@ -430,8 +449,26 @@ export async function getProfilePage(viewerId: string, targetId: string): Promis
     .where(authored)
     .orderBy(desc(messages.createdAt))
     .limit(5);
-  const ids = recentRows.map((r) => r.id);
+
+  const popularRows = await db
+    .select(authorJoin)
+    .from(messages)
+    .innerJoin(users, eq(users.id, messages.authorId))
+    .where(and(authored, raw`${engagement} > 0`))
+    .orderBy(desc(engagement))
+    .limit(3);
+
+  const bodies = await db
+    .select({ body: messages.body, channelId: messages.channelId, channelName: channels.name })
+    .from(messages)
+    .innerJoin(channels, eq(channels.id, messages.channelId))
+    .where(authored)
+    .orderBy(desc(messages.createdAt))
+    .limit(150);
+
+  const ids = [...new Set([...recentRows, ...popularRows].map((r) => r.id))];
   const [counts, reacts] = await Promise.all([replyCounts(ids), reactionsFor(ids, viewerId)]);
+  const dto = (r: (typeof recentRows)[number]) => toDto(r, counts.get(r.id) ?? 0, reacts.get(r.id) ?? []);
 
   return {
     user: target,
@@ -441,7 +478,10 @@ export async function getProfilePage(viewerId: string, targetId: string): Promis
       channelsActive: stats?.channelsActive ?? 0,
     },
     topChannels,
-    recent: recentRows.map((r) => toDto(r, counts.get(r.id) ?? 0, reacts.get(r.id) ?? [])),
+    teammates,
+    popular: popularRows.map(dto),
+    artifacts: extractArtifacts(bodies, 6),
+    recent: recentRows.map(dto),
   };
 }
 
@@ -524,7 +564,40 @@ export async function getHome(userId: string): Promise<HomeDto> {
     }
   }
 
-  return { unread, threads };
+  // Popular threads across everything visible (and not archived).
+  const activeIds = chans.filter((c) => !c.archivedAt).map((c) => c.id);
+  const popular: HomeDto['popular'] = [];
+  if (activeIds.length > 0) {
+    const rows = await db
+      .select({
+        rootId: messages.id,
+        channelId: messages.channelId,
+        channelName: channels.name,
+        authorName: users.name,
+        body: messages.body,
+        replyCount: raw<number>`(select count(*) from messages x where x.parent_message_id = ${messages.id})::int`,
+        reactionCount: raw<number>`(select count(*) from reactions r where r.message_id = ${messages.id})::int`,
+      })
+      .from(messages)
+      .innerJoin(users, eq(users.id, messages.authorId))
+      .innerJoin(channels, eq(channels.id, messages.channelId))
+      .where(and(isNull(messages.parentMessageId), inArray(messages.channelId, activeIds), raw`${engagement} > 0`))
+      .orderBy(desc(engagement))
+      .limit(3);
+    for (const r of rows) {
+      popular.push({
+        rootId: r.rootId,
+        channelId: r.channelId,
+        channelName: r.channelName,
+        authorName: r.authorName,
+        snippet: r.body.length > 120 ? `${r.body.slice(0, 120)}…` : r.body,
+        replyCount: r.replyCount,
+        reactionCount: r.reactionCount,
+      });
+    }
+  }
+
+  return { unread, threads, popular };
 }
 
 export async function getUserByHandle(handle: string) {

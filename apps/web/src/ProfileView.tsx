@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import type { ProfilePageDto, UserDto } from '@app/shared';
 import { api } from './api';
 import { Avatar } from './Avatar';
+import { useUserActions } from './userActions';
+import { ArtifactChips } from './ArtifactChips';
 
 const timeFormat = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
@@ -20,6 +22,7 @@ export function ProfileView({
   onOpenChannel: (channelId: string) => void;
   onEditProfile: () => void;
 }) {
+  const { openProfile } = useUserActions();
   const [profile, setProfile] = useState<ProfilePageDto | null>(null);
 
   useEffect(() => {
@@ -28,7 +31,7 @@ export function ProfileView({
   }, [userId]);
 
   if (!profile) return <main className="main profile" />;
-  const { user, stats, topChannels, recent } = profile;
+  const { user, stats, topChannels, teammates, popular, artifacts, recent } = profile;
   const isMe = user.id === me.id;
 
   return (
@@ -83,6 +86,25 @@ export function ProfileView({
           </div>
         </section>
 
+        {teammates.length > 1 && (
+          <section>
+            <div className="home-h">Team {user.team}</div>
+            <div className="org-chart">
+              {teammates.map((t) => (
+                <button
+                  key={t.id}
+                  className={`org-node ${t.id === user.id ? 'current' : ''}`}
+                  onClick={() => openProfile(t.id)}
+                >
+                  <Avatar name={t.name} emoji={t.avatarEmoji} />
+                  <b>{t.name.split(' ')[0]}</b>
+                  <small>{t.title ?? ''}</small>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+
         {topChannels.length > 0 && (
           <section>
             <div className="home-h">Works in</div>
@@ -93,6 +115,28 @@ export function ProfileView({
                 </button>
               ))}
             </div>
+          </section>
+        )}
+
+        <ArtifactChips title="Code & docs they touch" artifacts={artifacts} onOpenChannel={onOpenChannel} />
+
+        {popular.length > 0 && (
+          <section>
+            <div className="home-h">Most useful posts</div>
+            {popular.map((m) => (
+              <button key={m.id} className="home-card" onClick={() => onOpenChannel(m.channelId)}>
+                <span className="home-card-top">
+                  <span className="home-engagement">
+                    {m.reactions.length > 0 && (
+                      <span>{m.reactions.map((r) => `${r.emoji} ${r.count}`).join('  ')}</span>
+                    )}
+                    {m.replyCount > 0 && <span>↳ {m.replyCount} replies</span>}
+                  </span>
+                  <span className="home-when">{timeFormat.format(new Date(m.createdAt))}</span>
+                </span>
+                <span className="home-snippet">{m.body}</span>
+              </button>
+            ))}
           </section>
         )}
 

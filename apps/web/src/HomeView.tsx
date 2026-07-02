@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { HomeDto, UserDto } from '@app/shared';
 import { api } from './api';
+import { ThreadCard } from './ThreadCard';
 
 const timeFormat = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
@@ -72,22 +73,43 @@ export function HomeView({
           </section>
         )}
 
+        {home.popular.length > 0 && (
+          <section>
+            <div className="home-h">Popular threads</div>
+            {home.popular.map((p) => (
+              <button key={p.rootId} className="home-card" onClick={() => onOpenThread(p.rootId, p.channelId)}>
+                <span className="home-card-top">
+                  <b># {p.channelName}</b>
+                  <span className="home-engagement">
+                    {p.reactionCount > 0 && <span>♡ {p.reactionCount}</span>}
+                    {p.replyCount > 0 && <span>↳ {p.replyCount}</span>}
+                  </span>
+                </span>
+                <span className="home-snippet">
+                  {p.authorName}: {p.snippet}
+                </span>
+              </button>
+            ))}
+          </section>
+        )}
+
         {home.threads.length > 0 && (
           <section>
             <div className="home-h">Threads you're in</div>
             {home.threads.map((t) => (
-              <button key={t.rootId} className="home-card" onClick={() => onOpenThread(t.rootId, t.channelId)}>
-                <span className="home-card-top">
-                  <b># {t.channelName}</b>
-                  <span className="home-replies">↳ {t.replyCount} replies</span>
-                </span>
+              <ThreadCard
+                key={t.rootId}
+                channelName={t.channelName}
+                corner={<span className="home-replies">↳ {t.replyCount} replies</span>}
+                onClick={() => onOpenThread(t.rootId, t.channelId)}
+              >
                 <span className="home-snippet">
                   {t.rootAuthorName}: {t.rootSnippet}
                 </span>
                 <span className="home-when">
                   latest from {t.lastReplyAuthor} · {timeFormat.format(new Date(t.lastReplyAt))}
                 </span>
-              </button>
+              </ThreadCard>
             ))}
           </section>
         )}

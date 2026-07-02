@@ -1,6 +1,8 @@
 import type { MessageDto } from '@app/shared';
 import { api } from './api';
 import { Avatar } from './Avatar';
+import { UserHover } from './UserHover';
+import { useUserActions } from './userActions';
 
 const EMOJIS = ['👍', '❤️', '✅', '😂', '🎉', '👀'];
 
@@ -10,31 +12,30 @@ export function Message({
   message,
   compact,
   onOpenThread,
-  onOpenProfile,
 }: {
   message: MessageDto;
   /** Consecutive message from the same author — hide the avatar/header. */
   compact?: boolean;
   onOpenThread?: (root: MessageDto) => void;
-  onOpenProfile?: (userId: string) => void;
 }) {
+  const { openProfile } = useUserActions();
   return (
     <div className={`msg ${compact ? 'compact' : ''}`}>
       {compact ? (
         <div className="msg-gutter">{timeFormat.format(new Date(message.createdAt))}</div>
       ) : (
-        <Avatar name={message.authorName} emoji={message.authorAvatarEmoji} />
+        <UserHover userId={message.authorId} name={message.authorName}>
+          <Avatar name={message.authorName} emoji={message.authorAvatarEmoji} />
+        </UserHover>
       )}
       <div className="msg-main">
         {!compact && (
           <div>
-            {onOpenProfile ? (
-              <button className="who who-link" onClick={() => onOpenProfile(message.authorId)}>
+            <UserHover userId={message.authorId} name={message.authorName}>
+              <button className="who who-link" onClick={() => openProfile(message.authorId)}>
                 {message.authorName}
               </button>
-            ) : (
-              <span className="who">{message.authorName}</span>
-            )}
+            </UserHover>
             <span className="when">{timeFormat.format(new Date(message.createdAt))}</span>
           </div>
         )}

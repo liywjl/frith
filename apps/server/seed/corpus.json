@@ -84,5 +84,14 @@
     { "channel": "group-lunch", "author": "jonas", "daysAgo": 1, "body": "Ramen place at 12:30? They have the spicy special again." },
     { "channel": "group-lunch", "author": "elena", "daysAgo": 1, "body": "In! Last one there pays." },
     { "channel": "group-lunch", "author": "tomas", "daysAgo": 1, "body": "Count me in 🙌" }
+  ],
+  "reactions": [
+    { "message": "flag", "emoji": "✅", "users": ["priya", "sofia", "amara", "kwame"] },
+    { "message": "flag", "emoji": "🎉", "users": ["tomas", "elena"] },
+    { "message": "postmortem", "emoji": "👍", "users": ["marco", "sofia", "priya"] },
+    { "message": "postmortem", "emoji": "❤️", "users": ["omar"] },
+    { "message": "rfc", "emoji": "👀", "users": ["kwame", "elena", "sofia"] },
+    { "message": "restart", "emoji": "🎉", "users": ["marco", "amara", "tomas"] },
+    { "message": "tomas-q", "emoji": "👋", "users": ["priya", "jonas"] }
   ]
 }

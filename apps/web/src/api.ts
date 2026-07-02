@@ -6,6 +6,7 @@ import type {
   MessageDto,
   ProfilePageDto,
   ProfilePatch,
+  TaskScopeDto,
   UserDto,
 } from '@app/shared';
 
@@ -54,4 +55,6 @@ export const api = {
       body: JSON.stringify({ emoji }),
     }),
   ask: (q: string) => request<AskResponse>(`/api/ask?q=${encodeURIComponent(q)}`),
+  taskScope: (requirements: string) =>
+    request<TaskScopeDto>('/api/task-scope', { method: 'POST', body: JSON.stringify({ requirements }) }),
 };

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { db, sql } from '../src/db/client.js';
-import { channelMembers, channelReads, channels, messages, users } from '../src/db/schema.js';
+import { channelMembers, channelReads, channels, messages, reactions, users } from '../src/db/schema.js';
 
 interface Corpus {
   users: {
@@ -21,6 +21,7 @@ interface Corpus {
     archived?: boolean;
   }[];
   messages: { id?: string; channel: string; author: string; daysAgo: number; replyTo?: string; body: string }[];
+  reactions: { message: string; emoji: string; users: string[] }[];
 }
 
 const corpus: Corpus = JSON.parse(
@@ -68,6 +69,16 @@ for (const [index, m] of corpus.messages.entries()) {
     })
     .returning({ id: messages.id });
   if (m.id) messageIds.set(m.id, row!.id);
+}
+
+for (const r of corpus.reactions) {
+  for (const handle of r.users) {
+    await db.insert(reactions).values({
+      messageId: messageIds.get(r.message)!,
+      userId: userIds.get(handle)!,
+      emoji: r.emoji,
+    });
+  }
 }
 
 // Read markers: everyone is caught up, except Tomas (the demo login) who

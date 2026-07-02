@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { AskResponse } from '@app/shared';
 import { api } from './api';
 import { Avatar } from './Avatar';
+import { Snippet } from './Snippet';
 
 const EXAMPLES = [
   'payments migration',
@@ -9,16 +10,6 @@ const EXAMPLES = [
   'who owns the feature flag',
   'reconciliation job',
 ];
-
-/** Render a snippet whose hits are marked with [[double brackets]]. */
-function Snippet({ text }: { text: string }) {
-  const parts = text.split(/\[\[|\]\]/);
-  return (
-    <>
-      {parts.map((p, i) => (i % 2 === 1 ? <mark key={i}>{p}</mark> : <span key={i}>{p}</span>))}
-    </>
-  );
-}
 
 const dateFormat = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' });
 

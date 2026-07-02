@@ -1,7 +1,8 @@
 import { sql as raw } from 'drizzle-orm';
-import type { AskEvidence, AskPerson, AskResponse, AskThread } from '@app/shared';
+import type { AskEvidence, AskPerson, AskResponse, AskThread, TaskScopeDto } from '@app/shared';
 import { db } from './db/client.js';
 import { visibleChannelIds } from './store.js';
+import { extractArtifacts } from './artifacts.js';
 
 interface Hit {
   id: string;
@@ -22,20 +23,31 @@ interface Hit {
   snippet: string;
 }
 
+const evidence = (h: Hit): AskEvidence => ({
+  messageId: h.id,
+  channelId: h.channel_id,
+  channelName: h.channel_name,
+  snippet: h.snippet,
+  createdAt: new Date(h.created_at).toISOString(),
+});
+
 /**
- * Retrieval v0 for the Ask surface: Postgres full-text search over messages
- * the asker is allowed to read. People are ranked by summed relevance of what
- * they actually wrote (evidence attached); threads group hits by their root.
- * Embeddings + LLM synthesis slot in on top of this later — the ACL filtering
- * and result shape stay the same.
+ * Retrieval v0: Postgres full-text search over messages the asker is allowed
+ * to read. People are ranked by summed relevance of what they actually wrote
+ * (evidence attached); threads group hits by their root. Embeddings + LLM
+ * synthesis slot in on top of this later — the ACL filtering and result
+ * shape stay the same.
  *
  * Snippets mark query hits with [[double brackets]] (never HTML) so the
  * client can highlight by splitting, not by innerHTML.
  */
-export async function ask(userId: string, query: string): Promise<AskResponse> {
+async function retrieve(
+  userId: string,
+  query: string,
+): Promise<{ hits: Hit[]; people: AskPerson[]; threads: AskThread[] }> {
   const channelIds = await visibleChannelIds(userId);
   if (channelIds.length === 0 || query.trim() === '') {
-    return { query, people: [], threads: [], messages: [] };
+    return { hits: [], people: [], threads: [] };
   }
 
   async function search(tsQueryText: string): Promise<Hit[]> {
@@ -68,15 +80,7 @@ export async function ask(userId: string, query: string): Promise<AskResponse> {
   if (hits.length === 0 && words.length > 1) {
     hits = await search(words.join(' or '));
   }
-  if (hits.length === 0) return { query, people: [], threads: [], messages: [] };
-
-  const evidence = (h: Hit): AskEvidence => ({
-    messageId: h.id,
-    channelId: h.channel_id,
-    channelName: h.channel_name,
-    snippet: h.snippet,
-    createdAt: new Date(h.created_at).toISOString(),
-  });
+  if (hits.length === 0) return { hits: [], people: [], threads: [] };
 
   // People: sum relevance per author, keep their strongest evidence.
   const byAuthor = new Map<string, { person: AskPerson; hits: Hit[] }>();
@@ -157,5 +161,27 @@ export async function ask(userId: string, query: string): Promise<AskResponse> {
     .slice(0, 6)
     .map(({ _score, ...t }) => t);
 
+  return { hits, people, threads };
+}
+
+export async function ask(userId: string, query: string): Promise<AskResponse> {
+  const { hits, people, threads } = await retrieve(userId, query);
   return { query, people, threads, messages: hits.slice(0, 8).map(evidence) };
+}
+
+/**
+ * Task scoping: same retrieval, different lens — who to talk to, what was
+ * already discussed, and which code paths / links those discussions point at.
+ */
+export async function taskScope(userId: string, requirements: string): Promise<TaskScopeDto> {
+  const { hits, people, threads } = await retrieve(userId, requirements);
+  return {
+    query: requirements,
+    matchCount: hits.length,
+    people,
+    threads,
+    artifacts: extractArtifacts(
+      hits.map((h) => ({ body: h.body, channelId: h.channel_id, channelName: h.channel_name })),
+    ),
+  };
 }

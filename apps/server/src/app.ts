@@ -24,7 +24,7 @@ import {
   updateProfile,
   visibleChannels,
 } from './store.js';
-import { ask } from './ask.js';
+import { ask, taskScope } from './ask.js';
 import { publish, register } from './realtime.js';
 
 declare module 'fastify' {
@@ -222,6 +222,11 @@ export async function buildApp() {
   app.get('/api/ask', async (req) => {
     const { q } = z.object({ q: z.string().max(500) }).parse(req.query);
     return ask(req.userId, q);
+  });
+
+  app.post('/api/task-scope', async (req) => {
+    const { requirements } = z.object({ requirements: z.string().trim().min(3).max(2000) }).parse(req.body);
+    return taskScope(req.userId, requirements);
   });
 
   app.get('/api/ws', { websocket: true }, (socket, req) => {
