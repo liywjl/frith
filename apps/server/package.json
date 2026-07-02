@@ -1,0 +1,28 @@
+{
+  "name": "server",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "db:migrate": "drizzle-kit migrate",
+    "seed": "tsx scripts/seed.ts",
+    "typecheck": "tsc",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@app/shared": "workspace:*",
+    "@fastify/cookie": "^11.0.2",
+    "@fastify/websocket": "^11.2.0",
+    "drizzle-orm": "^0.45.2",
+    "fastify": "^5.9.0",
+    "postgres": "^3.4.9",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.18.1",
+    "drizzle-kit": "^0.31.10",
+    "tsx": "^4.22.5",
+    "vitest": "^4.1.9",
+    "ws": "^8.21.0"
+  }
+}

@@ -1,0 +1,256 @@
+<title>AI-Native Chat — Wireframes</title>
+<style>
+  :root{
+    --paper:#FAFAF8; --frame:#FFFFFF; --line:#D5D3CC; --line-soft:#E7E5DF;
+    --ink:#3A3833; --ink-soft:#8A867C; --block:#EDEBE5;
+    --ai:#0E7568; --ai-soft:#E3F0ED; --note:#C24A2C;
+    --mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+  }
+  body{background:var(--paper);color:var(--ink);
+    font:15px/1.55 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    padding:48px 24px 96px}
+  .wrap{max-width:1060px;margin:0 auto;display:flex;flex-direction:column;gap:56px}
+
+  header h1{font-size:26px;font-weight:650;letter-spacing:-.01em;text-wrap:balance;margin-bottom:8px}
+  header p{color:var(--ink-soft);max-width:60ch}
+  .legend{display:flex;gap:20px;flex-wrap:wrap;margin-top:16px;font-family:var(--mono);font-size:12px;color:var(--ink-soft)}
+  .legend span{display:flex;align-items:center;gap:7px}
+  .swatch{width:14px;height:14px;border-radius:3px;border:1px solid var(--line)}
+  .swatch.grey{background:var(--block)}
+  .swatch.teal{background:var(--ai-soft);border-color:var(--ai)}
+  .swatch.red{background:#fff;border-color:var(--note)}
+
+  section{display:flex;flex-direction:column;gap:14px}
+  .screen-label{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft)}
+  .screen-label b{color:var(--ink);font-weight:600;letter-spacing:0;text-transform:none;font-size:15px;
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;display:block;margin-top:2px}
+
+  .frame-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--frame);
+    box-shadow:0 1px 3px rgba(58,56,51,.06)}
+  .frame{min-width:860px}
+  .chrome{display:flex;align-items:center;gap:6px;padding:10px 14px;border-bottom:1px solid var(--line-soft)}
+  .chrome i{width:9px;height:9px;border-radius:50%;background:var(--line);display:block}
+
+  /* ---- generic wireframe atoms ---- */
+  .bar{height:10px;border-radius:5px;background:var(--block)}
+  .bar.s{width:38%}.bar.m{width:62%}.bar.l{width:85%}
+  .avatar{width:32px;height:32px;border-radius:8px;background:var(--block);flex:none;
+    display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:12px;color:var(--ink-soft)}
+  .tag{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:11px;
+    padding:2px 8px;border-radius:99px;border:1px solid var(--line);color:var(--ink-soft);white-space:nowrap}
+  .tag.ai{border-color:var(--ai);color:var(--ai);background:var(--ai-soft)}
+  .marker{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;flex:none;
+    border-radius:50%;border:1.5px solid var(--note);color:var(--note);
+    font-family:var(--mono);font-size:11px;font-weight:600;vertical-align:2px}
+
+  /* ---- screen 1 layout ---- */
+  .app{display:grid;grid-template-columns:220px 1fr;min-height:480px}
+  .sidebar{border-right:1px solid var(--line-soft);padding:16px 14px;display:flex;flex-direction:column;gap:4px}
+  .ws-name{font-weight:650;margin-bottom:10px}
+  .side-h{font-family:var(--mono);font-size:11px;letter-spacing:.07em;text-transform:uppercase;
+    color:var(--ink-soft);margin:14px 0 4px}
+  .side-item{display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:6px;font-size:14px;color:var(--ink)}
+  .side-item.active{background:var(--block);font-weight:600}
+  .side-item .dot{width:7px;height:7px;border-radius:50%;background:var(--ai);flex:none}
+  .side-item small{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--ink-soft)}
+
+  .main{display:flex;flex-direction:column}
+  .topbar{display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--line-soft)}
+  .topbar .chan{font-weight:650}
+  .topbar .topic{color:var(--ink-soft);font-size:13px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .askbtn{display:flex;align-items:center;gap:8px;border:1.5px solid var(--ai);color:var(--ai);background:var(--ai-soft);
+    border-radius:8px;padding:6px 14px;font-weight:600;font-size:14px;white-space:nowrap}
+  .askbtn kbd{font-family:var(--mono);font-size:11px;border:1px solid var(--ai);border-radius:4px;padding:0 4px;opacity:.75}
+
+  .feed{padding:18px;display:flex;flex-direction:column;gap:16px;flex:1}
+  .msg{display:flex;gap:10px}
+  .msg .who{font-weight:600;font-size:14px}
+  .msg .when{font-family:var(--mono);font-size:11px;color:var(--ink-soft);margin-left:8px}
+  .msg .body{display:flex;flex-direction:column;gap:6px;margin-top:6px;flex:1;max-width:520px}
+  .thread-pill{align-self:flex-start;font-size:12px;color:var(--ink-soft);border:1px solid var(--line);
+    border-radius:99px;padding:2px 10px;margin-top:2px}
+
+  .huddle-card{border:1.5px solid var(--ai);background:var(--ai-soft);border-radius:10px;
+    padding:14px 16px;max-width:560px;display:flex;flex-direction:column;gap:8px}
+  .huddle-card .hc-title{font-weight:650;font-size:14px;color:var(--ai);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .huddle-card ul{list-style:none;font-size:13px;display:flex;flex-direction:column;gap:3px}
+  .huddle-card ul li::before{content:"—";color:var(--ai);margin-right:8px}
+  .hc-foot{font-family:var(--mono);font-size:11px;color:var(--ai)}
+
+  .related{display:flex;align-items:center;gap:10px;border:1px dashed var(--ai);color:var(--ai);
+    border-radius:8px;padding:8px 12px;font-size:13px;margin:0 18px}
+  .composer{margin:12px 18px 18px;border:1px solid var(--line);border-radius:10px;padding:12px 14px;color:var(--ink-soft);font-size:14px}
+
+  /* ---- screen 2 ---- */
+  .ask{padding:26px 30px;display:flex;flex-direction:column;gap:20px}
+  .ask-q{border:1.5px solid var(--ai);border-radius:10px;padding:14px 16px;font-size:16px;font-weight:600;
+    display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+  .ask-q::before{content:"Ask";font-family:var(--mono);font-size:11px;letter-spacing:.07em;text-transform:uppercase;
+    color:var(--ai);font-weight:600}
+  .ask-cols{display:grid;grid-template-columns:1.4fr 1fr;gap:22px;align-items:start}
+  .ask-h{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);
+    display:flex;align-items:center;gap:8px;margin-bottom:10px}
+  .brief{border:1px solid var(--line);border-radius:10px;padding:16px 18px;font-size:14px;max-width:60ch}
+  .brief p+p{margin-top:10px}
+  .cite{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 4px;
+    border-radius:5px;background:var(--ai-soft);border:1px solid var(--ai);color:var(--ai);
+    font-family:var(--mono);font-size:10.5px;font-weight:600;vertical-align:2px;margin:0 1px}
+  .stack{display:flex;flex-direction:column;gap:10px}
+  .person{border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:flex;gap:10px}
+  .person .pv{flex:1;min-width:0}
+  .person .pn{font-weight:650;font-size:14px}
+  .person .pr{font-size:13px;color:var(--ink);margin-top:1px}
+  .person .ev{font-family:var(--mono);font-size:11px;color:var(--ai);margin-top:6px;line-height:1.6}
+  .rowitem{border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-size:13px;
+    display:flex;gap:10px;align-items:baseline}
+  .rowitem .ref{font-family:var(--mono);font-size:11px;color:var(--ink-soft);white-space:nowrap}
+  .ask-foot{border-top:1px solid var(--line-soft);padding-top:12px;display:flex;gap:16px;flex-wrap:wrap;
+    font-family:var(--mono);font-size:11px;color:var(--ai)}
+
+  /* ---- notes ---- */
+  .notes{display:flex;flex-direction:column;gap:6px;max-width:72ch}
+  .notes div{display:flex;gap:10px;align-items:baseline;font-size:13.5px}
+  .notes .marker{margin-top:1px}
+  .notes em{font-style:normal;font-weight:600}
+  @media (max-width:720px){ .ask-cols{grid-template-columns:1fr} }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>AI-Native Chat — Wireframes</h1>
+    <p>Two screens carry the whole concept. Grey is ordinary chat (table stakes). Teal is the AI knowledge layer (the product). Numbered dots are design notes below each frame.</p>
+    <div class="legend">
+      <span><i class="swatch grey"></i>standard chat</span>
+      <span><i class="swatch teal"></i>the AI layer</span>
+      <span><i class="swatch red"></i>notes</span>
+    </div>
+  </header>
+
+  <!-- ============ SCREEN 1 ============ -->
+  <section>
+    <div class="screen-label">Screen 1<b>The workspace — looks like Slack, remembers like a librarian</b></div>
+    <div class="frame-scroll"><div class="frame">
+      <div class="chrome"><i></i><i></i><i></i></div>
+      <div class="app">
+        <div class="sidebar">
+          <div class="ws-name">Acme Corp</div>
+          <div class="side-h">Channels</div>
+          <div class="side-item"># general</div>
+          <div class="side-item active"># eng-payments</div>
+          <div class="side-item"># incident-4021</div>
+          <div class="side-item"><span class="dot"></span># design <small>huddle live</small></div>
+          <div class="side-h">Direct messages <span class="marker">1</span></div>
+          <div class="side-item">Priya Sharma <small>🔒</small></div>
+          <div class="side-item">Marco Ruiz <small>🔒</small></div>
+        </div>
+        <div class="main">
+          <div class="topbar">
+            <span class="chan"># eng-payments</span>
+            <span class="topic">Migration to the new billing pipeline · 14 members</span>
+            <span class="askbtn"><span class="marker">2</span> Ask <kbd>⌘K</kbd></span>
+          </div>
+          <div class="feed">
+            <div class="msg">
+              <div class="avatar">PS</div>
+              <div style="flex:1">
+                <span class="who">Priya Sharma</span><span class="when">10:42</span>
+                <div class="body"><div class="bar l"></div><div class="bar m"></div></div>
+                <div class="thread-pill">↳ 6 replies</div>
+              </div>
+            </div>
+            <div class="msg">
+              <div class="avatar">MR</div>
+              <div style="flex:1">
+                <span class="who">Marco Ruiz</span><span class="when">10:51</span>
+                <div class="body"><div class="bar m"></div></div>
+              </div>
+            </div>
+            <div class="msg">
+              <div class="avatar" style="background:var(--ai-soft);color:var(--ai)">◉</div>
+              <div style="flex:1">
+                <span class="who">Huddle ended</span><span class="when">11:34 · 23 min · 4 people</span>
+                <div class="huddle-card" style="margin-top:8px">
+                  <div class="hc-title">Summary <span class="tag ai">transcribed locally</span> <span class="marker">3</span></div>
+                  <ul>
+                    <li>Decided: gate the rollout behind a feature flag</li>
+                    <li>Action: Marco owns the flag config by Friday</li>
+                    <li>Action: Priya updates the RFC with the new cutover date</li>
+                  </ul>
+                  <div class="hc-foot">full transcript → searchable &amp; citable</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="related"><span class="marker">4</span> Related: rate-limit errors on this service were debugged in <b>#incident-4021</b> — Mar 14 →</div>
+          <div class="composer">Message # eng-payments…</div>
+        </div>
+      </div>
+    </div></div>
+    <div class="notes">
+      <div><span class="marker">1</span><span><em>DMs are never indexed by default.</em> The lock is always visible — nobody wonders whether the AI is listening. Opt-in tiers come later.</span></div>
+      <div><span class="marker">2</span><span><em>Ask is a first-class surface</em> (⌘K), not a bot you @-mention in a channel. Opens Screen 2.</span></div>
+      <div><span class="marker">3</span><span><em>Calls stop evaporating.</em> Every huddle ends as a summary card + action items in the channel, and its transcript joins the searchable record. Transcription runs on a local model.</span></div>
+      <div><span class="marker">4</span><span><em>Proactive recall:</em> while you type, prior threads on the same topic surface themselves. (Later phase — cheap to show, needs the index to exist first.)</span></div>
+    </div>
+  </section>
+
+  <!-- ============ SCREEN 2 ============ -->
+  <section>
+    <div class="screen-label">Screen 2<b>An Ask answer — people, threads, docs, one brief, every claim cited</b></div>
+    <div class="frame-scroll"><div class="frame">
+      <div class="chrome"><i></i><i></i><i></i></div>
+      <div class="ask">
+        <div class="ask-q">I need to work on the payments migration — where do I start?</div>
+        <div class="ask-cols">
+          <div>
+            <div class="ask-h">Brief <span class="marker">5</span></div>
+            <div class="brief">
+              <p>The payments migration moves billing from the legacy cron pipeline to event-driven processing <span class="cite">1</span>. It stalled in March after rate-limit incidents <span class="cite">2</span> and restarted in June; the current plan gates rollout behind a feature flag, decided in a huddle on Jun 12 <span class="cite">3</span>.</p>
+              <p>Open questions: cutover date for EU accounts <span class="cite">1</span>, and who signs off on the reconciliation job <span class="cite">4</span>.</p>
+            </div>
+            <div class="ask-h" style="margin-top:20px">Threads</div>
+            <div class="stack">
+              <div class="rowitem"><span class="ref">#eng-payments · Jun 12</span> Rollout plan + flag decision <span class="cite">3</span></div>
+              <div class="rowitem"><span class="ref">#incident-4021 · Mar 14</span> Rate-limit postmortem <span class="cite">2</span></div>
+            </div>
+          </div>
+          <div>
+            <div class="ask-h">People <span class="marker">6</span></div>
+            <div class="stack">
+              <div class="person">
+                <div class="avatar">PS</div>
+                <div class="pv">
+                  <div class="pn">Priya Sharma</div>
+                  <div class="pr">Led the migration design</div>
+                  <div class="ev">↳ wrote the RFC · 14 msgs in #eng-payments · spoke in Jun 12 huddle</div>
+                </div>
+              </div>
+              <div class="person">
+                <div class="avatar">MR</div>
+                <div class="pv">
+                  <div class="pn">Marco Ruiz</div>
+                  <div class="pr">Owns the rollout flag</div>
+                  <div class="ev">↳ action item from huddle · reviewed PR #482</div>
+                </div>
+              </div>
+            </div>
+            <div class="ask-h" style="margin-top:20px">Docs &amp; code</div>
+            <div class="stack">
+              <div class="rowitem"><span class="ref">doc</span> payments-migration-rfc <span class="cite">1</span></div>
+              <div class="rowitem"><span class="ref">code</span> payments-service /migrations <span class="cite">4</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="ask-foot">
+          <span><span class="marker">7</span> only sources you can already read</span>
+          <span>model: Qwen3-8B · running locally</span>
+        </div>
+      </div>
+    </div></div>
+    <div class="notes">
+      <div><span class="marker">5</span><span><em>The brief is synthesized, never free-floating:</em> every sentence carries a citation chip that jumps to the real message, transcript segment, doc, or file.</span></div>
+      <div><span class="marker">6</span><span><em>People come with evidence, not vibes.</em> Ranking is computed from signals (authored, reviewed, spoke, was assigned) with time decay — and shows its work.</span></div>
+      <div><span class="marker">7</span><span><em>The trust line, always visible:</em> answers draw only from channels the asker can access, and the badge names the model and where it runs.</span></div>
+    </div>
+  </section>
+</div>

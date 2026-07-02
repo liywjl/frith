@@ -1,0 +1,23 @@
+{
+  "name": "lore",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm --parallel -r dev",
+    "db:up": "docker compose up -d db && ./scripts/wait-for-db.sh",
+    "db:migrate": "pnpm --filter server db:migrate",
+    "seed": "pnpm --filter server seed",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "eslint .",
+    "test": "pnpm -r test",
+    "deadcode": "fallow dead-code && fallow dupes",
+    "check": "pnpm typecheck && pnpm lint && pnpm test && pnpm deadcode"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.6.0",
+    "fallow": "^2.104.0",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.62.1"
+  }
+}

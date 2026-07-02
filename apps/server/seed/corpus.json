@@ -1,0 +1,54 @@
+{
+  "users": [
+    { "handle": "priya", "name": "Priya Sharma" },
+    { "handle": "marco", "name": "Marco Ruiz" },
+    { "handle": "amara", "name": "Amara Diallo" },
+    { "handle": "jonas", "name": "Jonas Weber" },
+    { "handle": "sofia", "name": "Sofia Lindqvist" },
+    { "handle": "tomas", "name": "Tomas Novak" }
+  ],
+  "channels": [
+    { "name": "general", "type": "public", "topic": "Company-wide announcements and chatter" },
+    { "name": "eng-payments", "type": "public", "topic": "Migration to the new billing pipeline" },
+    { "name": "incident-4021", "type": "public", "topic": "Payments provider rate-limit incident — resolved" },
+    { "name": "design", "type": "public", "topic": "Product design and critique" },
+    { "name": "leadership", "type": "private", "topic": "Managers only", "members": ["sofia", "priya"] },
+    { "name": "dm-priya-marco", "type": "dm", "members": ["priya", "marco"] }
+  ],
+  "messages": [
+    { "channel": "general", "author": "sofia", "daysAgo": 120, "body": "Welcome to the new workspace, everyone. Channels are open by default — keep decisions where people can find them later." },
+
+    { "id": "rfc", "channel": "eng-payments", "author": "priya", "daysAgo": 110, "body": "First draft of the payments migration RFC is up. Short version: we move billing off the nightly cron pipeline onto event-driven processing. Comments welcome on the doc." },
+    { "channel": "eng-payments", "author": "marco", "daysAgo": 110, "replyTo": "rfc", "body": "Biggest risk I see is the reconciliation job — if we replay events after a failure we could double-charge." },
+    { "channel": "eng-payments", "author": "priya", "daysAgo": 109, "replyTo": "rfc", "body": "Agreed. Proposal: idempotency keys on every charge event, reconciliation only reports, never mutates." },
+    { "channel": "eng-payments", "author": "amara", "daysAgo": 109, "replyTo": "rfc", "body": "+1 to report-only reconciliation. Also please budget for provider rate limits during replay — they bite." },
+
+    { "id": "burst", "channel": "eng-payments", "author": "marco", "daysAgo": 101, "body": "Provider sandbox keeps returning 429s when we replay a full day of events. Anyone seen this before?" },
+
+    { "id": "inc-start", "channel": "incident-4021", "author": "amara", "daysAgo": 100, "body": "Elevated 429s from the payments provider in production — checkout latency spiking. Investigating." },
+    { "channel": "incident-4021", "author": "marco", "daysAgo": 100, "body": "Root cause found: burst traffic from the migration replay is eating the provider's rate budget. Throttling the replay now." },
+    { "id": "postmortem", "channel": "incident-4021", "author": "amara", "daysAgo": 99, "body": "Postmortem drafted. Action items: exponential backoff with jitter on all provider calls, alert on 429 rate, cap replay at 40 rps." },
+    { "channel": "incident-4021", "author": "sofia", "daysAgo": 99, "body": "Nice turnaround. Let's make sure the migration plan absorbs these lessons before it restarts." },
+
+    { "channel": "eng-payments", "author": "amara", "daysAgo": 99, "replyTo": "burst", "body": "Same behaviour as incident 4021 — the provider caps bursts around 50 rps. Backoff with jitter fixed it there, see the postmortem." },
+    { "channel": "eng-payments", "author": "priya", "daysAgo": 90, "body": "Pausing migration work until the incident fallout settles and the backoff work lands. We pick this up again next quarter." },
+
+    { "channel": "design", "author": "jonas", "daysAgo": 60, "body": "New checkout flow mockups are up. Main change: the retry state now tells the user what happened instead of a spinner." },
+    { "channel": "design", "author": "tomas", "daysAgo": 3, "body": "These are great — is there a component for the inline error banner or is it bespoke?" },
+    { "channel": "design", "author": "jonas", "daysAgo": 3, "body": "It's in the shared library as AlertInline. Don't copy the old one from checkout, it's deprecated." },
+
+    { "id": "restart", "channel": "eng-payments", "author": "priya", "daysAgo": 20, "body": "The migration is back on. RFC updated with the incident-4021 lessons: replay batches at 40 rps with jittered backoff, reconciliation is report-only." },
+    { "id": "flag", "channel": "eng-payments", "author": "marco", "daysAgo": 20, "body": "Summary from today's call: rollout is gated behind a feature flag (payments_v2_rollout). I own the flag config by Friday; Priya updates the RFC with the new cutover date." },
+    { "channel": "eng-payments", "author": "sofia", "daysAgo": 19, "replyTo": "flag", "body": "Good call. One open item: the EU accounts cutover date still needs finance sign-off." },
+
+    { "channel": "general", "author": "tomas", "daysAgo": 2, "body": "Hi everyone — Tomas, joining the payments team this week. Excited to be here!" },
+    { "channel": "general", "author": "priya", "daysAgo": 2, "body": "Welcome Tomas! You'll mostly live in #eng-payments — the migration RFC is the best starting point." },
+    { "channel": "eng-payments", "author": "tomas", "daysAgo": 1, "body": "Reading the RFC now. Where should I start on the reconciliation job?" },
+
+    { "channel": "leadership", "author": "sofia", "daysAgo": 40, "body": "Compensation review numbers for the eng team are in the shared sheet — keep discussion in this channel please." },
+    { "channel": "leadership", "author": "priya", "daysAgo": 39, "body": "Will do. Separate topic: we should discuss Marco's promotion case before the cycle closes." },
+
+    { "channel": "dm-priya-marco", "author": "marco", "daysAgo": 15, "body": "Between us — the flag rollout timeline feels tight. I don't want to say it in the channel yet." },
+    { "channel": "dm-priya-marco", "author": "priya", "daysAgo": 15, "body": "Yeah, I feel it too. Let's raise it Monday with real numbers instead of vibes." }
+  ]
+}
