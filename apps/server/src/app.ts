@@ -2,12 +2,13 @@ import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify';
 import cookie from '@fastify/cookie';
 import websocket from '@fastify/websocket';
 import { z } from 'zod';
+import { THEMES } from '@app/shared';
 import {
   canReadChannel,
   channelAudience,
   createMessage,
   getMessage,
-  getOrCreateDm,
+  getOrCreateGroup,
   getThread,
   getUserByHandle,
   getUserById,
@@ -15,6 +16,7 @@ import {
   listUsers,
   markChannelRead,
   toggleReaction,
+  updateProfile,
   visibleChannels,
 } from './store.js';
 import { ask } from './ask.js';
@@ -66,8 +68,27 @@ export async function buildApp() {
   });
 
   app.get('/api/me', async (req) => {
-    const user = await getUserById(req.userId);
-    return { id: user!.id, handle: user!.handle, name: user!.name };
+    const me = await getUserById(req.userId);
+    const { createdAt: _createdAt, ...profile } = me!;
+    return profile;
+  });
+
+  app.patch('/api/me', async (req) => {
+    const trimmed = (max: number) => z.string().trim().max(max).nullable().optional();
+    const patch = z
+      .object({
+        name: z.string().trim().min(1).max(80).optional(),
+        title: trimmed(80),
+        team: trimmed(80),
+        avatarEmoji: trimmed(16),
+        statusEmoji: trimmed(16),
+        statusText: trimmed(120),
+        theme: z.enum(THEMES).optional(),
+      })
+      .parse(req.body);
+    const user = await updateProfile(req.userId, patch);
+    publish({ type: 'user.updated', user }, 'all');
+    return user;
   });
 
   app.get('/api/channels', async (req) => visibleChannels(req.userId));
@@ -106,8 +127,21 @@ export async function buildApp() {
     if (otherId === req.userId) return reply.code(400).send({ error: 'that is you' });
     const other = await getUserById(otherId);
     if (!other) return reply.code(404).send({ error: 'no such user' });
-    const channelId = await getOrCreateDm(req.userId, otherId);
+    const channelId = await getOrCreateGroup(req.userId, [otherId]);
     return { channelId };
+  });
+
+  app.post('/api/groups', async (req, reply) => {
+    const { userIds } = z
+      .object({ userIds: z.array(z.string().uuid()).min(2).max(8) })
+      .parse(req.body);
+    if (userIds.includes(req.userId)) return reply.code(400).send({ error: 'you are already in it' });
+    try {
+      const channelId = await getOrCreateGroup(req.userId, userIds);
+      return { channelId };
+    } catch {
+      return reply.code(404).send({ error: 'unknown user in group' });
+    }
   });
 
   app.get('/api/messages/:id/thread', async (req, reply) => {

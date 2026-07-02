@@ -9,6 +9,7 @@ let app: FastifyInstance;
 // Fixtures
 let alice: string; // member of everything
 let bob: string; // member of nothing beyond public
+let carol: string; // third wheel for group conversations
 let publicChannel: string;
 let privateChannel: string;
 let dmChannel: string;
@@ -18,8 +19,10 @@ beforeAll(async () => {
 
   const [a] = await db.insert(users).values({ handle: 'alice', name: 'Alice' }).returning();
   const [b] = await db.insert(users).values({ handle: 'bob', name: 'Bob' }).returning();
+  const [c] = await db.insert(users).values({ handle: 'carol', name: 'Carol' }).returning();
   alice = a!.id;
   bob = b!.id;
+  carol = c!.id;
 
   const [pub] = await db
     .insert(channels)
@@ -220,13 +223,88 @@ describe('reactions', () => {
   });
 });
 
+describe('profiles', () => {
+  it('updates the profile and returns it from /api/me', async () => {
+    const patch = await app.inject({
+      method: 'PATCH',
+      url: '/api/me',
+      payload: { name: 'Alice Cooper', title: 'Guitarist', team: 'Band', avatarEmoji: '🎸', theme: 'midnight' },
+      ...as(alice),
+    });
+    expect(patch.statusCode).toBe(200);
+    expect(patch.json().name).toBe('Alice Cooper');
+
+    const me = await app.inject({ method: 'GET', url: '/api/me', ...as(alice) });
+    expect(me.json()).toMatchObject({
+      name: 'Alice Cooper',
+      title: 'Guitarist',
+      team: 'Band',
+      avatarEmoji: '🎸',
+      theme: 'midnight',
+    });
+  });
+
+  it('rejects an unknown theme', async () => {
+    const res = await app.inject({
+      method: 'PATCH',
+      url: '/api/me',
+      payload: { theme: 'vaporwave' },
+      ...as(alice),
+    });
+    expect(res.statusCode).toBe(500); // zod parse failure — fine for dev auth surface
+  });
+
+  it('shows the author avatar emoji on messages', async () => {
+    const list = await app.inject({ method: 'GET', url: `/api/channels/${publicChannel}/messages`, ...as(bob) });
+    expect(list.json()[0].authorAvatarEmoji).toBe('🎸');
+  });
+});
+
+describe('group conversations', () => {
+  it('creates a group with the exact member set and reuses it', async () => {
+    const first = await app.inject({
+      method: 'POST',
+      url: '/api/groups',
+      payload: { userIds: [bob, carol] },
+      ...as(alice),
+    });
+    expect(first.statusCode).toBe(200);
+    const groupId = first.json().channelId;
+
+    // Same set requested by another member → same channel.
+    const second = await app.inject({
+      method: 'POST',
+      url: '/api/groups',
+      payload: { userIds: [alice, carol] },
+      ...as(bob),
+    });
+    expect(second.json().channelId).toBe(groupId);
+
+    const channels = await app.inject({ method: 'GET', url: '/api/channels', ...as(carol) });
+    const group = channels.json().find((c: { id: string }) => c.id === groupId);
+    expect(group.type).toBe('dm');
+    expect([...group.dmPartnerNames].sort()).toEqual(['Alice Cooper', 'Bob']);
+  });
+
+  it('does not reuse the 1:1 DM when a group shares those members', async () => {
+    const dm = await app.inject({ method: 'POST', url: `/api/dms/${bob}`, ...as(alice) });
+    const group = await app.inject({
+      method: 'POST',
+      url: '/api/groups',
+      payload: { userIds: [bob, carol] },
+      ...as(alice),
+    });
+    expect(dm.json().channelId).not.toBe(group.json().channelId);
+  });
+});
+
 describe('ask retrieval — the ACL applies to search too', () => {
   it('finds public messages and ranks their authors with evidence', async () => {
     const res = await app.inject({ method: 'GET', url: '/api/ask?q=hello', ...as(bob) });
     const body = res.json();
     expect(body.messages.length).toBeGreaterThan(0);
     expect(body.messages[0].snippet).toContain('[[hello]]');
-    expect(body.people[0].user.name).toBe('Alice');
+    expect(body.people[0].user.name).toBe('Alice Cooper');
     expect(body.people[0].evidence.length).toBeGreaterThan(0);
   });
 

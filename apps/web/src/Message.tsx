@@ -1,6 +1,6 @@
 import type { MessageDto } from '@app/shared';
 import { api } from './api';
-import { initials } from './format';
+import { Avatar } from './Avatar';
 
 const EMOJIS = ['👍', '❤️', '✅', '😂', '🎉', '👀'];
 
@@ -21,7 +21,7 @@ export function Message({
       {compact ? (
         <div className="msg-gutter">{timeFormat.format(new Date(message.createdAt))}</div>
       ) : (
-        <div className="avatar">{initials(message.authorName)}</div>
+        <Avatar name={message.authorName} emoji={message.authorAvatarEmoji} />
       )}
       <div className="msg-main">
         {!compact && (

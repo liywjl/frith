@@ -1,5 +1,5 @@
 import { and, asc, eq, gt, inArray, isNull, ne, or, sql as raw } from 'drizzle-orm';
-import type { ChannelDto, MessageDto, ReactionDto } from '@app/shared';
+import type { ChannelDto, MessageDto, ProfilePatch, ReactionDto, UserDto } from '@app/shared';
 import { db } from './db/client.js';
 import { channelMembers, channelReads, channels, messages, reactions, users } from './db/schema.js';
 
@@ -107,31 +107,6 @@ export async function markChannelRead(userId: string, channelId: string): Promis
     });
 }
 
-/** Find the 1:1 DM channel between two users, creating it on first use. */
-export async function getOrCreateDm(userId: string, otherUserId: string): Promise<string> {
-  const rows = await db.execute(raw`
-    select c.id from channels c
-    where c.type = 'dm'
-      and exists (select 1 from channel_members m where m.channel_id = c.id and m.user_id = ${userId})
-      and exists (select 1 from channel_members m where m.channel_id = c.id and m.user_id = ${otherUserId})
-      and (select count(*) from channel_members m where m.channel_id = c.id) = 2
-    limit 1`);
-  const existing = rows[0] as { id: string } | undefined;
-  if (existing) return existing.id;
-
-  const [other] = await db.select({ handle: users.handle }).from(users).where(eq(users.id, otherUserId));
-  if (!other) throw new Error('no such user');
-  const [me] = await db.select({ handle: users.handle }).from(users).where(eq(users.id, userId));
-  const [dm] = await db
-    .insert(channels)
-    .values({ name: `dm-${me!.handle}-${other.handle}`, type: 'dm', topic: null })
-    .returning({ id: channels.id });
-  await db.insert(channelMembers).values([
-    { channelId: dm!.id, userId },
-    { channelId: dm!.id, userId: otherUserId },
-  ]);
-  return dm!.id;
-}
 
 /** Toggle a reaction; returns whether it is now present. Caller must check ACL. */
 export async function toggleReaction(userId: string, messageId: string, emoji: string): Promise<boolean> {
@@ -182,6 +157,7 @@ function toDto(
     body: string;
     createdAt: Date;
     authorName: string;
+    authorAvatarEmoji: string | null;
   },
   replyCount: number,
   msgReactions: ReactionDto[],
@@ -191,6 +167,7 @@ function toDto(
     channelId: row.channelId,
     authorId: row.authorId,
     authorName: row.authorName,
+    authorAvatarEmoji: row.authorAvatarEmoji,
     parentMessageId: row.parentMessageId,
     body: row.body,
     createdAt: row.createdAt.toISOString(),
@@ -207,6 +184,7 @@ const authorJoin = {
   body: messages.body,
   createdAt: messages.createdAt,
   authorName: users.name,
+  authorAvatarEmoji: users.avatarEmoji,
 };
 
 /** Top-level messages of a channel, oldest first. Caller must check ACL. */
@@ -263,12 +241,63 @@ export async function createMessage(input: {
       createdAt: messages.createdAt,
     });
   if (!row) throw new Error('insert returned no row');
-  const [author] = await db.select({ name: users.name }).from(users).where(eq(users.id, input.authorId));
-  return toDto({ ...row, authorName: author?.name ?? 'Unknown' }, 0, []);
+  const [author] = await db
+    .select({ name: users.name, avatarEmoji: users.avatarEmoji })
+    .from(users)
+    .where(eq(users.id, input.authorId));
+  return toDto(
+    { ...row, authorName: author?.name ?? 'Unknown', authorAvatarEmoji: author?.avatarEmoji ?? null },
+    0,
+    [],
+  );
 }
 
-export async function listUsers() {
-  return db.select({ id: users.id, handle: users.handle, name: users.name }).from(users).orderBy(asc(users.name));
+const userColumns = {
+  id: users.id,
+  handle: users.handle,
+  name: users.name,
+  title: users.title,
+  team: users.team,
+  avatarEmoji: users.avatarEmoji,
+  statusEmoji: users.statusEmoji,
+  statusText: users.statusText,
+};
+
+export async function listUsers(): Promise<UserDto[]> {
+  return db.select(userColumns).from(users).orderBy(asc(users.name));
+}
+
+export async function updateProfile(userId: string, patch: ProfilePatch): Promise<UserDto> {
+  const [row] = await db.update(users).set(patch).where(eq(users.id, userId)).returning(userColumns);
+  if (!row) throw new Error('no such user');
+  return row;
+}
+
+/**
+ * Find the group conversation with exactly these members (order-independent),
+ * creating it on first use — same reuse semantics as 1:1 DMs.
+ */
+export async function getOrCreateGroup(creatorId: string, otherUserIds: string[]): Promise<string> {
+  const memberIds = [...new Set([creatorId, ...otherUserIds])].sort();
+  const rows = await db.execute(raw`
+    select c.id from channels c
+    where c.type = 'dm'
+      and (select count(*) from channel_members m where m.channel_id = c.id) = ${memberIds.length}
+      and (select count(*) from channel_members m
+           where m.channel_id = c.id
+             and m.user_id in (${raw.join(memberIds.map((id) => raw`${id}::uuid`), raw`, `)})) = ${memberIds.length}
+    limit 1`);
+  const existing = rows[0] as { id: string } | undefined;
+  if (existing) return existing.id;
+
+  const members = await db.select({ handle: users.handle }).from(users).where(inArray(users.id, memberIds));
+  if (members.length !== memberIds.length) throw new Error('unknown user in group');
+  const [group] = await db
+    .insert(channels)
+    .values({ name: `group-${members.map((m) => m.handle).join('-')}`, type: 'dm', topic: null })
+    .returning({ id: channels.id });
+  await db.insert(channelMembers).values(memberIds.map((userId) => ({ channelId: group!.id, userId })));
+  return group!.id;
 }
 
 export async function getUserByHandle(handle: string) {

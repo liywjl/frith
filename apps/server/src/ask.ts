@@ -10,6 +10,11 @@ interface Hit {
   author_id: string;
   author_handle: string;
   author_name: string;
+  author_title: string | null;
+  author_team: string | null;
+  author_avatar_emoji: string | null;
+  author_status_emoji: string | null;
+  author_status_text: string | null;
   parent_message_id: string | null;
   body: string;
   created_at: Date;
@@ -37,6 +42,8 @@ export async function ask(userId: string, query: string): Promise<AskResponse> {
     const rows = await db.execute(raw`
       select m.id, m.channel_id, c.name as channel_name,
              m.author_id, u.handle as author_handle, u.name as author_name,
+             u.title as author_title, u.team as author_team, u.avatar_emoji as author_avatar_emoji,
+             u.status_emoji as author_status_emoji, u.status_text as author_status_text,
              m.parent_message_id, m.body, m.created_at,
              ts_rank(m.search, q)::float as rank,
              ts_headline('english', m.body, q,
@@ -76,7 +83,16 @@ export async function ask(userId: string, query: string): Promise<AskResponse> {
   for (const h of hits) {
     const entry = byAuthor.get(h.author_id) ?? {
       person: {
-        user: { id: h.author_id, handle: h.author_handle, name: h.author_name },
+        user: {
+          id: h.author_id,
+          handle: h.author_handle,
+          name: h.author_name,
+          title: h.author_title,
+          team: h.author_team,
+          avatarEmoji: h.author_avatar_emoji,
+          statusEmoji: h.author_status_emoji,
+          statusText: h.author_status_text,
+        },
         score: 0,
         evidence: [],
       },

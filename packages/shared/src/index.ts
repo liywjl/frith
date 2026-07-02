@@ -1,9 +1,32 @@
 export type ChannelType = 'public' | 'private' | 'dm';
 
+export const THEMES = ['paper', 'midnight', 'forest', 'sunset'] as const;
+export type Theme = (typeof THEMES)[number];
+
 export interface UserDto {
   id: string;
   handle: string;
   name: string;
+  title: string | null;
+  team: string | null;
+  avatarEmoji: string | null;
+  statusEmoji: string | null;
+  statusText: string | null;
+}
+
+/** The signed-in user: profile plus personal settings. */
+export interface MeDto extends UserDto {
+  theme: Theme;
+}
+
+export interface ProfilePatch {
+  name?: string;
+  title?: string | null;
+  team?: string | null;
+  avatarEmoji?: string | null;
+  statusEmoji?: string | null;
+  statusText?: string | null;
+  theme?: Theme;
 }
 
 export interface ChannelDto {
@@ -29,6 +52,7 @@ export interface MessageDto {
   channelId: string;
   authorId: string;
   authorName: string;
+  authorAvatarEmoji: string | null;
   parentMessageId: string | null;
   body: string;
   createdAt: string;
@@ -77,4 +101,5 @@ export interface AskResponse {
 export type ServerEvent =
   | { type: 'message.created'; message: MessageDto }
   | { type: 'reaction.changed'; channelId: string; messageId: string; emoji: string; userId: string; added: boolean }
-  | { type: 'presence.changed'; onlineUserIds: string[] };
+  | { type: 'presence.changed'; onlineUserIds: string[] }
+  | { type: 'user.updated'; user: UserDto };

@@ -6,6 +6,12 @@ export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
   handle: text('handle').notNull().unique(),
   name: text('name').notNull(),
+  title: text('title'),
+  team: text('team'),
+  avatarEmoji: text('avatar_emoji'),
+  statusEmoji: text('status_emoji'),
+  statusText: text('status_text'),
+  theme: text('theme').notNull().default('paper'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 

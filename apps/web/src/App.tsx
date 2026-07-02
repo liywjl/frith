@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { ChannelDto, MessageDto, ServerEvent, UserDto } from '@app/shared';
+import type { ChannelDto, MeDto, MessageDto, ServerEvent, UserDto } from '@app/shared';
 import { api } from './api';
 import { useRealtime } from './useRealtime';
 import { applyReaction } from './updates';
@@ -8,9 +8,11 @@ import { ChannelView } from './ChannelView';
 import { ThreadPanel } from './ThreadPanel';
 import { QuickSwitcher } from './QuickSwitcher';
 import { AskPanel } from './AskPanel';
+import { ProfileModal } from './ProfileModal';
+import { GroupModal } from './GroupModal';
 
 export function App() {
-  const [me, setMe] = useState<UserDto | null>(null);
+  const [me, setMe] = useState<MeDto | null>(null);
   const [checked, setChecked] = useState(false);
 
   useEffect(() => {
@@ -21,12 +23,16 @@ export function App() {
       .finally(() => setChecked(true));
   }, []);
 
+  useEffect(() => {
+    document.documentElement.dataset.theme = me?.theme ?? 'paper';
+  }, [me?.theme]);
+
   if (!checked) return null;
-  if (!me) return <Login onLogin={setMe} />;
-  return <Workspace me={me} />;
+  if (!me) return <Login onLogin={() => void api.me().then(setMe)} />;
+  return <Workspace me={me} onMeChange={setMe} />;
 }
 
-function Login({ onLogin }: { onLogin: (user: UserDto) => void }) {
+function Login({ onLogin }: { onLogin: () => void }) {
   const [users, setUsers] = useState<UserDto[]>([]);
   useEffect(() => {
     api.users().then(setUsers).catch(console.error);
@@ -39,7 +45,9 @@ function Login({ onLogin }: { onLogin: (user: UserDto) => void }) {
       <div className="login-list">
         {users.map((u) => (
           <button key={u.id} onClick={() => api.login(u.handle).then(onLogin)}>
+            <span className="login-emoji">{u.avatarEmoji ?? '·'}</span>
             {u.name} <span className="handle">@{u.handle}</span>
+            <span className="login-title">{[u.title, u.team].filter(Boolean).join(' · ')}</span>
           </button>
         ))}
       </div>
@@ -48,7 +56,7 @@ function Login({ onLogin }: { onLogin: (user: UserDto) => void }) {
   );
 }
 
-function Workspace({ me }: { me: UserDto }) {
+function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => void }) {
   const [channels, setChannels] = useState<ChannelDto[]>([]);
   const [users, setUsers] = useState<UserDto[]>([]);
   const [online, setOnline] = useState<Set<string>>(new Set());
@@ -57,6 +65,8 @@ function Workspace({ me }: { me: UserDto }) {
   const [threadRoot, setThreadRoot] = useState<MessageDto | null>(null);
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [askOpen, setAskOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [groupOpen, setGroupOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -85,6 +95,10 @@ function Workspace({ me }: { me: UserDto }) {
     (event: ServerEvent) => {
       if (event.type === 'presence.changed') {
         setOnline(new Set(event.onlineUserIds));
+        return;
+      }
+      if (event.type === 'user.updated') {
+        setUsers((cur) => cur.map((u) => (u.id === event.user.id ? event.user : u)));
         return;
       }
       if (event.type === 'reaction.changed') {
@@ -121,14 +135,22 @@ function Workspace({ me }: { me: UserDto }) {
   const openChannel = useCallback((id: string) => {
     setSwitcherOpen(false);
     setAskOpen(false);
+    setGroupOpen(false);
     setActiveId(id);
   }, []);
 
   const openDm = useCallback(
     async (userId: string) => {
       const { channelId } = await api.openDm(userId);
-      const cs = await api.channels();
-      setChannels(cs);
+      setChannels(await api.channels());
+      openChannel(channelId);
+    },
+    [openChannel],
+  );
+
+  const onGroupCreated = useCallback(
+    async (channelId: string) => {
+      setChannels(await api.channels());
       openChannel(channelId);
     },
     [openChannel],
@@ -157,6 +179,8 @@ function Workspace({ me }: { me: UserDto }) {
       } else if (e.key === 'Escape') {
         if (switcherOpen) setSwitcherOpen(false);
         else if (askOpen) setAskOpen(false);
+        else if (profileOpen) setProfileOpen(false);
+        else if (groupOpen) setGroupOpen(false);
         else setThreadRoot(null);
       } else if (e.altKey && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
         e.preventDefault();
@@ -169,7 +193,7 @@ function Workspace({ me }: { me: UserDto }) {
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [channels, switcherOpen, askOpen]);
+  }, [channels, switcherOpen, askOpen, profileOpen, groupOpen]);
 
   const active = channels.find((c) => c.id === activeId) ?? null;
 
@@ -183,6 +207,8 @@ function Workspace({ me }: { me: UserDto }) {
         activeId={activeId}
         onSelect={openChannel}
         onOpenDm={openDm}
+        onNewGroup={() => setGroupOpen(true)}
+        onOpenProfile={() => setProfileOpen(true)}
       />
       {active && (
         <ChannelView
@@ -208,6 +234,10 @@ function Workspace({ me }: { me: UserDto }) {
       )}
       {askOpen && (
         <AskPanel onClose={() => setAskOpen(false)} onOpenChannel={openChannel} onOpenThread={openThread} />
+      )}
+      {profileOpen && <ProfileModal me={me} onSaved={onMeChange} onClose={() => setProfileOpen(false)} />}
+      {groupOpen && (
+        <GroupModal me={me} users={users} onCreated={onGroupCreated} onClose={() => setGroupOpen(false)} />
       )}
     </div>
   );

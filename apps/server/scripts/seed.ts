@@ -4,7 +4,15 @@ import { db, sql } from '../src/db/client.js';
 import { channelMembers, channelReads, channels, messages, users } from '../src/db/schema.js';
 
 interface Corpus {
-  users: { handle: string; name: string }[];
+  users: {
+    handle: string;
+    name: string;
+    title?: string | null;
+    team?: string | null;
+    avatarEmoji?: string | null;
+    statusEmoji?: string | null;
+    statusText?: string | null;
+  }[];
   channels: { name: string; type: 'public' | 'private' | 'dm'; topic: string; members?: string[] }[];
   messages: { id?: string; channel: string; author: string; daysAgo: number; replyTo?: string; body: string }[];
 }
@@ -52,8 +60,8 @@ for (const [index, m] of corpus.messages.entries()) {
 }
 
 // Read markers: everyone is caught up, except Tomas (the demo login) who
-// still has incident-4021 and design unread — so unread badges show up fresh.
-const tomasUnread = new Set(['incident-4021', 'design']);
+// still has a few things unread — so unread badges show up fresh.
+const tomasUnread = new Set(['incident-4021', 'design', 'group-lunch']);
 for (const c of corpus.channels) {
   const channelId = channelIds.get(c.name)!;
   const readers =

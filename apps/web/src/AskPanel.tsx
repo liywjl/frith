@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { AskResponse } from '@app/shared';
 import { api } from './api';
-import { initials } from './format';
+import { Avatar } from './Avatar';
 
 const EXAMPLES = [
   'payments migration',
@@ -111,9 +111,12 @@ export function AskPanel({
               <div className="ask-h">People</div>
               {result.people.map((p) => (
                 <div key={p.user.id} className="ask-person">
-                  <div className="avatar">{initials(p.user.name)}</div>
+                  <Avatar name={p.user.name} emoji={p.user.avatarEmoji} />
                   <div className="ask-person-body">
                     <div className="ask-person-name">{p.user.name}</div>
+                    {(p.user.title || p.user.team) && (
+                      <div className="ask-person-title">{[p.user.title, p.user.team].filter(Boolean).join(' · ')}</div>
+                    )}
                     {p.evidence.map((e) => (
                       <div key={e.messageId} className="ask-evidence">
                         ↳ #{e.channelName}: <Snippet text={e.snippet} />

@@ -1,4 +1,4 @@
-import type { AskResponse, ChannelDto, MessageDto, UserDto } from '@app/shared';
+import type { AskResponse, ChannelDto, MeDto, MessageDto, ProfilePatch, UserDto } from '@app/shared';
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
@@ -10,11 +10,15 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  me: () => request<UserDto>('/api/me'),
+  me: () => request<MeDto>('/api/me'),
+  patchMe: (patch: ProfilePatch) =>
+    request<UserDto>('/api/me', { method: 'PATCH', body: JSON.stringify(patch) }),
   users: () => request<UserDto[]>('/api/users'),
   login: (handle: string) =>
     request<UserDto>('/api/dev/login', { method: 'POST', body: JSON.stringify({ handle }) }),
   channels: () => request<ChannelDto[]>('/api/channels'),
+  createGroup: (userIds: string[]) =>
+    request<{ channelId: string }>('/api/groups', { method: 'POST', body: JSON.stringify({ userIds }) }),
   messages: (channelId: string) => request<MessageDto[]>(`/api/channels/${channelId}/messages`),
   markRead: (channelId: string) =>
     request<{ ok: boolean }>(`/api/channels/${channelId}/read`, { method: 'POST' }),
