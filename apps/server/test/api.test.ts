@@ -154,3 +154,93 @@ describe('messages and threads', () => {
     expect(relisted.json().some((m: { parentMessageId: string | null }) => m.parentMessageId !== null)).toBe(false);
   });
 });
+
+describe('unreads', () => {
+  it("counts other people's messages until the channel is marked read", async () => {
+    // Bob has no read marker; Alice authored 2 messages in town-square by now.
+    const res = await app.inject({ method: 'GET', url: '/api/channels', ...as(bob) });
+    const town = res.json().find((c: { name: string }) => c.name === 'town-square');
+    expect(town.unreadCount).toBe(2);
+
+    await app.inject({ method: 'POST', url: `/api/channels/${publicChannel}/read`, ...as(bob) });
+    const after = await app.inject({ method: 'GET', url: '/api/channels', ...as(bob) });
+    expect(after.json().find((c: { name: string }) => c.name === 'town-square').unreadCount).toBe(0);
+  });
+
+  it('never counts your own messages as unread', async () => {
+    await app.inject({
+      method: 'POST',
+      url: `/api/channels/${publicChannel}/messages`,
+      payload: { body: 'bob talking to himself' },
+      ...as(bob),
+    });
+    const res = await app.inject({ method: 'GET', url: '/api/channels', ...as(bob) });
+    expect(res.json().find((c: { name: string }) => c.name === 'town-square').unreadCount).toBe(0);
+  });
+});
+
+describe('dms', () => {
+  it('creates a DM once and reuses it after', async () => {
+    const first = await app.inject({ method: 'POST', url: `/api/dms/${bob}`, ...as(alice) });
+    const second = await app.inject({ method: 'POST', url: `/api/dms/${alice}`, ...as(bob) });
+    expect(first.json().channelId).toBe(second.json().channelId);
+
+    const channels = await app.inject({ method: 'GET', url: '/api/channels', ...as(alice) });
+    const dm = channels.json().find((c: { id: string }) => c.id === first.json().channelId);
+    expect(dm.type).toBe('dm');
+    expect(dm.dmPartnerNames).toEqual(['Bob']);
+  });
+});
+
+describe('reactions', () => {
+  it('toggles a reaction on and off', async () => {
+    const list = await app.inject({ method: 'GET', url: `/api/channels/${publicChannel}/messages`, ...as(alice) });
+    const messageId = list.json()[0].id;
+
+    const on = await app.inject({
+      method: 'POST',
+      url: `/api/messages/${messageId}/reactions`,
+      payload: { emoji: '👍' },
+      ...as(bob),
+    });
+    expect(on.json().added).toBe(true);
+
+    const seen = await app.inject({ method: 'GET', url: `/api/channels/${publicChannel}/messages`, ...as(bob) });
+    expect(seen.json()[0].reactions).toEqual([{ emoji: '👍', count: 1, mine: true }]);
+    const seenByAlice = await app.inject({ method: 'GET', url: `/api/channels/${publicChannel}/messages`, ...as(alice) });
+    expect(seenByAlice.json()[0].reactions).toEqual([{ emoji: '👍', count: 1, mine: false }]);
+
+    const off = await app.inject({
+      method: 'POST',
+      url: `/api/messages/${messageId}/reactions`,
+      payload: { emoji: '👍' },
+      ...as(bob),
+    });
+    expect(off.json().added).toBe(false);
+  });
+});
+
+describe('ask retrieval — the ACL applies to search too', () => {
+  it('finds public messages and ranks their authors with evidence', async () => {
+    const res = await app.inject({ method: 'GET', url: '/api/ask?q=hello', ...as(bob) });
+    const body = res.json();
+    expect(body.messages.length).toBeGreaterThan(0);
+    expect(body.messages[0].snippet).toContain('[[hello]]');
+    expect(body.people[0].user.name).toBe('Alice');
+    expect(body.people[0].evidence.length).toBeGreaterThan(0);
+  });
+
+  it('lets members find private content', async () => {
+    const res = await app.inject({ method: 'GET', url: '/api/ask?q=launch', ...as(alice) });
+    expect(res.json().messages.length).toBeGreaterThan(0);
+  });
+
+  it('never leaks private content into search results for non-members', async () => {
+    const res = await app.inject({ method: 'GET', url: '/api/ask?q=launch', ...as(bob) });
+    const body = res.json();
+    expect(body.messages).toEqual([]);
+    expect(body.threads).toEqual([]);
+    expect(body.people).toEqual([]);
+    expect(JSON.stringify(body)).not.toContain('friday');
+  });
+});

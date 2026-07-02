@@ -1,15 +1,18 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { ChannelDto, MessageDto, ServerEvent } from '@app/shared';
+import type { ChannelDto, MessageDto, ServerEvent, UserDto } from '@app/shared';
 import { api } from './api';
 import { useRealtime } from './useRealtime';
+import { applyReaction } from './updates';
 import { Composer } from './Composer';
 import { Message } from './Message';
 
 export function ThreadPanel({
+  me,
   channel,
   root,
   onClose,
 }: {
+  me: UserDto;
   channel: ChannelDto;
   root: MessageDto;
   onClose: () => void;
@@ -22,12 +25,16 @@ export function ThreadPanel({
 
   const onEvent = useCallback(
     (event: ServerEvent) => {
+      if (event.type === 'reaction.changed') {
+        setMessages((cur) => applyReaction(cur, event, me.id));
+        return;
+      }
       if (event.type !== 'message.created') return;
       const msg = event.message;
       if (msg.parentMessageId !== root.id) return;
       setMessages((cur) => (cur.some((m) => m.id === msg.id) ? cur : [...cur, msg]));
     },
-    [root.id],
+    [root.id, me.id],
   );
   useRealtime(onEvent);
 

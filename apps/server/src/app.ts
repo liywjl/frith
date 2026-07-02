@@ -1,4 +1,4 @@
-import Fastify from 'fastify';
+import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify';
 import cookie from '@fastify/cookie';
 import websocket from '@fastify/websocket';
 import { z } from 'zod';
@@ -7,13 +7,17 @@ import {
   channelAudience,
   createMessage,
   getMessage,
+  getOrCreateDm,
   getThread,
   getUserByHandle,
   getUserById,
   listChannelMessages,
   listUsers,
+  markChannelRead,
+  toggleReaction,
   visibleChannels,
 } from './store.js';
+import { ask } from './ask.js';
 import { publish, register } from './realtime.js';
 
 declare module 'fastify' {
@@ -23,6 +27,17 @@ declare module 'fastify' {
 }
 
 const AUTH_COOKIE = 'uid';
+
+/** ACL guard: 403s and returns false if the user may not read the channel. */
+async function requireChannelAccess(
+  req: FastifyRequest,
+  reply: FastifyReply,
+  channelId: string,
+): Promise<boolean> {
+  if (await canReadChannel(req.userId, channelId)) return true;
+  await reply.code(403).send({ error: 'no access to this channel' });
+  return false;
+}
 
 export async function buildApp() {
   const app = Fastify({ logger: process.env.NODE_ENV !== 'test' });
@@ -59,10 +74,8 @@ export async function buildApp() {
 
   app.get('/api/channels/:id/messages', async (req, reply) => {
     const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
-    if (!(await canReadChannel(req.userId, id))) {
-      return reply.code(403).send({ error: 'no access to this channel' });
-    }
-    return listChannelMessages(id);
+    if (!(await requireChannelAccess(req, reply, id))) return reply;
+    return listChannelMessages(id, req.userId);
   });
 
   app.post('/api/channels/:id/messages', async (req, reply) => {
@@ -70,9 +83,7 @@ export async function buildApp() {
     const body = z
       .object({ body: z.string().min(1).max(10_000), parentMessageId: z.string().uuid().optional() })
       .parse(req.body);
-    if (!(await canReadChannel(req.userId, id))) {
-      return reply.code(403).send({ error: 'no access to this channel' });
-    }
+    if (!(await requireChannelAccess(req, reply, id))) return reply;
     const message = await createMessage({
       channelId: id,
       authorId: req.userId,
@@ -83,14 +94,47 @@ export async function buildApp() {
     return message;
   });
 
+  app.post('/api/channels/:id/read', async (req, reply) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+    if (!(await requireChannelAccess(req, reply, id))) return reply;
+    await markChannelRead(req.userId, id);
+    return { ok: true };
+  });
+
+  app.post('/api/dms/:userId', async (req, reply) => {
+    const { userId: otherId } = z.object({ userId: z.string().uuid() }).parse(req.params);
+    if (otherId === req.userId) return reply.code(400).send({ error: 'that is you' });
+    const other = await getUserById(otherId);
+    if (!other) return reply.code(404).send({ error: 'no such user' });
+    const channelId = await getOrCreateDm(req.userId, otherId);
+    return { channelId };
+  });
+
   app.get('/api/messages/:id/thread', async (req, reply) => {
     const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
     const root = await getMessage(id);
     if (!root) return reply.code(404).send({ error: 'no such message' });
-    if (!(await canReadChannel(req.userId, root.channelId))) {
-      return reply.code(403).send({ error: 'no access to this channel' });
-    }
-    return getThread(id);
+    if (!(await requireChannelAccess(req, reply, root.channelId))) return reply;
+    return getThread(id, req.userId);
+  });
+
+  app.post('/api/messages/:id/reactions', async (req, reply) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+    const { emoji } = z.object({ emoji: z.string().min(1).max(16) }).parse(req.body);
+    const message = await getMessage(id);
+    if (!message) return reply.code(404).send({ error: 'no such message' });
+    if (!(await requireChannelAccess(req, reply, message.channelId))) return reply;
+    const added = await toggleReaction(req.userId, id, emoji);
+    publish(
+      { type: 'reaction.changed', channelId: message.channelId, messageId: id, emoji, userId: req.userId, added },
+      await channelAudience(message.channelId),
+    );
+    return { added };
+  });
+
+  app.get('/api/ask', async (req) => {
+    const { q } = z.object({ q: z.string().max(500) }).parse(req.query);
+    return ask(req.userId, q);
   });
 
   app.get('/api/ws', { websocket: true }, (socket, req) => {

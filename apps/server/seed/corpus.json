@@ -36,10 +36,15 @@
     { "channel": "design", "author": "jonas", "daysAgo": 60, "body": "New checkout flow mockups are up. Main change: the retry state now tells the user what happened instead of a spinner." },
     { "channel": "design", "author": "tomas", "daysAgo": 3, "body": "These are great — is there a component for the inline error banner or is it bespoke?" },
     { "channel": "design", "author": "jonas", "daysAgo": 3, "body": "It's in the shared library as AlertInline. Don't copy the old one from checkout, it's deprecated." },
+    { "channel": "design", "author": "jonas", "daysAgo": 2, "body": "Reminder: design critique is Thursdays at 14:00. Bring the checkout retry states, we still owe the payments team a decision there." },
+    { "channel": "general", "author": "jonas", "daysAgo": 2, "body": "Welcome Tomas! Ping me if you need a design pass on anything payments-related." },
 
     { "id": "restart", "channel": "eng-payments", "author": "priya", "daysAgo": 20, "body": "The migration is back on. RFC updated with the incident-4021 lessons: replay batches at 40 rps with jittered backoff, reconciliation is report-only." },
     { "id": "flag", "channel": "eng-payments", "author": "marco", "daysAgo": 20, "body": "Summary from today's call: rollout is gated behind a feature flag (payments_v2_rollout). I own the flag config by Friday; Priya updates the RFC with the new cutover date." },
     { "channel": "eng-payments", "author": "sofia", "daysAgo": 19, "replyTo": "flag", "body": "Good call. One open item: the EU accounts cutover date still needs finance sign-off." },
+    { "channel": "eng-payments", "author": "amara", "daysAgo": 18, "replyTo": "flag", "body": "I'll wire the payments_v2_rollout flag into the 429-rate alert so we catch regressions the moment the flag opens." },
+    { "channel": "eng-payments", "author": "priya", "daysAgo": 17, "body": "For anyone joining late: the payments-migration RFC lives in Notion under /engineering, and the reconciliation code is in payments-service under reconcile/. Start with reconcile/report.ts." },
+    { "channel": "incident-4021", "author": "amara", "daysAgo": 95, "body": "The backoff utility landed in libs/retry.ts — use withBackoff() for every provider call from now on. Direct fetch calls to the provider will fail code review." },
 
     { "channel": "general", "author": "tomas", "daysAgo": 2, "body": "Hi everyone — Tomas, joining the payments team this week. Excited to be here!" },
     { "channel": "general", "author": "priya", "daysAgo": 2, "body": "Welcome Tomas! You'll mostly live in #eng-payments — the migration RFC is the best starting point." },

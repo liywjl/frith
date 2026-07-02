@@ -38,3 +38,24 @@ export const messages = pgTable(
   },
   (t) => [index('messages_channel_created_idx').on(t.channelId, t.createdAt)],
 );
+
+/** How far each user has read each channel — powers unread badges. */
+export const channelReads = pgTable(
+  'channel_reads',
+  {
+    channelId: uuid('channel_id').notNull().references(() => channels.id),
+    userId: uuid('user_id').notNull().references(() => users.id),
+    lastReadAt: timestamp('last_read_at', { withTimezone: true }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.channelId, t.userId] })],
+);
+
+export const reactions = pgTable(
+  'reactions',
+  {
+    messageId: uuid('message_id').notNull().references(() => messages.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id').notNull().references(() => users.id),
+    emoji: text('emoji').notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.messageId, t.userId, t.emoji] })],
+);

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from './api';
 
 export function Composer({
@@ -11,6 +11,14 @@ export function Composer({
   placeholder: string;
 }) {
   const [draft, setDraft] = useState('');
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+  }, [draft]);
 
   async function send() {
     const body = draft.trim();
@@ -21,7 +29,9 @@ export function Composer({
 
   return (
     <div className="composer">
-      <input
+      <textarea
+        ref={ref}
+        rows={1}
         value={draft}
         placeholder={placeholder}
         onChange={(e) => setDraft(e.target.value)}
@@ -32,6 +42,7 @@ export function Composer({
           }
         }}
       />
+      <span className="composer-hint">Enter to send · Shift+Enter for a new line</span>
     </div>
   );
 }

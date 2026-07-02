@@ -3,9 +3,21 @@ import type { ServerEvent } from '@app/shared';
 
 const sockets = new Map<WebSocket, string>(); // socket → userId
 
+function onlineUserIds(): string[] {
+  return [...new Set(sockets.values())];
+}
+
+function broadcastPresence() {
+  publish({ type: 'presence.changed', onlineUserIds: onlineUserIds() }, 'all');
+}
+
 export function register(socket: WebSocket, userId: string) {
   sockets.set(socket, userId);
-  socket.on('close', () => sockets.delete(socket));
+  broadcastPresence();
+  socket.on('close', () => {
+    sockets.delete(socket);
+    broadcastPresence();
+  });
 }
 
 /**
