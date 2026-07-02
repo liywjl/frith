@@ -11,6 +11,7 @@ export const users = pgTable('users', {
   avatarEmoji: text('avatar_emoji'),
   statusEmoji: text('status_emoji'),
   statusText: text('status_text'),
+  statusExpiresAt: timestamp('status_expires_at', { withTimezone: true }),
   theme: text('theme').notNull().default('paper'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });

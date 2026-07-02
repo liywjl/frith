@@ -252,6 +252,9 @@ export async function createMessage(input: {
   );
 }
 
+/** A status past its expiry reads as no status — the sweep nulls it for real. */
+const statusExpired = raw<boolean>`(${users.statusExpiresAt} is not null and ${users.statusExpiresAt} < now())`;
+
 const userColumns = {
   id: users.id,
   handle: users.handle,
@@ -259,8 +262,8 @@ const userColumns = {
   title: users.title,
   team: users.team,
   avatarEmoji: users.avatarEmoji,
-  statusEmoji: users.statusEmoji,
-  statusText: users.statusText,
+  statusEmoji: raw<string | null>`case when ${statusExpired} then null else ${users.statusEmoji} end`,
+  statusText: raw<string | null>`case when ${statusExpired} then null else ${users.statusText} end`,
 };
 
 export async function listUsers(): Promise<UserDto[]> {
@@ -268,9 +271,27 @@ export async function listUsers(): Promise<UserDto[]> {
 }
 
 export async function updateProfile(userId: string, patch: ProfilePatch): Promise<UserDto> {
-  const [row] = await db.update(users).set(patch).where(eq(users.id, userId)).returning(userColumns);
+  const { statusExpiresInMinutes, ...fields } = patch;
+  const [row] = await db
+    .update(users)
+    .set({
+      ...fields,
+      statusExpiresAt:
+        statusExpiresInMinutes == null ? null : new Date(Date.now() + statusExpiresInMinutes * 60_000),
+    })
+    .where(eq(users.id, userId))
+    .returning(userColumns);
   if (!row) throw new Error('no such user');
   return row;
+}
+
+/** Null out expired statuses; returns the users that changed (for fan-out). */
+export async function clearExpiredStatuses(): Promise<UserDto[]> {
+  return db
+    .update(users)
+    .set({ statusEmoji: null, statusText: null, statusExpiresAt: null })
+    .where(and(raw`${users.statusExpiresAt} is not null`, raw`${users.statusExpiresAt} < now()`))
+    .returning(userColumns);
 }
 
 /**

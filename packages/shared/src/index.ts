@@ -17,6 +17,8 @@ export interface UserDto {
 /** The signed-in user: profile plus personal settings. */
 export interface MeDto extends UserDto {
   theme: Theme;
+  /** When the current status auto-clears (null = keeps until changed). */
+  statusExpiresAt: string | null;
 }
 
 export interface ProfilePatch {
@@ -26,6 +28,8 @@ export interface ProfilePatch {
   avatarEmoji?: string | null;
   statusEmoji?: string | null;
   statusText?: string | null;
+  /** Minutes until the status clears itself; null/omitted = keep until changed. */
+  statusExpiresInMinutes?: number | null;
   theme?: Theme;
 }
 

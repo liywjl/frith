@@ -368,3 +368,12 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
 .group-title { color: var(--ink-soft); font-size: 12.5px; margin-left: auto; text-align: right; }
 
 .ask-person-title { color: var(--ink-soft); font-size: 12px; }
+
+/* status timer */
+.field.status-clear { flex: none; width: 140px; }
+.field select {
+  font: inherit; color: inherit; background: var(--card);
+  border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; width: 100%;
+}
+.field select:focus { outline: none; border-color: var(--ai); }
+.status-expiry-hint { color: var(--ink-soft); font-size: 12px; margin-top: -6px; }

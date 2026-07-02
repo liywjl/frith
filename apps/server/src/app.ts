@@ -68,9 +68,15 @@ export async function buildApp() {
   });
 
   app.get('/api/me', async (req) => {
-    const me = await getUserById(req.userId);
-    const { createdAt: _createdAt, ...profile } = me!;
-    return profile;
+    const me = (await getUserById(req.userId))!;
+    const expired = me.statusExpiresAt !== null && me.statusExpiresAt < new Date();
+    const { createdAt: _createdAt, ...profile } = me;
+    return {
+      ...profile,
+      statusEmoji: expired ? null : me.statusEmoji,
+      statusText: expired ? null : me.statusText,
+      statusExpiresAt: expired ? null : me.statusExpiresAt,
+    };
   });
 
   app.patch('/api/me', async (req) => {
@@ -83,6 +89,7 @@ export async function buildApp() {
         avatarEmoji: trimmed(16),
         statusEmoji: trimmed(16),
         statusText: trimmed(120),
+        statusExpiresInMinutes: z.number().int().min(1).max(10_080).nullable().optional(),
         theme: z.enum(THEMES).optional(),
       })
       .parse(req.body);

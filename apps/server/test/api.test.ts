@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { buildApp } from '../src/app.js';
 import { db, sql } from '../src/db/client.js';
@@ -252,6 +253,30 @@ describe('profiles', () => {
       ...as(alice),
     });
     expect(res.statusCode).toBe(500); // zod parse failure — fine for dev auth surface
+  });
+
+  it('clears a timed status once it expires', async () => {
+    await app.inject({
+      method: 'PATCH',
+      url: '/api/me',
+      payload: { statusEmoji: '☕', statusText: 'coffee run', statusExpiresInMinutes: 30 },
+      ...as(bob),
+    });
+    const me = await app.inject({ method: 'GET', url: '/api/me', ...as(bob) });
+    expect(me.json().statusEmoji).toBe('☕');
+    expect(me.json().statusExpiresAt).not.toBeNull();
+
+    // Time-travel: force the expiry into the past.
+    await db.update(users).set({ statusExpiresAt: new Date(Date.now() - 60_000) }).where(eq(users.id, bob));
+
+    const list = await app.inject({ method: 'GET', url: '/api/users', ...as(alice) });
+    const bobDto = list.json().find((u: { handle: string }) => u.handle === 'bob');
+    expect(bobDto.statusEmoji).toBeNull();
+    expect(bobDto.statusText).toBeNull();
+
+    const meAfter = await app.inject({ method: 'GET', url: '/api/me', ...as(bob) });
+    expect(meAfter.json().statusEmoji).toBeNull();
+    expect(meAfter.json().statusExpiresAt).toBeNull();
   });
 
   it('shows the author avatar emoji on messages', async () => {

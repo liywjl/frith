@@ -2,8 +2,10 @@ import type { AskResponse, ChannelDto, MeDto, MessageDto, ProfilePatch, UserDto 
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
-    headers: { 'content-type': 'application/json' },
     ...init,
+    // Fastify 400s on an empty body with a JSON content-type, so only claim
+    // JSON when we actually send one.
+    headers: init?.body ? { 'content-type': 'application/json' } : undefined,
   });
   if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
   return res.json() as Promise<T>;
