@@ -10,11 +10,13 @@ export function Message({
   message,
   compact,
   onOpenThread,
+  onOpenProfile,
 }: {
   message: MessageDto;
   /** Consecutive message from the same author — hide the avatar/header. */
   compact?: boolean;
   onOpenThread?: (root: MessageDto) => void;
+  onOpenProfile?: (userId: string) => void;
 }) {
   return (
     <div className={`msg ${compact ? 'compact' : ''}`}>
@@ -26,7 +28,13 @@ export function Message({
       <div className="msg-main">
         {!compact && (
           <div>
-            <span className="who">{message.authorName}</span>
+            {onOpenProfile ? (
+              <button className="who who-link" onClick={() => onOpenProfile(message.authorId)}>
+                {message.authorName}
+              </button>
+            ) : (
+              <span className="who">{message.authorName}</span>
+            )}
             <span className="when">{timeFormat.format(new Date(message.createdAt))}</span>
           </div>
         )}

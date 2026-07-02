@@ -11,11 +11,13 @@ export function ThreadPanel({
   channel,
   root,
   onClose,
+  onOpenProfile,
 }: {
   me: UserDto;
   channel: ChannelDto;
   root: MessageDto;
   onClose: () => void;
+  onOpenProfile: (userId: string) => void;
 }) {
   const [messages, setMessages] = useState<MessageDto[]>([]);
 
@@ -48,7 +50,7 @@ export function ThreadPanel({
       </header>
       <div className="feed">
         {messages.map((m) => (
-          <Message key={m.id} message={m} />
+          <Message key={m.id} message={m} onOpenProfile={onOpenProfile} />
         ))}
       </div>
       <Composer channelId={channel.id} parentMessageId={root.id} placeholder="Reply…" />

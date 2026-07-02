@@ -10,7 +10,9 @@ import {
   createMessage,
   getChannel,
   getMessage,
+  getHome,
   getOrCreateGroup,
+  getProfilePage,
   getThread,
   getUserByHandle,
   getUserById,
@@ -99,6 +101,15 @@ export async function buildApp() {
     const user = await updateProfile(req.userId, patch);
     publish({ type: 'user.updated', user }, 'all');
     return user;
+  });
+
+  app.get('/api/home', async (req) => getHome(req.userId));
+
+  app.get('/api/users/:id/profile', async (req, reply) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+    const profile = await getProfilePage(req.userId, id);
+    if (!profile) return reply.code(404).send({ error: 'no such user' });
+    return profile;
   });
 
   app.get('/api/channels', async (req) => visibleChannels(req.userId));

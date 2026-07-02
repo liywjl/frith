@@ -1,5 +1,13 @@
-import { and, asc, eq, gt, inArray, isNull, ne, or, sql as raw } from 'drizzle-orm';
-import type { ChannelDto, MessageDto, ProfilePatch, ReactionDto, UserDto } from '@app/shared';
+import { and, asc, desc, eq, gt, inArray, isNull, isNotNull, ne, or, sql as raw } from 'drizzle-orm';
+import type {
+  ChannelDto,
+  HomeDto,
+  MessageDto,
+  ProfilePageDto,
+  ProfilePatch,
+  ReactionDto,
+  UserDto,
+} from '@app/shared';
 import { db } from './db/client.js';
 import { channelMembers, channelReads, channels, messages, reactions, users } from './db/schema.js';
 
@@ -363,6 +371,160 @@ export async function getOrCreateGroup(creatorId: string, otherUserIds: string[]
     .returning({ id: channels.id });
   await db.insert(channelMembers).values(memberIds.map((userId) => ({ channelId: group!.id, userId })));
   return group!.id;
+}
+
+/**
+ * Productivity profile: what has this person been working on, where, and how
+ * much — computed from channels the *viewer* can read. DM content is excluded
+ * entirely, even when the viewer is the DM partner: profiles summarize public
+ * work, never private conversations.
+ */
+export async function getProfilePage(viewerId: string, targetId: string): Promise<ProfilePageDto | null> {
+  const [target] = await db.select(userColumns).from(users).where(eq(users.id, targetId));
+  if (!target) return null;
+
+  const visible = await visibleChannelIds(viewerId);
+  const scope =
+    visible.length === 0
+      ? []
+      : (
+          await db
+            .select({ id: channels.id })
+            .from(channels)
+            .where(and(inArray(channels.id, visible), ne(channels.type, 'dm')))
+        ).map((c) => c.id);
+
+  if (scope.length === 0) {
+    return { user: target, stats: { messages: 0, reactionsReceived: 0, channelsActive: 0 }, topChannels: [], recent: [] };
+  }
+
+  const authored = and(eq(messages.authorId, targetId), inArray(messages.channelId, scope));
+
+  const [stats] = await db
+    .select({
+      messages: raw<number>`count(*)::int`,
+      channelsActive: raw<number>`count(distinct ${messages.channelId})::int`,
+    })
+    .from(messages)
+    .where(authored);
+
+  const [received] = await db
+    .select({ count: raw<number>`count(*)::int` })
+    .from(reactions)
+    .innerJoin(messages, eq(messages.id, reactions.messageId))
+    .where(authored);
+
+  const topChannels = await db
+    .select({ id: channels.id, name: channels.name, count: raw<number>`count(*)::int` })
+    .from(messages)
+    .innerJoin(channels, eq(channels.id, messages.channelId))
+    .where(authored)
+    .groupBy(channels.id, channels.name)
+    .orderBy(desc(raw`count(*)`))
+    .limit(5);
+
+  const recentRows = await db
+    .select(authorJoin)
+    .from(messages)
+    .innerJoin(users, eq(users.id, messages.authorId))
+    .where(authored)
+    .orderBy(desc(messages.createdAt))
+    .limit(5);
+  const ids = recentRows.map((r) => r.id);
+  const [counts, reacts] = await Promise.all([replyCounts(ids), reactionsFor(ids, viewerId)]);
+
+  return {
+    user: target,
+    stats: {
+      messages: stats?.messages ?? 0,
+      reactionsReceived: received?.count ?? 0,
+      channelsActive: stats?.channelsActive ?? 0,
+    },
+    topChannels,
+    recent: recentRows.map((r) => toDto(r, counts.get(r.id) ?? 0, reacts.get(r.id) ?? [])),
+  };
+}
+
+/** The Home digest: unread conversations and live threads you're part of. */
+export async function getHome(userId: string): Promise<HomeDto> {
+  const chans = await visibleChannels(userId);
+  const unreadChans = chans.filter((c) => c.unreadCount > 0 && !c.archivedAt).slice(0, 8);
+
+  const unread = [];
+  for (const c of unreadChans) {
+    const [latest] = await db
+      .select({ body: messages.body, createdAt: messages.createdAt, authorName: users.name })
+      .from(messages)
+      .innerJoin(users, eq(users.id, messages.authorId))
+      .where(eq(messages.channelId, c.id))
+      .orderBy(desc(messages.createdAt))
+      .limit(1);
+    if (!latest) continue;
+    unread.push({
+      channelId: c.id,
+      name: c.name,
+      type: c.type,
+      unreadCount: c.unreadCount,
+      ...(c.type === 'dm' ? { dmPartnerNames: c.dmPartnerNames } : {}),
+      latestAuthor: latest.authorName,
+      latestSnippet: latest.body.length > 120 ? `${latest.body.slice(0, 120)}…` : latest.body,
+      latestAt: latest.createdAt.toISOString(),
+    });
+  }
+
+  // Threads I'm in (authored the root or replied), ranked by latest reply.
+  const visible = chans.map((c) => c.id);
+  const threads: HomeDto['threads'] = [];
+  if (visible.length > 0) {
+    const myRoots = await db
+      .selectDistinct({ rootId: raw<string>`coalesce(${messages.parentMessageId}, ${messages.id})` })
+      .from(messages)
+      .where(and(eq(messages.authorId, userId), inArray(messages.channelId, visible)));
+    const rootIds = myRoots.map((r) => r.rootId);
+    if (rootIds.length > 0) {
+      const active = await db
+        .select({
+          rootId: messages.parentMessageId,
+          replyCount: raw<number>`count(*)::int`,
+          lastReplyAt: raw<Date>`max(${messages.createdAt})`,
+        })
+        .from(messages)
+        .where(and(inArray(messages.parentMessageId, rootIds), isNotNull(messages.parentMessageId)))
+        .groupBy(messages.parentMessageId)
+        .orderBy(desc(raw`max(${messages.createdAt})`))
+        .limit(6);
+
+      for (const t of active) {
+        const rootId = t.rootId as string;
+        const [root] = await db
+          .select({ body: messages.body, channelId: messages.channelId, authorName: users.name, channelName: channels.name })
+          .from(messages)
+          .innerJoin(users, eq(users.id, messages.authorId))
+          .innerJoin(channels, eq(channels.id, messages.channelId))
+          .where(eq(messages.id, rootId));
+        const [lastReply] = await db
+          .select({ authorName: users.name })
+          .from(messages)
+          .innerJoin(users, eq(users.id, messages.authorId))
+          .where(eq(messages.parentMessageId, rootId))
+          .orderBy(desc(messages.createdAt))
+          .limit(1);
+        if (!root) continue;
+        threads.push({
+          rootId,
+          channelId: root.channelId,
+          channelName: root.channelName,
+          rootAuthorName: root.authorName,
+          rootSnippet: root.body.length > 120 ? `${root.body.slice(0, 120)}…` : root.body,
+          replyCount: t.replyCount,
+          lastReplyAt: new Date(t.lastReplyAt).toISOString(),
+          lastReplyAuthor: lastReply?.authorName ?? root.authorName,
+        });
+      }
+    }
+  }
+
+  return { unread, threads };
 }
 
 export async function getUserByHandle(handle: string) {

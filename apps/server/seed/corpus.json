@@ -60,7 +60,9 @@
 
     { "channel": "general", "author": "tomas", "daysAgo": 2, "body": "Hi everyone — Tomas, joining the payments team this week. Excited to be here!" },
     { "channel": "general", "author": "priya", "daysAgo": 2, "body": "Welcome Tomas! You'll mostly live in #eng-payments — the migration RFC is the best starting point." },
-    { "channel": "eng-payments", "author": "tomas", "daysAgo": 1, "body": "Reading the RFC now. Where should I start on the reconciliation job?" },
+    { "id": "tomas-q", "channel": "eng-payments", "author": "tomas", "daysAgo": 1, "body": "Reading the RFC now. Where should I start on the reconciliation job?" },
+    { "channel": "eng-payments", "author": "priya", "daysAgo": 1, "replyTo": "tomas-q", "body": "Start with reconcile/report.ts — it's report-only so you can't break billing. Elena's sandbox run is the reference dataset." },
+    { "channel": "eng-payments", "author": "kwame", "daysAgo": 1, "replyTo": "tomas-q", "body": "And run the replay locally with the 40 rps cap, the sandbox provider throttles the same way production does." },
 
     { "channel": "leadership", "author": "sofia", "daysAgo": 40, "body": "Compensation review numbers for the eng team are in the shared sheet — keep discussion in this channel please." },
     { "channel": "leadership", "author": "priya", "daysAgo": 39, "body": "Will do. Separate topic: we should discuss Marco's promotion case before the cycle closes." },

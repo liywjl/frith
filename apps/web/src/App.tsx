@@ -11,6 +11,10 @@ import { AskPanel } from './AskPanel';
 import { ProfileModal } from './ProfileModal';
 import { GroupModal } from './GroupModal';
 import { CreateChannelModal } from './CreateChannelModal';
+import { HomeView } from './HomeView';
+import { ProfileView } from './ProfileView';
+
+type View = { kind: 'home' } | { kind: 'channel' } | { kind: 'profile'; userId: string };
 
 export function App() {
   const [me, setMe] = useState<MeDto | null>(null);
@@ -58,15 +62,17 @@ function Login({ onLogin }: { onLogin: () => void }) {
 }
 
 function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => void }) {
+  const [view, setView] = useState<View>({ kind: 'home' });
   const [channels, setChannels] = useState<ChannelDto[]>([]);
   const [users, setUsers] = useState<UserDto[]>([]);
   const [online, setOnline] = useState<Set<string>>(new Set());
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<MessageDto[]>([]);
   const [threadRoot, setThreadRoot] = useState<MessageDto | null>(null);
+  const [homeTick, setHomeTick] = useState(0);
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [askOpen, setAskOpen] = useState(false);
-  const [profileOpen, setProfileOpen] = useState(false);
+  const [profileEditOpen, setProfileEditOpen] = useState(false);
   const [groupOpen, setGroupOpen] = useState(false);
   const [createChannelOpen, setCreateChannelOpen] = useState(false);
 
@@ -89,9 +95,41 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
     if (!activeId) return;
     setThreadRoot(null);
     api.messages(activeId).then(setMessages).catch(console.error);
-    void api.markRead(activeId);
-    setChannels((cur) => cur.map((c) => (c.id === activeId ? { ...c, unreadCount: 0 } : c)));
   }, [activeId]);
+
+  const closeOverlays = useCallback(() => {
+    setSwitcherOpen(false);
+    setAskOpen(false);
+    setGroupOpen(false);
+    setCreateChannelOpen(false);
+  }, []);
+
+  const openChannel = useCallback(
+    (id: string) => {
+      closeOverlays();
+      setView({ kind: 'channel' });
+      setActiveId(id);
+      void api.markRead(id);
+      setChannels((cur) => cur.map((c) => (c.id === id ? { ...c, unreadCount: 0 } : c)));
+    },
+    [closeOverlays],
+  );
+
+  const openHome = useCallback(() => {
+    closeOverlays();
+    setThreadRoot(null);
+    setHomeTick((t) => t + 1);
+    setView({ kind: 'home' });
+  }, [closeOverlays]);
+
+  const openProfile = useCallback(
+    (userId: string) => {
+      closeOverlays();
+      setThreadRoot(null);
+      setView({ kind: 'profile', userId });
+    },
+    [closeOverlays],
+  );
 
   const onEvent = useCallback(
     (event: ServerEvent) => {
@@ -114,7 +152,9 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
         return;
       }
       const msg = event.message;
+      const viewingThatChannel = view.kind === 'channel' && msg.channelId === activeId;
       if (msg.channelId === activeId) {
+        // Keep the cached feed fresh even when Home or a profile is on screen.
         if (msg.parentMessageId === null) {
           setMessages((cur) => (cur.some((m) => m.id === msg.id) ? cur : [...cur, msg]));
         } else {
@@ -122,28 +162,26 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
             cur.map((m) => (m.id === msg.parentMessageId ? { ...m, replyCount: m.replyCount + 1 } : m)),
           );
         }
-        if (msg.authorId !== me.id) void api.markRead(msg.channelId);
-      } else if (msg.authorId !== me.id) {
-        setChannels((cur) => {
-          if (!cur.some((c) => c.id === msg.channelId)) {
-            // A channel we don't know yet (e.g. someone opened a DM with us).
-            void api.channels().then(setChannels);
-            return cur;
-          }
-          return cur.map((c) => (c.id === msg.channelId ? { ...c, unreadCount: c.unreadCount + 1 } : c));
-        });
+      }
+      if (msg.authorId !== me.id) {
+        if (viewingThatChannel) {
+          void api.markRead(msg.channelId);
+        } else {
+          setChannels((cur) => {
+            if (!cur.some((c) => c.id === msg.channelId)) {
+              // A channel we don't know yet (e.g. someone opened a DM with us).
+              void api.channels().then(setChannels);
+              return cur;
+            }
+            return cur.map((c) => (c.id === msg.channelId ? { ...c, unreadCount: c.unreadCount + 1 } : c));
+          });
+        }
+        if (view.kind === 'home') setHomeTick((t) => t + 1);
       }
     },
-    [activeId, me.id],
+    [activeId, me.id, view],
   );
   useRealtime(onEvent);
-
-  const openChannel = useCallback((id: string) => {
-    setSwitcherOpen(false);
-    setAskOpen(false);
-    setGroupOpen(false);
-    setActiveId(id);
-  }, []);
 
   const openDm = useCallback(
     async (userId: string) => {
@@ -164,7 +202,6 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
 
   const onChannelCreated = useCallback(
     async (channelId: string) => {
-      setCreateChannelOpen(false);
       setChannels(await api.channels());
       openChannel(channelId);
     },
@@ -194,23 +231,22 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
       } else if (e.key === 'Escape') {
         if (switcherOpen) setSwitcherOpen(false);
         else if (askOpen) setAskOpen(false);
-        else if (profileOpen) setProfileOpen(false);
+        else if (profileEditOpen) setProfileEditOpen(false);
         else if (groupOpen) setGroupOpen(false);
         else if (createChannelOpen) setCreateChannelOpen(false);
         else setThreadRoot(null);
       } else if (e.altKey && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
         e.preventDefault();
-        setActiveId((cur) => {
-          const cycle = channels.filter((c) => !c.archivedAt || c.id === cur);
-          const idx = cycle.findIndex((c) => c.id === cur);
-          const next = cycle[(idx + (e.key === 'ArrowDown' ? 1 : cycle.length - 1)) % cycle.length];
-          return next?.id ?? cur;
-        });
+        const cycle = channels.filter((c) => !c.archivedAt);
+        if (cycle.length === 0) return;
+        const idx = cycle.findIndex((c) => c.id === activeId);
+        const next = cycle[(Math.max(idx, 0) + (e.key === 'ArrowDown' ? 1 : cycle.length - 1)) % cycle.length];
+        if (next) openChannel(next.id);
       }
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [channels, switcherOpen, askOpen, profileOpen, groupOpen, createChannelOpen]);
+  }, [channels, activeId, openChannel, switcherOpen, askOpen, profileEditOpen, groupOpen, createChannelOpen]);
 
   const active = channels.find((c) => c.id === activeId) ?? null;
 
@@ -221,23 +257,50 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
         channels={channels}
         users={users}
         online={online}
-        activeId={activeId}
+        activeId={view.kind === 'channel' ? activeId : null}
+        homeActive={view.kind === 'home'}
+        onHome={openHome}
         onSelect={openChannel}
-        onOpenDm={openDm}
+        onOpenProfile={openProfile}
         onNewGroup={() => setGroupOpen(true)}
         onNewChannel={() => setCreateChannelOpen(true)}
-        onOpenProfile={() => setProfileOpen(true)}
       />
-      {active && (
+      {view.kind === 'home' && (
+        <HomeView
+          me={me}
+          refreshTick={homeTick}
+          onOpenChannel={openChannel}
+          onOpenThread={openThread}
+          onOpenAsk={() => setAskOpen(true)}
+        />
+      )}
+      {view.kind === 'profile' && (
+        <ProfileView
+          userId={view.userId}
+          me={me}
+          online={online}
+          onOpenDm={openDm}
+          onOpenChannel={openChannel}
+          onEditProfile={() => setProfileEditOpen(true)}
+        />
+      )}
+      {view.kind === 'channel' && active && (
         <ChannelView
           channel={active}
           messages={messages}
           onOpenThread={setThreadRoot}
           onOpenAsk={() => setAskOpen(true)}
+          onOpenProfile={openProfile}
         />
       )}
-      {threadRoot && active && (
-        <ThreadPanel me={me} channel={active} root={threadRoot} onClose={() => setThreadRoot(null)} />
+      {view.kind === 'channel' && threadRoot && active && (
+        <ThreadPanel
+          me={me}
+          channel={active}
+          root={threadRoot}
+          onClose={() => setThreadRoot(null)}
+          onOpenProfile={openProfile}
+        />
       )}
       {switcherOpen && (
         <QuickSwitcher
@@ -253,7 +316,7 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
       {askOpen && (
         <AskPanel onClose={() => setAskOpen(false)} onOpenChannel={openChannel} onOpenThread={openThread} />
       )}
-      {profileOpen && <ProfileModal me={me} onSaved={onMeChange} onClose={() => setProfileOpen(false)} />}
+      {profileEditOpen && <ProfileModal me={me} onSaved={onMeChange} onClose={() => setProfileEditOpen(false)} />}
       {groupOpen && (
         <GroupModal me={me} users={users} onCreated={onGroupCreated} onClose={() => setGroupOpen(false)} />
       )}

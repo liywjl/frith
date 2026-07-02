@@ -103,6 +103,50 @@ export interface AskResponse {
   messages: AskEvidence[];
 }
 
+/**
+ * A user's productivity profile page. Everything is filtered to what the
+ * *viewer* may read, and DM content never appears regardless of viewer.
+ */
+export interface ProfilePageDto {
+  user: UserDto;
+  stats: {
+    messages: number;
+    reactionsReceived: number;
+    channelsActive: number;
+  };
+  topChannels: { id: string; name: string; count: number }[];
+  recent: MessageDto[];
+}
+
+/** One unread conversation on the Home screen, with its latest message. */
+export interface HomeUnread {
+  channelId: string;
+  name: string;
+  type: ChannelType;
+  unreadCount: number;
+  dmPartnerNames?: string[];
+  latestAuthor: string;
+  latestSnippet: string;
+  latestAt: string;
+}
+
+/** A thread the user participates in, surfaced by recent reply activity. */
+export interface HomeThread {
+  rootId: string;
+  channelId: string;
+  channelName: string;
+  rootAuthorName: string;
+  rootSnippet: string;
+  replyCount: number;
+  lastReplyAt: string;
+  lastReplyAuthor: string;
+}
+
+export interface HomeDto {
+  unread: HomeUnread[];
+  threads: HomeThread[];
+}
+
 /** Server → client realtime events. */
 export type ServerEvent =
   | { type: 'message.created'; message: MessageDto }

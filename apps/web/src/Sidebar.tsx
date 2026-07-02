@@ -26,8 +26,9 @@ export function Sidebar({
   users,
   online,
   activeId,
+  homeActive,
+  onHome,
   onSelect,
-  onOpenDm,
   onNewGroup,
   onNewChannel,
   onOpenProfile,
@@ -37,11 +38,12 @@ export function Sidebar({
   users: UserDto[];
   online: Set<string>;
   activeId: string | null;
+  homeActive: boolean;
+  onHome: () => void;
   onSelect: (id: string) => void;
-  onOpenDm: (userId: string) => void;
   onNewGroup: () => void;
   onNewChannel: () => void;
-  onOpenProfile: () => void;
+  onOpenProfile: (userId: string) => void;
 }) {
   const [showArchived, setShowArchived] = useState(false);
   const rooms = channels.filter((c) => c.type !== 'dm' && !c.archivedAt);
@@ -59,6 +61,10 @@ export function Sidebar({
       <div className="ws-name">
         Lore <span className="ws-sub">Acme</span>
       </div>
+
+      <button className={`side-item home-item ${homeActive ? 'active' : ''}`} onClick={onHome}>
+        <span className="side-label">🏠 Home</span>
+      </button>
 
       <div className="side-h side-h-action">
         <span>Channels</span>
@@ -125,14 +131,14 @@ export function Sidebar({
         );
       })}
       {others.map((u) => (
-        <button key={u.id} className="side-item muted" onClick={() => onOpenDm(u.id)}>
+        <button key={u.id} className="side-item muted" title={`View ${u.name}'s profile`} onClick={() => onOpenProfile(u.id)}>
           <Presence online={online.has(u.id)} />
           <span className="side-label">{u.name}</span>
           <Status user={u} />
         </button>
       ))}
 
-      <button className="side-me" title="Edit your profile & theme" onClick={onOpenProfile}>
+      <button className="side-me" title="View your profile" onClick={() => onOpenProfile(me.id)}>
         <Avatar name={me.name} emoji={me.avatarEmoji} />
         <span className="side-me-text">
           <b>

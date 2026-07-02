@@ -1,4 +1,13 @@
-import type { AskResponse, ChannelDto, MeDto, MessageDto, ProfilePatch, UserDto } from '@app/shared';
+import type {
+  AskResponse,
+  ChannelDto,
+  HomeDto,
+  MeDto,
+  MessageDto,
+  ProfilePageDto,
+  ProfilePatch,
+  UserDto,
+} from '@app/shared';
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
@@ -16,6 +25,8 @@ export const api = {
   patchMe: (patch: ProfilePatch) =>
     request<UserDto>('/api/me', { method: 'PATCH', body: JSON.stringify(patch) }),
   users: () => request<UserDto[]>('/api/users'),
+  home: () => request<HomeDto>('/api/home'),
+  profile: (userId: string) => request<ProfilePageDto>(`/api/users/${userId}/profile`),
   login: (handle: string) =>
     request<UserDto>('/api/dev/login', { method: 'POST', body: JSON.stringify({ handle }) }),
   channels: () => request<ChannelDto[]>('/api/channels'),

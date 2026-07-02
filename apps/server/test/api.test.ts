@@ -323,6 +323,31 @@ describe('group conversations', () => {
   });
 });
 
+describe('profile pages and home digest', () => {
+  it('profile stats and activity are scoped to what the viewer can read', async () => {
+    const asBob = await app.inject({ method: 'GET', url: `/api/users/${alice}/profile`, ...as(bob) });
+    expect(asBob.statusCode).toBe(200);
+    expect(asBob.json().user.name).toBe('Alice Cooper');
+    // The private-channel message must never surface for a non-member viewer.
+    expect(JSON.stringify(asBob.json().recent)).not.toContain('launch is friday');
+
+    const asAlice = await app.inject({ method: 'GET', url: `/api/users/${alice}/profile`, ...as(alice) });
+    // Alice can see her own private-channel activity; Bob cannot.
+    expect(asAlice.json().stats.messages).toBeGreaterThan(asBob.json().stats.messages);
+    expect(asBob.json().topChannels.map((c: { name: string }) => c.name)).not.toContain('secret-plans');
+  });
+
+  it('home lists unread conversations and threads you are in, ACL-filtered', async () => {
+    const home = (await app.inject({ method: 'GET', url: '/api/home', ...as(alice) })).json();
+    expect(home.threads.some((t: { rootSnippet: string }) => t.rootSnippet.includes('hello world'))).toBe(true);
+    for (const u of home.unread) expect(u.unreadCount).toBeGreaterThan(0);
+
+    const bobHome = (await app.inject({ method: 'GET', url: '/api/home', ...as(bob) })).json();
+    expect(JSON.stringify(bobHome)).not.toContain('secret-plans');
+    expect(JSON.stringify(bobHome)).not.toContain('launch is friday');
+  });
+});
+
 describe('channel lifecycle', () => {
   it('creates a channel with a normalized name and opens it to everyone', async () => {
     const res = await app.inject({

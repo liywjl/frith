@@ -23,11 +23,13 @@ export function ChannelView({
   messages,
   onOpenThread,
   onOpenAsk,
+  onOpenProfile,
 }: {
   channel: ChannelDto;
   messages: MessageDto[];
   onOpenThread: (root: MessageDto) => void;
   onOpenAsk: () => void;
+  onOpenProfile: (userId: string) => void;
 }) {
   const feedRef = useRef<HTMLDivElement>(null);
 
@@ -72,6 +74,7 @@ export function ChannelView({
                 message={m}
                 compact={!newDay && isCompact(prev, m)}
                 onOpenThread={onOpenThread}
+                onOpenProfile={onOpenProfile}
               />
             </Fragment>
           );
