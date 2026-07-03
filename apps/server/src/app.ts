@@ -27,6 +27,7 @@ import {
 } from './store.js';
 import { ask, taskScope } from './ask.js';
 import { publish, register } from './realtime.js';
+import { broadcastLocalMessage } from './p2p/bridge.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -170,6 +171,10 @@ export async function buildApp() {
       parentMessageId: body.parentMessageId ?? null,
     });
     publish({ type: 'message.created', message }, await channelAudience(id));
+    if (channel) {
+      const author = await getUserById(req.userId);
+      if (author) broadcastLocalMessage(message, channel, author);
+    }
     return message;
   });
 

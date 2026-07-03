@@ -24,8 +24,13 @@ const identity = loadIdentity(dataDir);
 const me = b4a.toString(identity.publicKey, 'hex');
 const store = new RoomStore(dataDir, room);
 
+// Electron utilityProcess talks via process.parentPort; a plain Node fork
+// (the smoke test) talks via process.send. Support both.
+const parentPort = process.parentPort ?? null;
+
 function tell(event) {
-  if (process.send) process.send(event);
+  if (parentPort) parentPort.postMessage(event);
+  else if (process.send) process.send(event);
   else console.log('[swarm]', JSON.stringify(event));
 }
 
@@ -113,7 +118,7 @@ swarm.on('connection', (socket) => {
 });
 
 // From the UI: sign, persist locally, then fan out.
-process.on('message', ({ text, name }) => {
+function onUiMessage({ text, name }) {
   const msg = {
     author: me,
     seq: store.nextSeq(me),
@@ -125,7 +130,9 @@ process.on('message', ({ text, name }) => {
   store.append(msg);
   tell({ type: 'message', message: msg });
   broadcast({ type: 'message', message: msg });
-});
+}
+if (parentPort) parentPort.on('message', (event) => onUiMessage(event.data));
+else process.on('message', onUiMessage);
 
 swarm.join(topic, { server: true, client: true }).flushed().then(() => {
   tell({ type: 'ready', room, me, history: store.messages.length });

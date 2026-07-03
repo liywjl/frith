@@ -11,7 +11,8 @@
     "lint": "eslint .",
     "test": "pnpm -r test",
     "deadcode": "fallow dead-code && fallow dupes",
-    "check": "pnpm typecheck && pnpm lint && pnpm test && pnpm deadcode"
+    "check": "pnpm typecheck && pnpm lint && pnpm test && pnpm deadcode",
+    "dev:peer": "./scripts/dev-peer.sh"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

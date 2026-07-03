@@ -31,6 +31,24 @@ around.
   storylines (a migration, an incident, a private channel, a DM) that later
   double as the retrieval eval set
 
+## Two instances, peer-to-peer
+
+Run the full app twice on one machine and let public channels sync over
+Hyperswarm (no server between them — messages are signed and verified):
+
+```sh
+# terminal 1 — instance A on :5173
+LORE_P2P_ROOM=demo pnpm dev
+
+# terminal 2 — instance B on :5174 (own database, own P2P identity)
+LORE_P2P_ROOM=demo pnpm dev:peer
+```
+
+Give the DHT ~10–30s to connect (watch for `[p2p] peer connected` in the
+server logs; starting the instances a few seconds apart helps). Log in as
+different people and chat across instances. v0 scope: public channels only,
+live messages only — DMs and private channels never leave an instance.
+
 ## Quality gates
 
 ```sh
