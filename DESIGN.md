@@ -385,9 +385,12 @@ Staged migration, so the product keeps working at every step:
 1. **Spike (done)** — `spikes/pear-chat`: Electron + Hyperswarm chat;
    headless smoke test proves peers meet over the DHT and exchange messages
    with no server (`npm run smoke`).
-2. **Persistence** — Hypercore per writer, Autobase to merge writers into a
-   channel's ordered log; Hyperbee for profile/channel metadata. History
-   syncs peer-to-peer; a workspace is an invite key, not a tenant row.
+2. **Persistence — first pass done in the spike:** signed per-author
+   sequences in a local append-only log, heads-exchange backfill between
+   peers, forgery rejection (all smoke-tested). Next: swap the hand-rolled
+   log for Hypercore per writer + Autobase ordering; Hyperbee for
+   profile/channel metadata. A workspace becomes an invite key, not a
+   tenant row.
 3. **Port the messaging plane** — channels/threads/DMs/reactions map onto
    the Autobase log; the React UI (all of apps/web) rides on a new data
    layer behind the same DTO shapes. Postgres remains the reference
@@ -419,3 +422,54 @@ semantic ("vinyl" ≈ "record collecting"). Principles:
 - The matcher proposes, never auto-creates. No engagement-bait mechanics.
 - Same trust posture as everything else: the suggestion UI says why
   ("3 of you are into rollerblading") — evidence, not vibes.
+
+## 16. Security & trust model (P2P era)
+
+People will not put honest work conversations into a system they don't
+trust. In the P2P design, trust comes from cryptography and physics, not
+from a vendor's promise. What we have, what we owe, and what we won't
+pretend about:
+
+### Already true in the spike (verified by `npm run smoke`)
+- **Transport encryption.** Every peer connection is end-to-end encrypted
+  (Hyperswarm's Noise handshake). There is no middlebox to compromise
+  because there is no middle.
+- **Authenticated authorship.** Each device holds an ed25519 keypair
+  (created locally, never transmitted; secret key stored 0600). Every
+  message is signed; peers verify before storing or displaying. The smoke
+  test includes an attacker impersonating another peer — the forgery is
+  rejected.
+- **Local-first storage.** History exists only on participants' machines.
+  "Where is my data?" has a one-word answer: here.
+
+### Owed before real use (roadmap, in rough order)
+1. **Membership as capability.** Today anyone who knows the room string can
+   derive the DHT topic and join. Real rooms need high-entropy invite keys
+   (unguessable topic) plus a membership list signed by the room creator:
+   peers drop connections from keys without a valid membership proof.
+2. **Channel-level keys.** A private channel is its own topic + symmetric
+   content key, wrapped per-member. The ACL becomes physical: non-members
+   never receive the ciphertext, let alone the plaintext.
+3. **Encryption at rest.** The local log and identity seed encrypted with a
+   key from the OS keychain (Keychain/DPAPI/libsecret), so a stolen laptop
+   with a locked account doesn't leak history.
+4. **Identity beyond one device.** Multi-device users need either key sync
+   (encrypted seed transfer) or a per-user signing key that certifies
+   device keys. Verification UX: compare short key fingerprints — already
+   surfaced in the spike's message tooltips.
+5. **Deletion honesty.** Tombstones propagate deletes, and honest peers
+   honor them — but P2P cannot *force* a malicious peer to forget, same as
+   a screenshot today. We say this plainly rather than promising GDPR
+   erasure magic we can't deliver against adversarial peers.
+
+### Standing risks to keep naming
+- **Metadata.** The DHT reveals that some IP participates in some topic
+  (not content). Mitigations later: relay peers, Tor-friendly transports.
+- **Compromised endpoint.** If a member's device is owned, that member's
+  view is owned — true of every E2E system; at-rest encryption and
+  fingerprint verification limit blast radius.
+- **The AI stays local.** On-device models mean the knowledge plane never
+  creates a new exfiltration path; any optional remote model must be an
+  explicit, per-workspace, clearly-labeled opt-in (§6 tiers unchanged).
+- **Supply chain.** Dependency review on the P2P stack, lockfiles pinned,
+  and (once on Pear) app distribution is itself key-verified.
