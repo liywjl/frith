@@ -1,4 +1,5 @@
 import type { MeDto } from '@app/shared';
+import { api } from './api';
 import { Avatar } from './Avatar';
 import { useProfile } from './useProfile';
 import { useUserActions } from './userActions';
@@ -14,6 +15,7 @@ export function ProfileView({
   onOpenChannel,
   onEditProfile,
   onToggleBlock,
+  onMeChange,
 }: {
   userId: string;
   me: MeDto;
@@ -22,6 +24,7 @@ export function ProfileView({
   onOpenChannel: (channelId: string) => void;
   onEditProfile: () => void;
   onToggleBlock: (userId: string, blocked: boolean) => void;
+  onMeChange: (me: MeDto) => void;
 }) {
   const { openProfile, openTag } = useUserActions();
   const profile = useProfile(userId);
@@ -86,21 +89,44 @@ export function ProfileView({
           </p>
         )}
 
-        {(user.nowPlaying || user.interests.length > 0) && (
+        {(isMe || user.nowPlaying || user.interests.length > 0) && (
           <section className="beyond-work">
             {user.nowPlaying && <div className="now-playing">🎧 {user.nowPlaying}</div>}
-            {user.interests.length > 0 && (
-              <div className="profile-chips">
-                {user.interests.map((i) => (
-                  <button key={i} className="interest-chip" title={`See who else is into ${i}`} onClick={() => openTag(i)}>
-                    {i}
-                    {me.id !== user.id && me.interests.some((m) => m.toLowerCase() === i.toLowerCase()) && (
-                      <small> · you too</small>
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
+            <div className="profile-chips">
+              {(isMe ? me.interests : user.interests).map((i) => (
+                <button key={i} className="interest-chip" title={`See who else is into ${i}`} onClick={() => openTag(i)}>
+                  {i}
+                  {!isMe && me.interests.some((m) => m.toLowerCase() === i.toLowerCase()) && <small> · you too</small>}
+                  {isMe && (
+                    <small
+                      className="chip-remove"
+                      title={`Remove ${i}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const interests = me.interests.filter((m) => m !== i);
+                        void api.patchMe({ interests }).then(() => onMeChange({ ...me, interests }));
+                      }}
+                    >
+                      {' '}✕
+                    </small>
+                  )}
+                </button>
+              ))}
+              {isMe && (
+                <input
+                  className="tag-add"
+                  placeholder="+ add a tag"
+                  onKeyDown={(e) => {
+                    const value = e.currentTarget.value.trim();
+                    if (e.key === 'Enter' && value) {
+                      const interests = [...me.interests.filter((m) => m.toLowerCase() !== value.toLowerCase()), value].slice(0, 12);
+                      e.currentTarget.value = '';
+                      void api.patchMe({ interests }).then(() => onMeChange({ ...me, interests }));
+                    }
+                  }}
+                />
+              )}
+            </div>
           </section>
         )}
 

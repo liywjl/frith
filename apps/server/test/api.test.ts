@@ -448,6 +448,47 @@ describe('channel lifecycle', () => {
   });
 });
 
+describe('attachments', () => {
+  function multipart(fields: Record<string, string>, filename: string, content: string, mime: string) {
+    const boundary = 'lore-test-boundary';
+    const parts = Object.entries(fields).map(
+      ([k, v]) => `--${boundary}\r\nContent-Disposition: form-data; name="${k}"\r\n\r\n${v}\r\n`,
+    );
+    parts.push(
+      `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${filename}"\r\nContent-Type: ${mime}\r\n\r\n${content}\r\n--${boundary}--\r\n`,
+    );
+    return {
+      payload: parts.join(''),
+      headers: { 'content-type': `multipart/form-data; boundary=${boundary}` },
+    };
+  }
+
+  it('uploads a file as a message and serves it back with the channel ACL', async () => {
+    process.env.LORE_FILES = '/tmp/lore-test-files';
+    const appWithFiles = await buildApp();
+
+    const upload = await appWithFiles.inject({
+      method: 'POST',
+      url: `/api/channels/${privateChannel}/attachments`,
+      ...multipart({ caption: 'the secret diagram' }, 'diagram.png', 'PNGDATA', 'image/png'),
+      cookies: { uid: alice },
+    });
+    expect(upload.statusCode).toBe(200);
+    const message = upload.json();
+    expect(message.attachments[0].kind).toBe('image');
+    const fileUrl = message.attachments[0].url;
+
+    const asMember = await appWithFiles.inject({ method: 'GET', url: fileUrl, cookies: { uid: alice } });
+    expect(asMember.statusCode).toBe(200);
+    expect(asMember.body).toBe('PNGDATA');
+
+    // Non-members must not fetch files from private channels.
+    const asOutsider = await appWithFiles.inject({ method: 'GET', url: fileUrl, cookies: { uid: bob } });
+    expect(asOutsider.statusCode).toBe(403);
+    await appWithFiles.close();
+  });
+});
+
 describe('pins (favourites)', () => {
   it('pins are per-user and ordered', async () => {
     await app.inject({ method: 'POST', url: `/api/channels/${publicChannel}/pin`, payload: { pinned: true }, ...as(alice) });

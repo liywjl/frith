@@ -13,6 +13,7 @@ import type {
 import crypto from 'node:crypto';
 import { db } from './db/client.js';
 import {
+  attachments,
   blocks,
   channelMembers,
   channelReads,
@@ -24,6 +25,7 @@ import {
   spaces,
   users,
 } from './db/schema.js';
+import type { AttachmentDto } from '@app/shared';
 import { extractArtifacts } from './artifacts.js';
 
 /** Reactions + replies a message has drawn — the "engagement" score. */
@@ -218,6 +220,38 @@ async function reactionsFor(messageIds: string[], viewerId: string): Promise<Map
   return map;
 }
 
+export function attachmentKind(mime: string): AttachmentDto['kind'] {
+  if (mime.startsWith('image/')) return 'image';
+  if (mime.startsWith('video/')) return 'video';
+  if (mime.startsWith('audio/')) return 'audio';
+  return 'file';
+}
+
+async function attachmentsFor(messageIds: string[]): Promise<Map<string, AttachmentDto[]>> {
+  if (messageIds.length === 0) return new Map();
+  const rows = await db.select().from(attachments).where(inArray(attachments.messageId, messageIds));
+  const map = new Map<string, AttachmentDto[]>();
+  for (const r of rows) {
+    const dto: AttachmentDto = { id: r.id, kind: attachmentKind(r.mime), name: r.name, url: `/api/files/${r.id}` };
+    map.set(r.messageId, [...(map.get(r.messageId) ?? []), dto]);
+  }
+  return map;
+}
+
+export async function addAttachment(messageId: string, name: string, mime: string, size: number) {
+  const [row] = await db.insert(attachments).values({ messageId, name, mime, size }).returning();
+  return row!;
+}
+
+export async function getAttachment(id: string) {
+  const [row] = await db
+    .select({ id: attachments.id, mime: attachments.mime, name: attachments.name, channelId: messages.channelId })
+    .from(attachments)
+    .innerJoin(messages, eq(messages.id, attachments.messageId))
+    .where(eq(attachments.id, id));
+  return row ?? null;
+}
+
 async function replyCounts(rootIds: string[]): Promise<Map<string, number>> {
   if (rootIds.length === 0) return new Map();
   const rows = await db
@@ -241,6 +275,7 @@ function toDto(
   },
   replyCount: number,
   msgReactions: ReactionDto[],
+  msgAttachments: AttachmentDto[] = [],
 ): MessageDto {
   return {
     id: row.id,
@@ -253,6 +288,7 @@ function toDto(
     createdAt: row.createdAt.toISOString(),
     replyCount,
     reactions: msgReactions,
+    attachments: msgAttachments,
   };
 }
 
@@ -380,8 +416,12 @@ export async function listChannelMessages(channelId: string, viewerId: string): 
     .where(and(eq(messages.channelId, channelId), isNull(messages.parentMessageId), notBlocked))
     .orderBy(asc(messages.createdAt));
   const ids = rows.map((r) => r.id);
-  const [counts, reacts] = await Promise.all([replyCounts(ids), reactionsFor(ids, viewerId)]);
-  return rows.map((r) => toDto(r, counts.get(r.id) ?? 0, reacts.get(r.id) ?? []));
+  const [counts, reacts, atts] = await Promise.all([
+    replyCounts(ids),
+    reactionsFor(ids, viewerId),
+    attachmentsFor(ids),
+  ]);
+  return rows.map((r) => toDto(r, counts.get(r.id) ?? 0, reacts.get(r.id) ?? [], atts.get(r.id) ?? []));
 }
 
 /** A thread: the root message plus replies, oldest first. Caller must check ACL. */
@@ -393,8 +433,9 @@ export async function getThread(rootId: string, viewerId: string): Promise<Messa
     )
     .orderBy(asc(messages.createdAt));
   if (rows.length === 0) return null;
-  const reacts = await reactionsFor(rows.map((r) => r.id), viewerId);
-  return rows.map((r, i) => toDto(r, i === 0 ? rows.length - 1 : 0, reacts.get(r.id) ?? []));
+  const ids = rows.map((r) => r.id);
+  const [reacts, atts] = await Promise.all([reactionsFor(ids, viewerId), attachmentsFor(ids)]);
+  return rows.map((r, i) => toDto(r, i === 0 ? rows.length - 1 : 0, reacts.get(r.id) ?? [], atts.get(r.id) ?? []));
 }
 
 export async function getMessage(id: string): Promise<{ channelId: string } | null> {

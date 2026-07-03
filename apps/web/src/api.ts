@@ -57,6 +57,15 @@ export const api = {
     request<{ ok: boolean }>(`/api/channels/${channelId}/read`, { method: 'POST' }),
   openDm: (userId: string) => request<{ channelId: string }>(`/api/dms/${userId}`, { method: 'POST' }),
   thread: (rootId: string) => request<MessageDto[]>(`/api/messages/${rootId}/thread`),
+  attach: async (channelId: string, file: File, caption: string, parentMessageId?: string) => {
+    const form = new FormData();
+    if (caption) form.append('caption', caption);
+    if (parentMessageId) form.append('parentMessageId', parentMessageId);
+    form.append('file', file);
+    const res = await fetch(`/api/channels/${channelId}/attachments`, { method: 'POST', body: form });
+    if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
+    return res.json() as Promise<MessageDto>;
+  },
   send: (channelId: string, body: string, parentMessageId?: string) =>
     request<MessageDto>(`/api/channels/${channelId}/messages`, {
       method: 'POST',

@@ -91,6 +91,29 @@ export class CallManager {
     this.local?.getAudioTracks().forEach((t) => (t.enabled = !muted));
   }
 
+  /** Turn the camera on mid-call, even when joined audio-only (renegotiates). */
+  async enableCamera(): Promise<boolean> {
+    if (this.local && this.local.getVideoTracks().length > 0) {
+      this.setVideoEnabled(true);
+      return true;
+    }
+    try {
+      const cam = await navigator.mediaDevices.getUserMedia({ video: true });
+      const track = cam.getVideoTracks()[0]!;
+      if (this.local) this.local.addTrack(track);
+      else this.local = cam;
+      for (const pc of this.peers.values()) pc.addTrack(track, this.local);
+    } catch {
+      return false;
+    }
+    for (const [id, pc] of this.peers) {
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      this.signal(id, { sdp: { type: offer.type, sdp: offer.sdp ?? undefined } });
+    }
+    return true;
+  }
+
   setVideoEnabled(on: boolean) {
     this.local?.getVideoTracks().forEach((t) => (t.enabled = on));
   }

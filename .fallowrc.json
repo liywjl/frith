@@ -1,4 +1,4 @@
 {
   "ignorePatterns": ["spikes/**"],
-  "usedClassMembers": ["handleSignal", "prune", "setMuted", "setVideoEnabled", "leave"]
+  "usedClassMembers": ["handleSignal", "prune", "setMuted", "setVideoEnabled", "enableCamera", "leave"]
 }

@@ -37,7 +37,6 @@ export function CallPanel({
   localStream,
   muted,
   videoOn,
-  withVideo,
   onToggleMute,
   onToggleVideo,
   onLeave,
@@ -51,7 +50,6 @@ export function CallPanel({
   localStream: MediaStream | null;
   muted: boolean;
   videoOn: boolean;
-  withVideo: boolean;
   onToggleMute: () => void;
   onToggleVideo: () => void;
   onLeave: () => void;
@@ -76,11 +74,9 @@ export function CallPanel({
         <button className={`btn ${muted ? 'block-btn' : ''}`} onClick={onToggleMute}>
           {muted ? '🔇 Unmute' : '🎙 Mute'}
         </button>
-        {withVideo && (
-          <button className="btn" onClick={onToggleVideo}>
-            {videoOn ? '📷 Cam off' : '🎥 Cam on'}
-          </button>
-        )}
+        <button className="btn" onClick={onToggleVideo}>
+          {videoOn ? '📷 Cam off' : '🎥 Cam on'}
+        </button>
         <button className="btn primary" onClick={onLeave}>
           Leave
         </button>

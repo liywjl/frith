@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { ChannelDto, SpaceDto, UserDto } from '@app/shared';
 import { Avatar } from './Avatar';
+import { Logo } from './Logo';
 import { useUserActions } from './userActions';
 
 function Presence({ online }: { online: boolean }) {
@@ -135,7 +136,7 @@ export function Sidebar({
   return (
     <nav className="sidebar">
       <div className="ws-name">
-        Lore <span className="ws-sub">Acme</span>
+        <Logo /> Lore {space && <span className="ws-sub">{space.name}</span>}
       </div>
 
       <button className={`side-item home-item ${homeActive ? 'active' : ''}`} onClick={onHome}>

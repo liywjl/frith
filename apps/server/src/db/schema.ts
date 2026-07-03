@@ -69,6 +69,15 @@ export const blocks = pgTable(
   (t) => [primaryKey({ columns: [t.userId, t.blockedId] })],
 );
 
+/** Files attached to messages; bytes live on disk under the data dir. */
+export const attachments = pgTable('attachments', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  messageId: uuid('message_id').notNull().references(() => messages.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  mime: text('mime').notNull(),
+  size: integer('size').notNull(),
+});
+
 /** Messages written now, delivered later. */
 export const scheduledMessages = pgTable('scheduled_messages', {
   ...messageColumns(),

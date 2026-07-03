@@ -98,6 +98,14 @@ export interface ReactionDto {
   mine: boolean;
 }
 
+export interface AttachmentDto {
+  id: string;
+  /** Broad type for rendering: image, video, audio, or a generic file. */
+  kind: 'image' | 'video' | 'audio' | 'file';
+  name: string;
+  url: string;
+}
+
 export interface MessageDto {
   id: string;
   channelId: string;
@@ -109,6 +117,7 @@ export interface MessageDto {
   createdAt: string;
   replyCount: number;
   reactions: ReactionDto[];
+  attachments: AttachmentDto[];
 }
 
 /**

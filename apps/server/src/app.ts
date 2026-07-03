@@ -1,11 +1,17 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify';
 import cookie from '@fastify/cookie';
+import multipart from '@fastify/multipart';
 import websocket from '@fastify/websocket';
 import { z } from 'zod';
 import { THEMES } from '@app/shared';
 import {
+  addAttachment,
+  attachmentKind,
   blockedIds,
   canReadChannel,
+  getAttachment,
   channelAudience,
   connectSuggestions,
   createChannel,
@@ -63,6 +69,9 @@ export async function buildApp() {
   const app = Fastify({ logger: process.env.NODE_ENV !== 'test' });
   await app.register(cookie);
   await app.register(websocket);
+  await app.register(multipart, { limits: { fileSize: 50 * 1024 * 1024 } });
+  const filesDir = process.env.LORE_FILES ?? path.join('.data', 'uploads');
+  fs.mkdirSync(filesDir, { recursive: true });
 
   // Dev auth: pick a seeded user by handle, get a cookie. Real auth comes
   // when the product needs it; local iteration speed wins for now.
@@ -287,6 +296,45 @@ export async function buildApp() {
   app.post('/api/task-scope', async (req) => {
     const { requirements } = z.object({ requirements: z.string().trim().min(3).max(2000) }).parse(req.body);
     return taskScope(req.userId, requirements);
+  });
+
+  // Attach a file (image/video/audio/anything) as a new message in a channel.
+  app.post('/api/channels/:id/attachments', async (req, reply) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+    if (!(await requireChannelAccess(req, reply, id))) return reply;
+    const channel = await getChannel(id);
+    if (channel?.archivedAt) return reply.code(409).send({ error: 'this channel is archived' });
+
+    const part = await req.file();
+    if (!part) return reply.code(400).send({ error: 'no file' });
+    const fields = part.fields as Record<string, { value?: string } | undefined>;
+    const caption = (fields.caption?.value ?? '').slice(0, 10_000);
+    const parentMessageId = fields.parentMessageId?.value || null;
+
+    const message = await createMessage({ channelId: id, authorId: req.userId, body: caption, parentMessageId });
+    const attachment = await addAttachment(message.id, part.filename || 'file', part.mimetype, 0);
+    await fs.promises.writeFile(path.join(filesDir, attachment.id), await part.toBuffer());
+
+    const withAttachment = {
+      ...message,
+      attachments: [
+        { id: attachment.id, kind: attachmentKind(attachment.mime), name: attachment.name, url: `/api/files/${attachment.id}` },
+      ],
+    };
+    publish({ type: 'message.created', message: withAttachment }, await channelAudience(id));
+    return withAttachment;
+  });
+
+  // Files inherit the ACL of the message they're attached to.
+  app.get('/api/files/:id', async (req, reply) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+    const attachment = await getAttachment(id);
+    if (!attachment) return reply.code(404).send({ error: 'no such file' });
+    if (!(await requireChannelAccess(req, reply, attachment.channelId))) return reply;
+    return reply
+      .header('content-type', attachment.mime)
+      .header('content-disposition', `inline; filename="${attachment.name.replace(/"/g, '')}"`)
+      .send(fs.createReadStream(path.join(filesDir, id)));
   });
 
   app.get('/api/calls', async () => activeCalls());

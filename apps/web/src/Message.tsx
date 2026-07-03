@@ -52,7 +52,22 @@ export function Message({
             <span className="when">{timeFormat.format(new Date(message.createdAt))}</span>
           </div>
         )}
-        <div className="body">{message.body}</div>
+        {message.body && <div className="body">{message.body}</div>}
+        {message.attachments.map((a) =>
+          a.kind === 'image' ? (
+            <a key={a.id} href={a.url} target="_blank" rel="noreferrer">
+              <img className="att-img" src={a.url} alt={a.name} />
+            </a>
+          ) : a.kind === 'video' ? (
+            <video key={a.id} className="att-video" src={a.url} controls />
+          ) : a.kind === 'audio' ? (
+            <audio key={a.id} className="att-audio" src={a.url} controls />
+          ) : (
+            <a key={a.id} className="att-file" href={a.url} target="_blank" rel="noreferrer">
+              📎 {a.name}
+            </a>
+          ),
+        )}
         <div className="msg-meta">
           {message.reactions.map((r) => (
             <button

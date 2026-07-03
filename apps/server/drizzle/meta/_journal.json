@@ -64,6 +64,13 @@
       "when": 1783113860629,
       "tag": "0008_scheduled_pins",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1783114822999,
+      "tag": "0009_attachments",
+      "breakpoints": true
     }
   ]
 }

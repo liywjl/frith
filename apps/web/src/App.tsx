@@ -29,6 +29,7 @@ import { ProfilePanel } from './ProfilePanel';
 import { CallPanel } from './CallPanel';
 import { CallManager } from './call';
 import type { SlashCommand } from './Composer';
+import { Logo } from './Logo';
 import { PeopleView } from './PeopleView';
 import { TagModal } from './TagModal';
 import { UserActionsContext, type UserActions } from './userActions';
@@ -69,7 +70,9 @@ function Login({ onLogin }: { onLogin: () => void }) {
 
   return (
     <div className="login">
-      <h1>Lore</h1>
+      <h1 className="login-brand">
+        <Logo size={40} /> Lore
+      </h1>
       <p>Your team's memory. Dev login — pick who you are today.</p>
       <div className="login-list">
         {users.map((u) => (
@@ -467,6 +470,7 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
           onOpenChannel={openChannel}
           onEditProfile={() => setProfileEditOpen(true)}
           onToggleBlock={(userId, blocked) => void toggleBlock(userId, blocked)}
+          onMeChange={onMeChange}
         />
       )}
       {view.kind === 'channel' && active && (
@@ -538,14 +542,17 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
           localStream={callManager.current?.local ?? null}
           muted={muted}
           videoOn={videoOn}
-          withVideo={myCall.withVideo}
           onToggleMute={() => {
             callManager.current?.setMuted(!muted);
             setMuted(!muted);
           }}
           onToggleVideo={() => {
-            callManager.current?.setVideoEnabled(!videoOn);
-            setVideoOn(!videoOn);
+            if (videoOn) {
+              callManager.current?.setVideoEnabled(false);
+              setVideoOn(false);
+            } else {
+              void callManager.current?.enableCamera().then((ok) => ok && setVideoOn(true));
+            }
           }}
           onLeave={leaveCall}
         />

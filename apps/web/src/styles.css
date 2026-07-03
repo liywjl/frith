@@ -740,3 +740,62 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
 .people-name { min-width: 0; }
 .people-name b, .people-name small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 900px) { .people-tags { display: none; } }
+
+/* ===== refreshed default theme + tinted sidebar ===== */
+:root {
+  --paper: #f8f9f7; --card: #ffffff; --hover: #eef1ec;
+  --line: #d7dbd3; --line-soft: #e6e9e3;
+  --ink: #20242a; --ink-soft: #79828c; --block: #e8ebe5;
+  --ai: #0b6b5d; --ai-soft: #dcefe9; --ai-hover: #c9e6dd;
+  --unread: #d34f2a; --side: #eef1ea;
+}
+[data-theme='midnight'] { --side: #101114; }
+[data-theme='forest'] { --side: #e7efe1; }
+[data-theme='sunset'] { --side: #f8ecdc; }
+[data-theme='ocean'] { --side: #e5eef3; }
+[data-theme='mono'] { --side: #f2f2f2; }
+.sidebar { background: var(--side); border-right: none; }
+.home-card, .panel-card, .profile-stats > div, .connect-person, .task-person {
+  box-shadow: 0 1px 2px rgba(16, 24, 16, 0.045);
+}
+.ws-name { display: flex; align-items: center; gap: 8px; }
+.login-brand { display: flex; align-items: center; gap: 12px; }
+
+/* attachments */
+.att-img { max-width: 340px; max-height: 260px; border-radius: 10px; display: block; margin-top: 4px; border: 1px solid var(--line-soft); }
+.att-video { max-width: 380px; border-radius: 10px; display: block; margin-top: 4px; }
+.att-audio { display: block; margin-top: 4px; max-width: 320px; }
+.att-file {
+  display: inline-flex; margin-top: 4px; gap: 6px; font-size: 13.5px;
+  border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px;
+  background: var(--card); color: var(--ink); text-decoration: none;
+}
+
+/* composer tools */
+.composer-row { display: flex; align-items: flex-end; gap: 6px; }
+.composer-row textarea { flex: 1; }
+.composer-tool {
+  font-size: 16px; padding: 8px 9px; border: 1px solid var(--line);
+  border-radius: 10px; background: var(--card); flex: none;
+}
+.composer-tool:hover { border-color: var(--ai); }
+.composer-tool.recording { border-color: var(--unread); color: var(--unread); animation: pulse 1.2s infinite; }
+@keyframes pulse { 50% { opacity: 0.55; } }
+.emoji-menu b { font-size: 16px; }
+
+/* group modal search */
+.group-search {
+  font: inherit; color: inherit; background: var(--card);
+  border: 1px solid var(--line); border-radius: 8px; padding: 9px 12px; width: 100%;
+}
+.group-search:focus { outline: none; border-color: var(--ai); }
+.group-more { color: var(--ink-soft); font-size: 12.5px; padding: 6px 2px; }
+
+/* inline tag editing */
+.tag-add {
+  font: inherit; font-size: 13px; color: var(--ink); background: transparent;
+  border: 1px dashed var(--line); border-radius: 99px; padding: 4px 13px; width: 120px;
+}
+.tag-add:focus { outline: none; border-color: var(--ai); }
+.chip-remove { cursor: pointer; opacity: 0.7; }
+.chip-remove:hover { opacity: 1; color: var(--unread); }
