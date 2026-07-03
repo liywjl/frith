@@ -446,6 +446,29 @@ describe('channel lifecycle', () => {
   });
 });
 
+describe('campfires (calls)', () => {
+  it('tracks membership and tells joiners who was already there', async () => {
+    const first = await app.inject({ method: 'POST', url: `/api/channels/${publicChannel}/call/join`, ...as(alice) });
+    expect(first.json().participants).toEqual([]);
+
+    const second = await app.inject({ method: 'POST', url: `/api/channels/${publicChannel}/call/join`, ...as(bob) });
+    expect(second.json().participants).toEqual([alice]);
+
+    const snapshot = await app.inject({ method: 'GET', url: '/api/calls', ...as(carol) });
+    expect([...snapshot.json()[publicChannel]].sort()).toEqual([alice, bob].sort());
+
+    await app.inject({ method: 'POST', url: `/api/channels/${publicChannel}/call/leave`, ...as(bob) });
+    await app.inject({ method: 'POST', url: `/api/channels/${publicChannel}/call/leave`, ...as(alice) });
+    const after = await app.inject({ method: 'GET', url: '/api/calls', ...as(carol) });
+    expect(after.json()[publicChannel]).toBeUndefined();
+  });
+
+  it('requires channel access to join a campfire', async () => {
+    const res = await app.inject({ method: 'POST', url: `/api/channels/${privateChannel}/call/join`, ...as(bob) });
+    expect(res.statusCode).toBe(403);
+  });
+});
+
 describe('spaces', () => {
   it('creates a space with an unguessable invite and reads it back', async () => {
     const created = await app.inject({

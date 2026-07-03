@@ -31,7 +31,8 @@ import {
   visibleChannels,
 } from './store.js';
 import { ask, taskScope } from './ask.js';
-import { publish, register } from './realtime.js';
+import { publish, register, sendToUser, setOnUserOffline } from './realtime.js';
+import { activeCalls, joinCall, leaveAllCalls, leaveCall } from './calls.js';
 import { broadcastLocalMessage, connectedPeers, startBridge } from './p2p/bridge.js';
 
 declare module 'fastify' {
@@ -283,8 +284,41 @@ export async function buildApp() {
     return taskScope(req.userId, requirements);
   });
 
+  app.get('/api/calls', async () => activeCalls());
+
+  app.post('/api/channels/:id/call/join', async (req, reply) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+    if (!(await requireChannelAccess(req, reply, id))) return reply;
+    return { participants: await joinCall(id, req.userId) };
+  });
+
+  app.post('/api/channels/:id/call/leave', async (req, reply) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+    if (!(await requireChannelAccess(req, reply, id))) return reply;
+    await leaveCall(id, req.userId);
+    return { ok: true };
+  });
+
+  setOnUserOffline((userId) => void leaveAllCalls(userId));
+
   app.get('/api/ws', { websocket: true }, (socket, req) => {
     register(socket, req.userId);
+    // Clients send WebRTC signaling through here; the server relays blindly —
+    // media itself never touches the server.
+    socket.on('message', (data: Buffer) => {
+      try {
+        const event = JSON.parse(data.toString()) as { type?: string; to?: string; payload?: unknown };
+        if (event.type === 'rtc.signal' && typeof event.to === 'string' && event.payload) {
+          sendToUser(event.to, {
+            type: 'rtc.signal',
+            from: req.userId,
+            payload: event.payload as never,
+          });
+        }
+      } catch {
+        // ignore malformed frames
+      }
+    });
   });
 
   return app;

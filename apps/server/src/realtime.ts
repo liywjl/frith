@@ -3,6 +3,12 @@ import type { ServerEvent } from '@app/shared';
 
 const sockets = new Map<WebSocket, string>(); // socket → userId
 
+/** Called when a user's last socket closes (e.g. to drop them from calls). */
+let onUserOffline: ((userId: string) => void) | null = null;
+export function setOnUserOffline(handler: (userId: string) => void) {
+  onUserOffline = handler;
+}
+
 function onlineUserIds(): string[] {
   return [...new Set(sockets.values())];
 }
@@ -17,7 +23,16 @@ export function register(socket: WebSocket, userId: string) {
   socket.on('close', () => {
     sockets.delete(socket);
     broadcastPresence();
+    if (!onlineUserIds().includes(userId)) onUserOffline?.(userId);
   });
+}
+
+/** Send an event to one user's connected sockets only. */
+export function sendToUser(userId: string, event: ServerEvent) {
+  const payload = JSON.stringify(event);
+  for (const [socket, id] of sockets) {
+    if (id === userId) socket.send(payload);
+  }
 }
 
 /**

@@ -67,6 +67,11 @@ export const api = {
       body: JSON.stringify({ emoji }),
     }),
   ask: (q: string) => request<AskResponse>(`/api/ask?q=${encodeURIComponent(q)}`),
+  calls: () => request<Record<string, string[]>>('/api/calls'),
+  joinCall: (channelId: string) =>
+    request<{ participants: string[] }>(`/api/channels/${channelId}/call/join`, { method: 'POST' }),
+  leaveCall: (channelId: string) =>
+    request<{ ok: boolean }>(`/api/channels/${channelId}/call/leave`, { method: 'POST' }),
   taskScope: (requirements: string) =>
     request<TaskScopeDto>('/api/task-scope', { method: 'POST', body: JSON.stringify({ requirements }) }),
 };

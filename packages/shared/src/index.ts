@@ -228,4 +228,17 @@ export type ServerEvent =
   /** A channel was created, archived, or unarchived — refetch the list. */
   | { type: 'channels.changed' }
   /** P2P peers connected to this instance's space. */
-  | { type: 'p2p.peers'; count: number };
+  | { type: 'p2p.peers'; count: number }
+  /** Campfire (call) membership changed in a channel. */
+  | { type: 'call.changed'; channelId: string; participants: string[] }
+  /** WebRTC signaling relayed between two users. */
+  | { type: 'rtc.signal'; from: string; payload: RtcPayload };
+
+/** SDP offer/answer or ICE candidate, passed through the server verbatim. */
+export interface RtcPayload {
+  sdp?: { type: string; sdp?: string };
+  candidate?: unknown;
+}
+
+/** Client → server over the websocket. */
+export type ClientEvent = { type: 'rtc.signal'; to: string; payload: RtcPayload };

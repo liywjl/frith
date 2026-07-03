@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
-import type { ChannelDto, MeDto, MessageDto, ServerEvent, SpaceDto, UserDto } from '@app/shared';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { THEMES, type ChannelDto, type MeDto, type MessageDto, type ServerEvent, type SpaceDto, type Theme, type UserDto } from '@app/shared';
 import { api } from './api';
 import { useRealtime } from './useRealtime';
 import { applyReaction } from './updates';
@@ -16,6 +16,9 @@ import { ProfileView } from './ProfileView';
 import { TaskView } from './TaskView';
 import { SpaceModal } from './SpaceModal';
 import { ProfilePanel } from './ProfilePanel';
+import { CallPanel } from './CallPanel';
+import { CallManager } from './call';
+import type { SlashCommand } from './Composer';
 import { UserActionsContext, type UserActions } from './userActions';
 
 type View = { kind: 'home' } | { kind: 'task' } | { kind: 'channel' } | { kind: 'profile'; userId: string };
@@ -82,9 +85,38 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
   const [spaceOpen, setSpaceOpen] = useState(false);
   const [space, setSpace] = useState<SpaceDto | null>(null);
 
+  // Campfires (calls)
+  const [calls, setCalls] = useState<Record<string, string[]>>({});
+  const [myCall, setMyCall] = useState<{ channelId: string; withVideo: boolean } | null>(null);
+  const [callStreams, setCallStreams] = useState<Map<string, MediaStream>>(new Map());
+  const [muted, setMuted] = useState(false);
+  const [videoOn, setVideoOn] = useState(true);
+  const callManager = useRef<CallManager | null>(null);
+
   useEffect(() => {
     api.space().then(setSpace).catch(console.error);
+    api.calls().then(setCalls).catch(console.error);
   }, []);
+
+  const startCall = useCallback(async (channelId: string, withVideo: boolean) => {
+    if (callManager.current) return; // one campfire at a time
+    const { participants } = await api.joinCall(channelId);
+    const manager = new CallManager(setCallStreams);
+    callManager.current = manager;
+    setMuted(false);
+    setVideoOn(withVideo);
+    setMyCall({ channelId, withVideo });
+    await manager.join(channelId, withVideo, participants);
+  }, []);
+
+  const leaveCall = useCallback(() => {
+    if (!myCall) return;
+    void api.leaveCall(myCall.channelId);
+    callManager.current?.leave();
+    callManager.current = null;
+    setMyCall(null);
+    setCallStreams(new Map());
+  }, [myCall]);
 
   useEffect(() => {
     let cancelled = false;
@@ -165,6 +197,17 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
         setSpace((cur) => (cur ? { ...cur, connectedPeers: event.count } : cur));
         return;
       }
+      if (event.type === 'call.changed') {
+        setCalls((cur) => ({ ...cur, [event.channelId]: event.participants }));
+        if (myCall?.channelId === event.channelId) {
+          callManager.current?.prune(event.participants);
+        }
+        return;
+      }
+      if (event.type === 'rtc.signal') {
+        void callManager.current?.handleSignal(event.from, event.payload);
+        return;
+      }
       if (event.type === 'reaction.changed') {
         if (event.channelId === activeId) {
           setMessages((cur) => applyReaction(cur, event, me.id));
@@ -200,7 +243,7 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
         if (view.kind === 'home') setHomeTick((t) => t + 1);
       }
     },
-    [activeId, me.id, me.blockedUserIds, view],
+    [activeId, me.id, me.blockedUserIds, view, myCall],
   );
   useRealtime(onEvent);
 
@@ -282,6 +325,38 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
 
   const active = channels.find((c) => c.id === activeId) ?? null;
 
+  const slashCommands: SlashCommand[] = [
+    { name: 'campfire', hint: 'Start a voice campfire here', run: () => active && void startCall(active.id, false) },
+    { name: 'video', hint: 'Start a video campfire here', run: () => active && void startCall(active.id, true) },
+    {
+      name: 'status',
+      hint: '/status ☕ deep work — set your status',
+      run: (arg) => {
+        const [emoji, ...rest] = arg.split(/\s+/);
+        void api
+          .patchMe({ statusEmoji: emoji || null, statusText: rest.join(' ') || null })
+          .then((u) => onMeChange({ ...me, ...u }));
+      },
+    },
+    {
+      name: 'theme',
+      hint: `/theme ${THEMES.join('|')}`,
+      run: (arg) => {
+        if ((THEMES as readonly string[]).includes(arg.trim())) {
+          const theme = arg.trim() as Theme;
+          void api.patchMe({ theme }).then(() => onMeChange({ ...me, theme }));
+        }
+      },
+    },
+    { name: 'task', hint: 'Scope a task', run: () => openTask() },
+    { name: 'home', hint: 'Back to your digest', run: () => openHome() },
+    {
+      name: 'archive',
+      hint: 'Archive this channel (stays searchable)',
+      run: () => active && active.type !== 'dm' && void api.setArchived(active.id, true),
+    },
+  ];
+
   const userActions: UserActions = {
     openDm: (userId) => void openDm(userId),
     openProfile,
@@ -301,6 +376,7 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
         homeActive={view.kind === 'home'}
         taskActive={view.kind === 'task'}
         space={space}
+        liveCalls={new Set(Object.keys(calls).filter((id) => (calls[id] ?? []).length > 0))}
         onHome={openHome}
         onTask={openTask}
         onOpenSpace={() => setSpaceOpen(true)}
@@ -334,6 +410,10 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
         <ChannelView
           channel={active}
           messages={messages}
+          callParticipants={calls[active.id] ?? []}
+          inCall={myCall?.channelId === active.id}
+          onStartCall={(withVideo) => void startCall(active.id, withVideo)}
+          commands={slashCommands}
           onOpenThread={setThreadRoot}
           onOpenAsk={() => setAskOpen(true)}
         />
@@ -375,6 +455,32 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
       )}
       {spaceOpen && (
         <SpaceModal space={space} onSpaceChange={setSpace} onClose={() => setSpaceOpen(false)} />
+      )}
+      {myCall && (
+        <CallPanel
+          channelLabel={(() => {
+            const c = channels.find((ch) => ch.id === myCall.channelId);
+            return c ? (c.type === 'dm' ? (c.dmPartnerNames ?? []).join(', ') : `# ${c.name}`) : 'campfire';
+          })()}
+          meId={me.id}
+          meName={me.name}
+          meEmoji={me.avatarEmoji}
+          participants={calls[myCall.channelId] ?? [me.id]}
+          streams={callStreams}
+          localStream={callManager.current?.local ?? null}
+          muted={muted}
+          videoOn={videoOn}
+          withVideo={myCall.withVideo}
+          onToggleMute={() => {
+            callManager.current?.setMuted(!muted);
+            setMuted(!muted);
+          }}
+          onToggleVideo={() => {
+            callManager.current?.setVideoEnabled(!videoOn);
+            setVideoOn(!videoOn);
+          }}
+          onLeave={leaveCall}
+        />
       )}
     </div>
     </UserActionsContext.Provider>

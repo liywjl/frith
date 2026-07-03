@@ -30,6 +30,7 @@ export function Sidebar({
   homeActive,
   taskActive,
   space,
+  liveCalls,
   onHome,
   onTask,
   onOpenSpace,
@@ -45,6 +46,7 @@ export function Sidebar({
   homeActive: boolean;
   taskActive: boolean;
   space: SpaceDto | null;
+  liveCalls: Set<string>;
   onHome: () => void;
   onTask: () => void;
   onOpenSpace: () => void;
@@ -94,6 +96,7 @@ export function Sidebar({
           onClick={() => onSelect(c.id)}
         >
           <span className="side-label"># {c.name}</span>
+          {liveCalls.has(c.id) && <span title="Campfire burning">🔥</span>}
           {c.type === 'private' && <span className="lock" title="Private channel">🔒</span>}
           <Unread count={c.unreadCount} />
         </button>

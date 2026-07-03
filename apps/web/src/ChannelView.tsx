@@ -1,8 +1,10 @@
 import { Fragment, useEffect, useRef } from 'react';
 import type { ChannelDto, MessageDto } from '@app/shared';
 import { api } from './api';
-import { Composer } from './Composer';
+import { Avatar } from './Avatar';
+import { Composer, type SlashCommand } from './Composer';
 import { Message } from './Message';
+import { useUserActions } from './userActions';
 
 const dayFormat = new Intl.DateTimeFormat(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
 
@@ -21,14 +23,23 @@ function isNewDay(prev: MessageDto | undefined, m: MessageDto): boolean {
 export function ChannelView({
   channel,
   messages,
+  callParticipants,
+  inCall,
+  onStartCall,
+  commands,
   onOpenThread,
   onOpenAsk,
 }: {
   channel: ChannelDto;
   messages: MessageDto[];
+  callParticipants: string[];
+  inCall: boolean;
+  onStartCall: (withVideo: boolean) => void;
+  commands: SlashCommand[];
   onOpenThread: (root: MessageDto) => void;
   onOpenAsk: () => void;
 }) {
+  const { getUser } = useUserActions();
   const feedRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -36,13 +47,34 @@ export function ChannelView({
   }, [messages, channel.id]);
 
   const label = channel.type === 'dm' ? channel.dmPartnerNames?.join(', ') : `# ${channel.name}`;
+  const soloPartner =
+    channel.type === 'dm' && (channel.dmPartnerIds ?? []).length === 1
+      ? getUser(channel.dmPartnerIds![0]!)
+      : undefined;
 
   return (
     <main className="main">
       <header className="topbar">
+        {soloPartner && <Avatar name={soloPartner.name} emoji={soloPartner.avatarEmoji} />}
         <span className="chan">{label}</span>
         {channel.archivedAt && <span className="archived-chip">archived</span>}
         {channel.topic && <span className="topic">{channel.topic}</span>}
+        {!channel.archivedAt && !inCall && (
+          callParticipants.length > 0 ? (
+            <button className="campfire-btn live" onClick={() => onStartCall(false)}>
+              🔥 Join · {callParticipants.length}
+            </button>
+          ) : (
+            <span className="campfire-start">
+              <button className="campfire-btn" title="Start a voice campfire" onClick={() => onStartCall(false)}>
+                🔥 🎙
+              </button>
+              <button className="campfire-btn" title="Start a video campfire" onClick={() => onStartCall(true)}>
+                🎥
+              </button>
+            </span>
+          )
+        )}
         <button className="askbtn" onClick={onOpenAsk}>
           <span className="askbtn-hint">Ask Lore — people, threads, decisions…</span>
           <kbd>⌘J</kbd>
@@ -88,7 +120,7 @@ export function ChannelView({
           </button>
         </div>
       ) : (
-        <Composer channelId={channel.id} placeholder={`Message ${label}`} />
+        <Composer channelId={channel.id} placeholder={`Message ${label}`} commands={commands} />
       )}
     </main>
   );

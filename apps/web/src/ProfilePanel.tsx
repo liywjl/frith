@@ -33,7 +33,7 @@ export function ProfilePanel({
 
   return (
     <aside className="profile-panel">
-      <div className="panel-card panel-head">
+      <div className="panel-card panel-head panel-hero">
         <Avatar name={user.name} emoji={user.avatarEmoji} />
         <div className="panel-id">
           <b>

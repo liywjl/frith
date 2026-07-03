@@ -1,3 +1,4 @@
 {
-  "ignorePatterns": ["spikes/**"]
+  "ignorePatterns": ["spikes/**"],
+  "usedClassMembers": ["handleSignal", "prune", "setMuted", "setVideoEnabled", "leave"]
 }
