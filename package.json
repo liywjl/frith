@@ -4,8 +4,6 @@
   "type": "module",
   "scripts": {
     "dev": "pnpm --parallel -r dev",
-    "db:up": "docker compose up -d db && ./scripts/wait-for-db.sh",
-    "db:migrate": "pnpm --filter server db:migrate",
     "seed": "pnpm --filter server seed",
     "typecheck": "pnpm -r typecheck",
     "lint": "eslint .",

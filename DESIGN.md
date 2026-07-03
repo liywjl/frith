@@ -391,10 +391,11 @@ Staged migration, so the product keeps working at every step:
    log for Hypercore per writer + Autobase ordering; Hyperbee for
    profile/channel metadata. A workspace becomes an invite key, not a
    tenant row.
-3. **Port the messaging plane** — channels/threads/DMs/reactions map onto
-   the Autobase log; the React UI (all of apps/web) rides on a new data
-   layer behind the same DTO shapes. Postgres remains the reference
-   implementation and test bed during the port.
+3. **Port the messaging plane — done (2026-07-03).** The entire app now runs
+   on an Autobase log (Corestore persistence, Hyperswarm replication,
+   blind-pairing invites → writers). Postgres, Docker, and the custom
+   signed-frame bridge are deleted; the server materializes state in memory
+   from the linearized ops, and retrieval runs over that state.
 4. **Knowledge plane goes local** — each peer indexes what it can see into
    a local store (SQLite + embeddings on-device). The ACL property becomes
    *physical*: you literally never receive data you weren't granted.

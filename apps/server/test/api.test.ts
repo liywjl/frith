@@ -1,11 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { buildApp } from '../src/app.js';
 import { scheduleMessage } from '../src/store.js';
 import { deliverDueScheduled } from '../src/scheduler.js';
-import { db, sql } from '../src/db/client.js';
-import { channelMembers, channels, messages, users } from '../src/db/schema.js';
+import { space } from '../src/data/space.js';
 
 let app: FastifyInstance;
 
@@ -18,44 +16,39 @@ let privateChannel: string;
 let dmChannel: string;
 
 beforeAll(async () => {
-  await db.execute('truncate table messages, channel_members, channels, users cascade');
-
-  const [a] = await db.insert(users).values({ handle: 'alice', name: 'Alice' }).returning();
-  const [b] = await db.insert(users).values({ handle: 'bob', name: 'Bob' }).returning();
-  const [c] = await db.insert(users).values({ handle: 'carol', name: 'Carol' }).returning();
-  alice = a!.id;
-  bob = b!.id;
-  carol = c!.id;
-
-  const [pub] = await db
-    .insert(channels)
-    .values({ name: 'town-square', type: 'public', topic: null })
-    .returning();
-  const [priv] = await db
-    .insert(channels)
-    .values({ name: 'secret-plans', type: 'private', topic: null })
-    .returning();
-  const [dm] = await db.insert(channels).values({ name: 'dm-a', type: 'dm', topic: null }).returning();
-  publicChannel = pub!.id;
-  privateChannel = priv!.id;
-  dmChannel = dm!.id;
-
-  await db.insert(channelMembers).values([
-    { channelId: privateChannel, userId: alice },
-    { channelId: dmChannel, userId: alice },
-  ]);
-
-  await db.insert(messages).values([
-    { channelId: publicChannel, authorId: alice, body: 'hello world' },
-    { channelId: privateChannel, authorId: alice, body: 'the launch is friday' },
-  ]);
-
   app = await buildApp();
+
+  const user = async (handle: string, name: string) =>
+    (await app.inject({ method: 'POST', url: '/api/dev/user', payload: { handle, name } })).json().id as string;
+  alice = await user('alice', 'Alice');
+  bob = await user('bob', 'Bob');
+  carol = await user('carol', 'Carol');
+
+  const channel = async (name: string, type: string, memberHandles: string[] = []) =>
+    (await app.inject({ method: 'POST', url: '/api/dev/channel', payload: { name, type, memberHandles } })).json()
+      .channelId as string;
+  publicChannel = await channel('town-square', 'public');
+  privateChannel = await channel('secret-plans', 'private', ['alice']);
+  dmChannel = await channel('dm-a', 'dm', ['alice']);
+  void dmChannel;
+
+  await app.inject({
+    method: 'POST',
+    url: `/api/channels/${publicChannel}/messages`,
+    payload: { body: 'hello world' },
+    cookies: { uid: alice },
+  });
+  await app.inject({
+    method: 'POST',
+    url: `/api/channels/${privateChannel}/messages`,
+    payload: { body: 'the launch is friday' },
+    cookies: { uid: alice },
+  });
 });
 
 afterAll(async () => {
   await app.close();
-  await sql.end();
+  await space.close();
 });
 
 function as(userId: string) {
@@ -268,8 +261,12 @@ describe('profiles', () => {
     expect(me.json().statusEmoji).toBe('☕');
     expect(me.json().statusExpiresAt).not.toBeNull();
 
-    // Time-travel: force the expiry into the past.
-    await db.update(users).set({ statusExpiresAt: new Date(Date.now() - 60_000) }).where(eq(users.id, bob));
+    // Time-travel: force the expiry into the past via a direct op.
+    await space.append({
+      t: 'user',
+      id: bob,
+      patch: { handle: 'bob', name: 'Bob', statusExpiresAt: new Date(Date.now() - 60_000).toISOString() },
+    });
 
     const list = await app.inject({ method: 'GET', url: '/api/users', ...as(alice) });
     const bobDto = list.json().find((u: { handle: string }) => u.handle === 'bob');
@@ -464,8 +461,7 @@ describe('attachments', () => {
   }
 
   it('uploads a file as a message and serves it back with the channel ACL', async () => {
-    process.env.LORE_FILES = '/tmp/lore-test-files';
-    const appWithFiles = await buildApp();
+    const appWithFiles = app;
 
     const upload = await appWithFiles.inject({
       method: 'POST',
@@ -485,7 +481,6 @@ describe('attachments', () => {
     // Non-members must not fetch files from private channels.
     const asOutsider = await appWithFiles.inject({ method: 'GET', url: fileUrl, cookies: { uid: bob } });
     expect(asOutsider.statusCode).toBe(403);
-    await appWithFiles.close();
   });
 });
 
@@ -563,29 +558,13 @@ describe('campfires (calls)', () => {
 });
 
 describe('spaces', () => {
-  it('creates a space with an unguessable invite and reads it back', async () => {
-    const created = await app.inject({
-      method: 'POST',
-      url: '/api/space',
-      payload: { name: 'test hq' },
-      ...as(alice),
-    });
-    expect(created.statusCode).toBe(200);
-    expect(created.json().invite).toMatch(/^lore:test%20hq:[0-9a-f]{48}$/);
-
+  it('exposes the current space with a capability invite', async () => {
     const read = await app.inject({ method: 'GET', url: '/api/space', ...as(bob) });
-    expect(read.json().name).toBe('test hq');
+    expect(read.json().invite).toMatch(/^lore:[^:]+:[0-9a-f]{40,}$/);
+    expect(read.json().connectedPeers).toBe(0);
   });
 
-  it('joins from an invite and rejects garbage', async () => {
-    const joined = await app.inject({
-      method: 'POST',
-      url: '/api/space/join',
-      payload: { invite: `lore:elsewhere:${'ab'.repeat(24)}` },
-      ...as(alice),
-    });
-    expect(joined.json().name).toBe('elsewhere');
-
+  it('rejects garbage invites', async () => {
     const bad = await app.inject({
       method: 'POST',
       url: '/api/space/join',

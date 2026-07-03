@@ -5,3 +5,4 @@ dist/
 .DS_Store
 .lore-p2p*/
 .data/
+.lore-data*/

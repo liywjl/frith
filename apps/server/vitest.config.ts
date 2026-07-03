@@ -1,12 +1,16 @@
+import os from 'node:os';
+import path from 'node:path';
 import { defineConfig } from 'vitest/config';
+
+const scratch = path.join(os.tmpdir(), `lore-test-${process.pid}`);
 
 export default defineConfig({
   test: {
-    globalSetup: './test/global-setup.ts',
     fileParallelism: false,
     env: {
       NODE_ENV: 'test',
-      DATABASE_URL: 'postgres://app:app@localhost:5433/app_test',
+      LORE_DATA: path.join(scratch, 'space'),
+      LORE_FILES: path.join(scratch, 'files'),
     },
   },
 });

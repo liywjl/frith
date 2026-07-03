@@ -8,7 +8,6 @@ import { z } from 'zod';
 import { THEMES } from '@app/shared';
 import {
   addAttachment,
-  attachmentKind,
   blockedIds,
   canReadChannel,
   getAttachment,
@@ -21,7 +20,6 @@ import {
   getHome,
   getOrCreateGroup,
   getProfilePage,
-  getSpace,
   getThread,
   getUserByHandle,
   getUserById,
@@ -33,18 +31,21 @@ import {
   parseInvite,
   reorderPins,
   scheduleMessage,
+  createUser,
   setBlocked,
   setPinned,
   setChannelArchived,
-  setSpace,
   toggleReaction,
+  toMessageDto,
   updateProfile,
+  userDtoById,
   visibleChannels,
 } from './store.js';
 import { ask, taskScope } from './ask.js';
 import { publish, register, sendToUser, setOnUserOffline } from './realtime.js';
 import { activeCalls, joinCall, leaveAllCalls, leaveCall } from './calls.js';
-import { broadcastLocalMessage, connectedPeers, startBridge } from './p2p/bridge.js';
+import { space } from './data/space.js';
+import { seedCorpus } from './seed.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -53,6 +54,8 @@ declare module 'fastify' {
 }
 
 const AUTH_COOKIE = 'uid';
+
+let fanoutWired = false;
 
 /** ACL guard: 403s and returns false if the user may not read the channel. */
 async function requireChannelAccess(
@@ -66,6 +69,44 @@ async function requireChannelAccess(
 }
 
 export async function buildApp() {
+  if (!space.isOpen) await space.open(process.env.LORE_DATA ?? '.lore-data');
+
+  // One fan-out for every applied op — local writes and remote peers' writes
+  // reach connected websocket clients the same way.
+  if (!fanoutWired) {
+    fanoutWired = true;
+    space.onOp((op) => {
+      void (async () => {
+        if (op.t === 'msg') {
+          publish(
+            { type: 'message.created', message: toMessageDto(op.message, '') },
+            await channelAudience(op.message.channelId),
+          );
+        } else if (op.t === 'react') {
+          const message = await getMessage(op.messageId);
+          if (!message) return;
+          publish(
+            {
+              type: 'reaction.changed',
+              channelId: message.channelId,
+              messageId: op.messageId,
+              emoji: op.emoji,
+              userId: op.userId,
+              added: op.on,
+            },
+            await channelAudience(message.channelId),
+          );
+        } else if (op.t === 'user') {
+          const user = userDtoById(op.id);
+          if (user) publish({ type: 'user.updated', user }, 'all');
+        } else if (op.t === 'channel' || op.t === 'archive') {
+          publish({ type: 'channels.changed' }, 'all');
+        }
+      })();
+    });
+    space.onPeers((count) => publish({ type: 'p2p.peers', count }, 'all'));
+  }
+
   const app = Fastify({ logger: process.env.NODE_ENV !== 'test' });
   await app.register(cookie);
   await app.register(websocket);
@@ -85,9 +126,11 @@ export async function buildApp() {
 
   app.get('/api/users', async () => listUsers());
 
-  // Everything below requires auth.
+  // Everything below requires auth. Space config is instance-level, not
+  // user-level: a fresh instance must be able to join a space before any
+  // user exists to log in as.
   app.addHook('preHandler', async (req, reply) => {
-    if (req.url.startsWith('/api/dev/') || req.url === '/api/users') return;
+    if (req.url.startsWith('/api/dev/') || req.url === '/api/users' || req.url.startsWith('/api/space')) return;
     const uid = req.cookies[AUTH_COOKIE];
     const user = uid ? await getUserById(uid) : null;
     if (!user) return reply.code(401).send({ error: 'not logged in' });
@@ -96,10 +139,9 @@ export async function buildApp() {
 
   app.get('/api/me', async (req) => {
     const me = (await getUserById(req.userId))!;
-    const expired = me.statusExpiresAt !== null && me.statusExpiresAt < new Date();
-    const { createdAt: _createdAt, ...profile } = me;
+    const expired = me.statusExpiresAt !== null && new Date(me.statusExpiresAt) < new Date();
     return {
-      ...profile,
+      ...me,
       statusEmoji: expired ? null : me.statusEmoji,
       statusText: expired ? null : me.statusText,
       statusExpiresAt: expired ? null : me.statusExpiresAt,
@@ -107,26 +149,63 @@ export async function buildApp() {
     };
   });
 
-  app.get('/api/space', async () => {
-    const space = await getSpace();
-    return space ? { ...space, connectedPeers: connectedPeers() } : null;
+  const spaceDto = () => ({
+    name: space.name,
+    invite: space.invite(),
+    connectedPeers: space.connectedPeers(),
   });
+
+  app.get('/api/space', async () => spaceDto());
 
   app.post('/api/space', async (req) => {
     const { name } = z.object({ name: z.string().trim().min(1).max(60) }).parse(req.body);
-    const space = await setSpace(name);
-    await startBridge(`space:${space.key}`, process.env.LORE_P2P_DATA ?? '.lore-p2p');
-    return { name: space.name, invite: space.invite, connectedPeers: connectedPeers() };
+    await space.createSpace(name);
+    return spaceDto();
   });
 
   app.post('/api/space/join', async (req, reply) => {
-    const { invite } = z.object({ invite: z.string().max(200) }).parse(req.body);
+    const { invite } = z.object({ invite: z.string().max(400) }).parse(req.body);
     const parsed = parseInvite(invite);
     if (!parsed) return reply.code(400).send({ error: 'that does not look like a Lore invite' });
-    const space = await setSpace(parsed.name, parsed.key);
-    await startBridge(`space:${space.key}`, process.env.LORE_P2P_DATA ?? '.lore-p2p');
-    return { name: space.name, invite: space.invite, connectedPeers: connectedPeers() };
+    try {
+      await space.joinSpace(parsed.name, parsed.inviteHex);
+    } catch (err) {
+      return reply.code(504).send({ error: err instanceof Error ? err.message : 'pairing failed' });
+    }
+    return spaceDto();
   });
+
+  // Dev helpers (local iteration + tests): create users/channels, load the
+  // fictional Acme corpus into the current space.
+  app.post('/api/dev/user', async (req) => {
+    const { handle, name } = z.object({ handle: z.string().min(1), name: z.string().min(1) }).parse(req.body);
+    const user = await createUser(handle, name);
+    return { id: user.id, handle: user.handle, name: user.name };
+  });
+
+  app.post('/api/dev/channel', async (req) => {
+    const input = z
+      .object({
+        name: z.string().min(1),
+        type: z.enum(['public', 'private', 'dm']),
+        memberHandles: z.array(z.string()).default([]),
+      })
+      .parse(req.body);
+    const id = space.newId();
+    await space.append({
+      t: 'channel',
+      channel: { id, name: input.name, type: input.type, topic: null, archivedAt: null },
+    });
+    for (const handle of input.memberHandles) {
+      const user = await getUserByHandle(handle);
+      if (user) await space.append({ t: 'member', channelId: id, userId: user.id });
+    }
+    return { channelId: id };
+  });
+
+  app.post('/api/dev/seed', async () => seedCorpus());
+
+  app.get('/api/dev/debug', async () => space.debug());
 
   app.post('/api/users/:id/block', async (req, reply) => {
     const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
@@ -155,9 +234,7 @@ export async function buildApp() {
         theme: z.enum(THEMES).optional(),
       })
       .parse(req.body);
-    const user = await updateProfile(req.userId, patch);
-    publish({ type: 'user.updated', user }, 'all');
-    return user;
+    return updateProfile(req.userId, patch);
   });
 
   app.get('/api/home', async (req) => getHome(req.userId));
@@ -184,7 +261,6 @@ export async function buildApp() {
     const result = await createChannel(req.userId, input);
     if (result === 'invalid-name') return reply.code(400).send({ error: 'channel name is invalid' });
     if (result === 'name-taken') return reply.code(409).send({ error: 'a channel with that name already exists' });
-    publish({ type: 'channels.changed' }, 'all');
     return { channelId: result.id };
   });
 
@@ -196,7 +272,6 @@ export async function buildApp() {
       if (channel.type === 'dm') return reply.code(400).send({ error: 'conversations cannot be archived' });
       if (!(await requireChannelAccess(req, reply, id))) return reply;
       await setChannelArchived(id, action === 'archive');
-      publish({ type: 'channels.changed' }, 'all');
       return { ok: true };
     });
   }
@@ -217,18 +292,13 @@ export async function buildApp() {
     if (channel?.archivedAt) {
       return reply.code(409).send({ error: 'this channel is archived' });
     }
-    const message = await createMessage({
+    // The op fan-out (below) delivers the websocket event to everyone.
+    return createMessage({
       channelId: id,
       authorId: req.userId,
       body: body.body,
       parentMessageId: body.parentMessageId ?? null,
     });
-    publish({ type: 'message.created', message }, await channelAudience(id));
-    if (channel) {
-      const author = await getUserById(req.userId);
-      if (author) broadcastLocalMessage(message, channel, author);
-    }
-    return message;
   });
 
   app.post('/api/channels/:id/read', async (req, reply) => {
@@ -281,10 +351,6 @@ export async function buildApp() {
     if (!message) return reply.code(404).send({ error: 'no such message' });
     if (!(await requireChannelAccess(req, reply, message.channelId))) return reply;
     const added = await toggleReaction(req.userId, id, emoji);
-    publish(
-      { type: 'reaction.changed', channelId: message.channelId, messageId: id, emoji, userId: req.userId, added },
-      await channelAudience(message.channelId),
-    );
     return { added };
   });
 
@@ -311,18 +377,12 @@ export async function buildApp() {
     const caption = (fields.caption?.value ?? '').slice(0, 10_000);
     const parentMessageId = fields.parentMessageId?.value || null;
 
-    const message = await createMessage({ channelId: id, authorId: req.userId, body: caption, parentMessageId });
-    const attachment = await addAttachment(message.id, part.filename || 'file', part.mimetype, 0);
+    // Attachment op lands before the message op so the fan-out sees a
+    // complete message; the file is on disk before either.
+    const messageId = space.newId();
+    const attachment = await addAttachment(messageId, part.filename || 'file', part.mimetype, 0);
     await fs.promises.writeFile(path.join(filesDir, attachment.id), await part.toBuffer());
-
-    const withAttachment = {
-      ...message,
-      attachments: [
-        { id: attachment.id, kind: attachmentKind(attachment.mime), name: attachment.name, url: `/api/files/${attachment.id}` },
-      ],
-    };
-    publish({ type: 'message.created', message: withAttachment }, await channelAudience(id));
-    return withAttachment;
+    return createMessage({ id: messageId, channelId: id, authorId: req.userId, body: caption, parentMessageId });
   });
 
   // Files inherit the ACL of the message they're attached to.

@@ -8,14 +8,13 @@ for the target UI.
 
 ## Quickstart
 
-Requires Node ≥ 22, pnpm, and Docker.
+Requires Node ≥ 22 and pnpm. No database, no Docker — the datastore is a
+peer-to-peer Autobase log under `.lore-data/`.
 
 ```sh
 pnpm install
-pnpm db:up        # start Postgres (docker compose) and wait for it
-pnpm db:migrate   # apply schema migrations
-pnpm seed         # load the fictional Acme corpus
 pnpm dev          # API on :3001, web on :5173
+pnpm seed         # load the fictional Acme corpus (server must be running)
 ```
 
 Open http://localhost:5173 and pick a user (dev auth — no passwords locally).
@@ -33,21 +32,25 @@ around.
 
 ## Two instances, peer-to-peer
 
-Run the full app twice on one machine and let public channels sync over
-Hyperswarm (no server between them — messages are signed and verified):
+The app is peer-to-peer end to end: every workspace ("space") is an
+[Autobase](https://docs.pears.com) — a multi-writer log replicated over
+Hyperswarm, with [blind-pairing](https://github.com/holepunchto/blind-pairing)
+turning invites into writers. Run it twice on one machine:
 
 ```sh
 # terminal 1 — instance A on :5173
-LORE_P2P_ROOM=demo pnpm dev
+pnpm dev
 
-# terminal 2 — instance B on :5174 (own database, own P2P identity)
-LORE_P2P_ROOM=demo pnpm dev:peer
+# terminal 2 — instance B on :5174 (own space data under .lore-data-peer/)
+pnpm dev:peer
 ```
 
-Give the DHT ~10–30s to connect (watch for `[p2p] peer connected` in the
-server logs; starting the instances a few seconds apart helps). Log in as
-different people and chat across instances. v0 scope: public channels only,
-live messages only — DMs and private channels never leave an instance.
+Copy the 🛰 invite from instance A and paste it into instance B's
+"Join a space" — the entire workspace (people, channels, history) syncs
+peer-to-peer, and everything after that is live in both directions.
+Current limitation: an instance holding the pairing credentials (the space's
+founder, for now) must be online to admit a *new* member; already-joined
+members sync with each other regardless.
 
 ## Quality gates
 
@@ -55,7 +58,7 @@ live messages only — DMs and private channels never leave an instance.
 pnpm check   # typecheck + lint + tests + dead-code analysis (fallow)
 ```
 
-Tests run against a real Postgres (`app_test` database, auto-created) because
-the ACL logic lives in SQL — the ACL suite in `apps/server/test/api.test.ts`
-asserts a user can never read content from channels they can't access. Keep it
-green; everything else is negotiable.
+Tests run against a real (scratch-dir) Autobase space. The ACL suite in
+`apps/server/test/api.test.ts` asserts a user can never read content from
+channels they can't access — search and files included. Keep it green;
+everything else is negotiable.
