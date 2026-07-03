@@ -446,6 +446,47 @@ describe('channel lifecycle', () => {
   });
 });
 
+describe('connect suggestions', () => {
+  it('suggests people and groups from shared interests', async () => {
+    const setInterests = (uid: string, interests: string[]) =>
+      app.inject({ method: 'PATCH', url: '/api/me', payload: { interests }, ...as(uid) });
+    await setInterests(alice, ['Dogs', 'chess']);
+    await setInterests(bob, ['dogs', 'running']);
+    await setInterests(carol, ['dogs']);
+
+    const res = await app.inject({ method: 'GET', url: '/api/connect', ...as(alice) });
+    const body = res.json();
+
+    const names = body.people.map((p: { user: { name: string } }) => p.user.name);
+    expect(names).toContain('Bob');
+    expect(names).toContain('Carol');
+    // case-insensitive matching: Alice's "Dogs" matches bob's "dogs"
+    expect(body.people[0].sharedInterests.map((i: string) => i.toLowerCase())).toContain('dogs');
+
+    expect(body.groups).toHaveLength(1);
+    expect(body.groups[0].interest.toLowerCase()).toBe('dogs');
+    expect(body.groups[0].members).toHaveLength(2);
+    expect(body.groups[0].existingChannelId).toBeNull();
+  });
+
+  it('suggests opening an existing channel named after the interest', async () => {
+    await app.inject({
+      method: 'POST',
+      url: '/api/channels',
+      payload: { name: 'dogs', type: 'public' },
+      ...as(bob),
+    });
+    const res = await app.inject({ method: 'GET', url: '/api/connect', ...as(alice) });
+    expect(res.json().groups[0].existingChannelId).not.toBeNull();
+  });
+
+  it('suggests nothing to someone who shared no interests', async () => {
+    await app.inject({ method: 'PATCH', url: '/api/me', payload: { interests: [] }, ...as(carol) });
+    const res = await app.inject({ method: 'GET', url: '/api/connect', ...as(carol) });
+    expect(res.json()).toEqual({ people: [], groups: [] });
+  });
+});
+
 describe('task scoping', () => {
   it('scopes requirements into people, discussions, and artifacts', async () => {
     await app.inject({

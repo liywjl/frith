@@ -44,6 +44,8 @@ export function ProfileModal({
     avatarEmoji: me.avatarEmoji ?? '',
     statusEmoji: me.statusEmoji ?? '',
     statusText: me.statusText ?? '',
+    interests: me.interests.join(', '),
+    nowPlaying: me.nowPlaying ?? '',
     theme: me.theme,
   });
   const [statusMinutes, setStatusMinutes] = useState<number | null>(null);
@@ -64,6 +66,12 @@ export function ProfileModal({
         statusEmoji: form.statusEmoji || null,
         statusText: form.statusText || null,
         statusExpiresInMinutes: hasStatus ? statusMinutes : null,
+        interests: form.interests
+          .split(',')
+          .map((i) => i.trim())
+          .filter(Boolean)
+          .slice(0, 12),
+        nowPlaying: form.nowPlaying || null,
         theme: form.theme,
       });
       onSaved({
@@ -153,6 +161,23 @@ export function ProfileModal({
         {expiryLabel(me.statusExpiresAt) && (
           <div className="status-expiry-hint">Current status {expiryLabel(me.statusExpiresAt)}</div>
         )}
+
+        <label className="field">
+          <span>Into (comma-separated — shared with everyone, used to suggest connections)</span>
+          <input
+            value={form.interests}
+            placeholder="e.g. dogs, rollerblading, synthwave"
+            onChange={(e) => set('interests')(e.target.value)}
+          />
+        </label>
+        <label className="field">
+          <span>Currently enjoying 🎧</span>
+          <input
+            value={form.nowPlaying}
+            placeholder="music, a series, a film, a rabbit hole…"
+            onChange={(e) => set('nowPlaying')(e.target.value)}
+          />
+        </label>
 
         <div className="field">
           <span>Theme</span>

@@ -290,6 +290,7 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
           onOpenChannel={openChannel}
           onOpenThread={openThread}
           onOpenAsk={() => setAskOpen(true)}
+          onStartGroup={(userIds) => void api.createGroup(userIds).then(({ channelId }) => onGroupCreated(channelId))}
         />
       )}
       {view.kind === 'profile' && (

@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, gt, inArray, isNull, isNotNull, ne, or, sql as raw } from 'drizzle-orm';
 import type {
   ChannelDto,
+  ConnectDto,
   HomeDto,
   MessageDto,
   ProfilePageDto,
@@ -323,6 +324,8 @@ const userColumns = {
   avatarEmoji: users.avatarEmoji,
   statusEmoji: raw<string | null>`case when ${statusExpired} then null else ${users.statusEmoji} end`,
   statusText: raw<string | null>`case when ${statusExpired} then null else ${users.statusText} end`,
+  interests: users.interests,
+  nowPlaying: users.nowPlaying,
 };
 
 export async function listUsers(): Promise<UserDto[]> {
@@ -331,15 +334,14 @@ export async function listUsers(): Promise<UserDto[]> {
 
 export async function updateProfile(userId: string, patch: ProfilePatch): Promise<UserDto> {
   const { statusExpiresInMinutes, ...fields } = patch;
-  const [row] = await db
-    .update(users)
-    .set({
-      ...fields,
-      statusExpiresAt:
-        statusExpiresInMinutes == null ? null : new Date(Date.now() + statusExpiresInMinutes * 60_000),
-    })
-    .where(eq(users.id, userId))
-    .returning(userColumns);
+  const set: Record<string, unknown> = { ...fields };
+  // Only touch the expiry when the caller explicitly set/cleared the timer —
+  // an unrelated patch must not silently cancel a running status timer.
+  if (statusExpiresInMinutes !== undefined) {
+    set.statusExpiresAt =
+      statusExpiresInMinutes === null ? null : new Date(Date.now() + statusExpiresInMinutes * 60_000);
+  }
+  const [row] = await db.update(users).set(set).where(eq(users.id, userId)).returning(userColumns);
   if (!row) throw new Error('no such user');
   return row;
 }
@@ -483,6 +485,45 @@ export async function getProfilePage(viewerId: string, targetId: string): Promis
     artifacts: extractArtifacts(bodies, 6),
     recent: recentRows.map(dto),
   };
+}
+
+/**
+ * The social matcher, v0: deterministic interest overlap. People who share
+ * your interests, and interests where enough of you overlap that a group
+ * is worth starting. An embedding model later upgrades matching from exact
+ * tags to "vinyl ≈ record collecting" — the response shape stays the same.
+ */
+export async function connectSuggestions(userId: string): Promise<ConnectDto> {
+  const all = await listUsers();
+  const me = all.find((u) => u.id === userId);
+  if (!me || me.interests.length === 0) return { people: [], groups: [] };
+
+  const mine = new Map(me.interests.map((i) => [i.toLowerCase(), i]));
+  const others = all.filter((u) => u.id !== userId);
+
+  const people = others
+    .map((u) => ({
+      user: u,
+      sharedInterests: u.interests.filter((i) => mine.has(i.toLowerCase())),
+    }))
+    .filter((p) => p.sharedInterests.length > 0)
+    .sort((a, b) => b.sharedInterests.length - a.sharedInterests.length)
+    .slice(0, 5);
+
+  const groups = [];
+  for (const [key, label] of mine) {
+    const members = others.filter((u) => u.interests.some((i) => i.toLowerCase() === key));
+    if (members.length < 2) continue; // a "group" of you and one other is just a DM
+    const slug = key.replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    const [existing] = await db
+      .select({ id: channels.id })
+      .from(channels)
+      .where(and(eq(channels.name, slug), ne(channels.type, 'dm'), isNull(channels.archivedAt)));
+    groups.push({ interest: label, members, existingChannelId: existing?.id ?? null });
+  }
+  groups.sort((a, b) => b.members.length - a.members.length);
+
+  return { people, groups: groups.slice(0, 4) };
 }
 
 /** The Home digest: unread conversations and live threads you're part of. */

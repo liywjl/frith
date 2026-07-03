@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
-import type { HomeDto, UserDto } from '@app/shared';
+import type { ConnectDto, HomeDto, UserDto } from '@app/shared';
 import { api } from './api';
+import { Avatar } from './Avatar';
 import { ThreadCard } from './ThreadCard';
+import { UserHover } from './UserHover';
+import { useUserActions } from './userActions';
 
 const timeFormat = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
@@ -22,6 +25,7 @@ export function HomeView({
   onOpenChannel,
   onOpenThread,
   onOpenAsk,
+  onStartGroup,
 }: {
   me: UserDto;
   /** Bumped by the app when new activity arrives, to refetch the digest. */
@@ -29,12 +33,19 @@ export function HomeView({
   onOpenChannel: (channelId: string) => void;
   onOpenThread: (rootId: string, channelId: string) => void;
   onOpenAsk: () => void;
+  onStartGroup: (userIds: string[]) => void;
 }) {
+  const { openDm } = useUserActions();
   const [home, setHome] = useState<HomeDto | null>(null);
+  const [connect, setConnect] = useState<ConnectDto | null>(null);
 
   useEffect(() => {
     api.home().then(setHome).catch(console.error);
   }, [refreshTick]);
+
+  useEffect(() => {
+    api.connect().then(setConnect).catch(console.error);
+  }, []);
 
   if (!home) return <main className="main home" />;
   const caughtUp = home.unread.length === 0 && home.threads.length === 0;
@@ -111,6 +122,55 @@ export function HomeView({
                 </span>
               </ThreadCard>
             ))}
+          </section>
+        )}
+
+        {connect && (connect.people.length > 0 || connect.groups.length > 0) && (
+          <section>
+            <div className="home-h">Find your people</div>
+            {connect.groups.map((g) => (
+              <div key={g.interest} className="home-card connect-card">
+                <span className="home-card-top">
+                  <b>{g.members.length + 1} of you are into {g.interest}</b>
+                  <button
+                    className="btn primary"
+                    onClick={() =>
+                      g.existingChannelId
+                        ? onOpenChannel(g.existingChannelId)
+                        : onStartGroup(g.members.map((m) => m.id))
+                    }
+                  >
+                    {g.existingChannelId ? `Open # ${g.interest}` : 'Start a group chat'}
+                  </button>
+                </span>
+                <span className="connect-members">
+                  {g.members.map((m) => (
+                    <UserHover key={m.id} userId={m.id} name={m.name}>
+                      <button className="connect-member" onClick={() => openDm(m.id)}>
+                        <Avatar name={m.name} emoji={m.avatarEmoji} />
+                        {m.name.split(' ')[0]}
+                      </button>
+                    </UserHover>
+                  ))}
+                </span>
+              </div>
+            ))}
+            {connect.people.length > 0 && (
+              <div className="connect-people">
+                {connect.people.map((p) => (
+                  <UserHover key={p.user.id} userId={p.user.id} name={p.user.name}>
+                    <button className="connect-person" onClick={() => openDm(p.user.id)}>
+                      <Avatar name={p.user.name} emoji={p.user.avatarEmoji} />
+                      <span>
+                        <b>{p.user.name}</b>
+                        <small>also into {p.sharedInterests.join(', ')}</small>
+                      </span>
+                    </button>
+                  </UserHover>
+                ))}
+              </div>
+            )}
+            <p className="profile-privacy">Suggestions come from the interests people chose to share on their profiles.</p>
           </section>
         )}
       </div>

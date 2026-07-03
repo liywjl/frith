@@ -12,6 +12,8 @@ interface Corpus {
     avatarEmoji?: string | null;
     statusEmoji?: string | null;
     statusText?: string | null;
+    interests?: string[];
+    nowPlaying?: string | null;
   }[];
   channels: {
     name: string;

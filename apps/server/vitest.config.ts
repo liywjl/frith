@@ -6,7 +6,7 @@ export default defineConfig({
     fileParallelism: false,
     env: {
       NODE_ENV: 'test',
-      DATABASE_URL: 'postgres://app:app@localhost:5432/app_test',
+      DATABASE_URL: 'postgres://app:app@localhost:5433/app_test',
     },
   },
 });

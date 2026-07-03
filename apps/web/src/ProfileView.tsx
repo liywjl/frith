@@ -71,6 +71,24 @@ export function ProfileView({
           )}
         </header>
 
+        {(user.nowPlaying || user.interests.length > 0) && (
+          <section className="beyond-work">
+            {user.nowPlaying && <div className="now-playing">🎧 {user.nowPlaying}</div>}
+            {user.interests.length > 0 && (
+              <div className="profile-chips">
+                {user.interests.map((i) => (
+                  <span key={i} className="interest-chip">
+                    {i}
+                    {me.id !== user.id && me.interests.some((m) => m.toLowerCase() === i.toLowerCase()) && (
+                      <small title="You're into this too"> · you too</small>
+                    )}
+                  </span>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
         <section className="profile-stats">
           <div>
             <b>{stats.messages}</b>

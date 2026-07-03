@@ -1,0 +1,19 @@
+{
+  "name": "lore-pear-spike",
+  "private": true,
+  "version": "0.0.1",
+  "description": "P2P chat spike for Lore: Electron shell + Hyperswarm (Pears stack) worker",
+  "main": "electron/main.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "electron .",
+    "smoke": "node scripts/smoke.mjs"
+  },
+  "dependencies": {
+    "b4a": "^1.6.4",
+    "hyperswarm": "^4.8.0"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0"
+  }
+}

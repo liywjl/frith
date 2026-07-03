@@ -1,17 +1,17 @@
 {
   "users": [
-    { "handle": "priya", "name": "Priya Sharma", "title": "Staff Engineer", "team": "Payments", "avatarEmoji": "🦉", "statusEmoji": "📝", "statusText": "updating the RFC" },
-    { "handle": "marco", "name": "Marco Ruiz", "title": "Senior Engineer", "team": "Payments", "avatarEmoji": "🌮", "statusEmoji": "☕", "statusText": "deep work til 3" },
-    { "handle": "amara", "name": "Amara Diallo", "title": "Site Reliability Engineer", "team": "Infrastructure", "avatarEmoji": "🛰️", "statusEmoji": "🔥", "statusText": "on call" },
-    { "handle": "jonas", "name": "Jonas Weber", "title": "Product Designer", "team": "Design", "avatarEmoji": "🎨", "statusEmoji": null, "statusText": null },
-    { "handle": "sofia", "name": "Sofia Lindqvist", "title": "Engineering Manager", "team": "Payments", "avatarEmoji": "🌱", "statusEmoji": "📅", "statusText": "in meetings" },
-    { "handle": "tomas", "name": "Tomas Novak", "title": "Software Engineer", "team": "Payments", "avatarEmoji": "🧭", "statusEmoji": "👋", "statusText": "new here!" },
-    { "handle": "elena", "name": "Elena Petrova", "title": "Data Scientist", "team": "Data", "avatarEmoji": "📊", "statusEmoji": null, "statusText": null },
-    { "handle": "kwame", "name": "Kwame Mensah", "title": "Backend Engineer", "team": "Payments", "avatarEmoji": "⚡", "statusEmoji": "🎧", "statusText": "focus mode" },
-    { "handle": "ingrid", "name": "Ingrid Johansson", "title": "Legal Counsel", "team": "Legal", "avatarEmoji": "⚖️", "statusEmoji": null, "statusText": null },
-    { "handle": "yuki", "name": "Yuki Tanaka", "title": "Mobile Engineer", "team": "Product", "avatarEmoji": "🌸", "statusEmoji": "🏔️", "statusText": "hiking Friday" },
-    { "handle": "omar", "name": "Omar Haddad", "title": "Support Lead", "team": "Support", "avatarEmoji": "🎯", "statusEmoji": null, "statusText": null },
-    { "handle": "chloe", "name": "Chloe Martin", "title": "Product Manager", "team": "Product", "avatarEmoji": "🧩", "statusEmoji": "✈️", "statusText": "offsite next week" }
+    { "handle": "priya", "name": "Priya Sharma", "title": "Staff Engineer", "team": "Payments", "avatarEmoji": "🦉", "statusEmoji": "📝", "statusText": "updating the RFC", "interests": ["dogs", "gravel biking", "sourdough"], "nowPlaying": "Severance, season 2" },
+    { "handle": "marco", "name": "Marco Ruiz", "title": "Senior Engineer", "team": "Payments", "avatarEmoji": "🌮", "statusEmoji": "☕", "statusText": "deep work til 3", "interests": ["rollerblading", "synthwave", "cooking"], "nowPlaying": "Blade Runner OST on loop" },
+    { "handle": "amara", "name": "Amara Diallo", "title": "Site Reliability Engineer", "team": "Infrastructure", "avatarEmoji": "🛰️", "statusEmoji": "🔥", "statusText": "on call", "interests": ["hiking", "climbing", "synthwave"], "nowPlaying": "Andor" },
+    { "handle": "jonas", "name": "Jonas Weber", "title": "Product Designer", "team": "Design", "avatarEmoji": "🎨", "statusEmoji": null, "statusText": null, "interests": ["film photography", "dogs", "vinyl"], "nowPlaying": "In Rainbows, again" },
+    { "handle": "sofia", "name": "Sofia Lindqvist", "title": "Engineering Manager", "team": "Payments", "avatarEmoji": "🌱", "statusEmoji": "📅", "statusText": "in meetings", "interests": ["sailing", "board games"], "nowPlaying": "The Bear, season 3" },
+    { "handle": "tomas", "name": "Tomas Novak", "title": "Software Engineer", "team": "Payments", "avatarEmoji": "🧭", "statusEmoji": "👋", "statusText": "new here!", "interests": ["rollerblading", "board games", "dogs"], "nowPlaying": "learning-Rust playlists" },
+    { "handle": "elena", "name": "Elena Petrova", "title": "Data Scientist", "team": "Data", "avatarEmoji": "📊", "statusEmoji": null, "statusText": null, "interests": ["rollerblading", "chess", "hiking"], "nowPlaying": "lofi focus mix" },
+    { "handle": "kwame", "name": "Kwame Mensah", "title": "Backend Engineer", "team": "Payments", "avatarEmoji": "⚡", "statusEmoji": "🎧", "statusText": "focus mode", "interests": ["basketball", "synthwave", "cooking"], "nowPlaying": "Dune: Part Two" },
+    { "handle": "ingrid", "name": "Ingrid Johansson", "title": "Legal Counsel", "team": "Legal", "avatarEmoji": "⚖️", "statusEmoji": null, "statusText": null, "interests": ["dogs", "gardening", "true crime podcasts"], "nowPlaying": "Serial rewatch" },
+    { "handle": "yuki", "name": "Yuki Tanaka", "title": "Mobile Engineer", "team": "Product", "avatarEmoji": "🌸", "statusEmoji": "🏔️", "statusText": "hiking Friday", "interests": ["hiking", "film photography", "climbing"], "nowPlaying": "Studio Ghibli marathon" },
+    { "handle": "omar", "name": "Omar Haddad", "title": "Support Lead", "team": "Support", "avatarEmoji": "🎯", "statusEmoji": null, "statusText": null, "interests": ["dogs", "basketball", "grilling"], "nowPlaying": "F1 highlights" },
+    { "handle": "chloe", "name": "Chloe Martin", "title": "Product Manager", "team": "Product", "avatarEmoji": "🧩", "statusEmoji": "✈️", "statusText": "offsite next week", "interests": ["board games", "sailing", "chess"], "nowPlaying": "Wingspan strategy videos" }
   ],
   "channels": [
     { "name": "general", "type": "public", "topic": "Company-wide announcements and chatter" },

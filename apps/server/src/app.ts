@@ -6,6 +6,7 @@ import { THEMES } from '@app/shared';
 import {
   canReadChannel,
   channelAudience,
+  connectSuggestions,
   createChannel,
   createMessage,
   getChannel,
@@ -95,6 +96,8 @@ export async function buildApp() {
         statusEmoji: trimmed(16),
         statusText: trimmed(120),
         statusExpiresInMinutes: z.number().int().min(1).max(10_080).nullable().optional(),
+        interests: z.array(z.string().trim().min(1).max(40)).max(12).optional(),
+        nowPlaying: trimmed(120),
         theme: z.enum(THEMES).optional(),
       })
       .parse(req.body);
@@ -104,6 +107,8 @@ export async function buildApp() {
   });
 
   app.get('/api/home', async (req) => getHome(req.userId));
+
+  app.get('/api/connect', async (req) => connectSuggestions(req.userId));
 
   app.get('/api/users/:id/profile', async (req, reply) => {
     const { id } = z.object({ id: z.string().uuid() }).parse(req.params);

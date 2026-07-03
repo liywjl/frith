@@ -1,6 +1,6 @@
 # AI-Native Team Communication Platform — Design Document
 
-Status: draft v0.2 (2026-07-02)
+Status: draft v0.3 (2026-07-03) — v0.3 adds §14 (P2P pivot) and §15 (social layer)
 Working name: Lore
 
 ## 1. The core idea
@@ -370,3 +370,52 @@ worse" a test failure instead of a vibe.
    transcription
 7. **Connectors + sovereignty hardening**: GitHub, docs source; provider
    matrix, self-host packaging, audit/governance surfaces
+
+## 14. Direction change: peer-to-peer on the Pears stack
+
+Decision (2026-07-03): Lore's desktop future is **peer-to-peer**, built on the
+Pears stack (Hyperswarm for discovery + e2e-encrypted transport; Hypercore/
+Autobase for append-only, multi-writer logs). This is the sovereignty
+principle taken to its logical end: there is no server to trust because there
+is no server — every peer holds the data, and the AI runs on-device (§9's
+Electron shell now becomes the *primary* target, not a wrapper phase).
+
+Staged migration, so the product keeps working at every step:
+
+1. **Spike (done)** — `spikes/pear-chat`: Electron + Hyperswarm chat;
+   headless smoke test proves peers meet over the DHT and exchange messages
+   with no server (`npm run smoke`).
+2. **Persistence** — Hypercore per writer, Autobase to merge writers into a
+   channel's ordered log; Hyperbee for profile/channel metadata. History
+   syncs peer-to-peer; a workspace is an invite key, not a tenant row.
+3. **Port the messaging plane** — channels/threads/DMs/reactions map onto
+   the Autobase log; the React UI (all of apps/web) rides on a new data
+   layer behind the same DTO shapes. Postgres remains the reference
+   implementation and test bed during the port.
+4. **Knowledge plane goes local** — each peer indexes what it can see into
+   a local store (SQLite + embeddings on-device). The ACL property becomes
+   *physical*: you literally never receive data you weren't granted.
+   Blind-ish helper peers (always-on seeders) are config, not architecture.
+
+Open questions: identity/keys per user (device key pairs + profile signing),
+read-state sync across own devices, and how far Autobase ordering gets us
+before we need explicit causal metadata.
+
+## 15. The social layer
+
+Work chat that knows *who people are*, not just what they typed. Profiles
+gain a fun side — both entirely opt-in and public-by-choice:
+
+- **Into** — interest tags ("dogs", "rollerblading", whatever)
+- **Currently enjoying** — the music / series / rabbit hole of the week
+
+On top of that, the **social matcher**: "find your people" on Home suggests
+people who share your interests and — when ≥3 of you overlap — proposes
+starting a group chat (or joining the existing #interest channel). v0 is
+deterministic tag overlap; the embedding model later upgrades matching to
+semantic ("vinyl" ≈ "record collecting"). Principles:
+
+- Suggestions only ever draw on what people chose to put on their profile.
+- The matcher proposes, never auto-creates. No engagement-bait mechanics.
+- Same trust posture as everything else: the suggestion UI says why
+  ("3 of you are into rollerblading") — evidence, not vibes.

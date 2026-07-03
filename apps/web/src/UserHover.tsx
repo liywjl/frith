@@ -61,6 +61,7 @@ export function UserHover({ userId, name, children }: { userId: string; name: st
               </span>
             </div>
           </div>
+          {user?.nowPlaying && <div className="hovercard-now">🎧 {user.nowPlaying}</div>}
           <div className="hovercard-actions">
             <button
               className="btn primary"

@@ -1,6 +1,7 @@
 import type {
   AskResponse,
   ChannelDto,
+  ConnectDto,
   HomeDto,
   MeDto,
   MessageDto,
@@ -27,6 +28,7 @@ export const api = {
     request<UserDto>('/api/me', { method: 'PATCH', body: JSON.stringify(patch) }),
   users: () => request<UserDto[]>('/api/users'),
   home: () => request<HomeDto>('/api/home'),
+  connect: () => request<ConnectDto>('/api/connect'),
   profile: (userId: string) => request<ProfilePageDto>(`/api/users/${userId}/profile`),
   login: (handle: string) =>
     request<UserDto>('/api/dev/login', { method: 'POST', body: JSON.stringify({ handle }) }),

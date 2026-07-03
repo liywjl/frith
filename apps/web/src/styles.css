@@ -501,3 +501,36 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
 /* engagement chips */
 .home-engagement { display: flex; gap: 10px; color: var(--ink-soft); font-size: 12.5px; }
 .home-engagement span { white-space: nowrap; }
+
+/* social: interests, now playing, connect */
+.beyond-work { display: flex; flex-direction: column; gap: 10px; margin-bottom: 22px; }
+.now-playing { font-size: 14px; color: var(--ink-soft); }
+.interest-chip {
+  display: inline-flex; align-items: baseline; gap: 2px;
+  border: 1px solid var(--ai); color: var(--ai); background: var(--ai-soft);
+  border-radius: 99px; padding: 4px 13px; font-size: 13px;
+}
+.interest-chip small { color: var(--ink-soft); font-size: 11px; }
+.hovercard-now {
+  color: var(--ink-soft); font-size: 12.5px; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap;
+}
+.connect-card { gap: 10px; }
+.connect-card .btn { padding: 5px 13px; font-size: 13px; }
+.connect-members { display: flex; gap: 6px; flex-wrap: wrap; }
+.connect-member {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 13px;
+  border: 1px solid var(--line); border-radius: 99px; padding: 3px 11px 3px 4px;
+}
+.connect-member:hover { border-color: var(--ai); }
+.connect-member .avatar { width: 22px; height: 22px; border-radius: 6px; font-size: 12px; }
+.connect-member .avatar.emoji { font-size: 13px; }
+.connect-people { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.connect-person {
+  display: flex; align-items: center; gap: 10px; text-align: left; width: 100%;
+  border: 1px solid var(--line); border-radius: 10px; background: var(--card); padding: 9px 11px;
+}
+.connect-person:hover { border-color: var(--ai); }
+.connect-person span { display: flex; flex-direction: column; min-width: 0; }
+.connect-person b { font-size: 13.5px; }
+.connect-person small { color: var(--ink-soft); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

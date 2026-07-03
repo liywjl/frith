@@ -16,6 +16,8 @@ interface Hit {
   author_avatar_emoji: string | null;
   author_status_emoji: string | null;
   author_status_text: string | null;
+  author_interests: string[];
+  author_now_playing: string | null;
   parent_message_id: string | null;
   body: string;
   created_at: Date;
@@ -56,6 +58,7 @@ async function retrieve(
              m.author_id, u.handle as author_handle, u.name as author_name,
              u.title as author_title, u.team as author_team, u.avatar_emoji as author_avatar_emoji,
              u.status_emoji as author_status_emoji, u.status_text as author_status_text,
+             u.interests as author_interests, u.now_playing as author_now_playing,
              m.parent_message_id, m.body, m.created_at,
              ts_rank(m.search, q)::float as rank,
              ts_headline('english', m.body, q,
@@ -96,6 +99,8 @@ async function retrieve(
           avatarEmoji: h.author_avatar_emoji,
           statusEmoji: h.author_status_emoji,
           statusText: h.author_status_text,
+          interests: h.author_interests,
+          nowPlaying: h.author_now_playing,
         },
         score: 0,
         evidence: [],

@@ -12,6 +12,10 @@ export interface UserDto {
   avatarEmoji: string | null;
   statusEmoji: string | null;
   statusText: string | null;
+  /** The fun side: things this person chose to share. */
+  interests: string[];
+  /** What they're currently listening to / watching / into. */
+  nowPlaying: string | null;
 }
 
 /** The signed-in user: profile plus personal settings. */
@@ -30,7 +34,28 @@ export interface ProfilePatch {
   statusText?: string | null;
   /** Minutes until the status clears itself; null/omitted = keep until changed. */
   statusExpiresInMinutes?: number | null;
+  interests?: string[];
+  nowPlaying?: string | null;
   theme?: Theme;
+}
+
+/** A person you might connect with, and why. */
+export interface PeopleSuggestion {
+  user: UserDto;
+  sharedInterests: string[];
+}
+
+/** Enough people share an interest that a group might be worth starting. */
+export interface GroupSuggestion {
+  interest: string;
+  members: UserDto[];
+  /** An existing non-archived channel already named after the interest. */
+  existingChannelId: string | null;
+}
+
+export interface ConnectDto {
+  people: PeopleSuggestion[];
+  groups: GroupSuggestion[];
 }
 
 export interface ChannelDto {

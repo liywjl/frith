@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, pgEnum, primaryKey, index } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, timestamp, pgEnum, primaryKey, index, jsonb } from 'drizzle-orm/pg-core';
 
 export const channelType = pgEnum('channel_type', ['public', 'private', 'dm']);
 
@@ -12,6 +12,9 @@ export const users = pgTable('users', {
   statusEmoji: text('status_emoji'),
   statusText: text('status_text'),
   statusExpiresAt: timestamp('status_expires_at', { withTimezone: true }),
+  /** The fun side of the profile: things you choose to share. */
+  interests: jsonb('interests').$type<string[]>().notNull().default([]),
+  nowPlaying: text('now_playing'),
   theme: text('theme').notNull().default('paper'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
