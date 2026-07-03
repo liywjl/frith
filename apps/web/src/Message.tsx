@@ -1,10 +1,17 @@
+import { useState } from 'react';
 import type { MessageDto } from '@app/shared';
 import { api } from './api';
 import { Avatar } from './Avatar';
 import { UserHover } from './UserHover';
 import { useUserActions } from './userActions';
 
-const EMOJIS = ['👍', '❤️', '✅', '😂', '🎉', '👀'];
+const QUICK_EMOJIS = ['👍', '❤️', '✅', '😂', '🎉'];
+const ALL_EMOJIS = [
+  '👍', '❤️', '✅', '😂', '🎉', '👀', '🔥', '🚀',
+  '💯', '🙌', '👏', '🤔', '😍', '😅', '😭', '🫡',
+  '🙏', '💡', '☕', '🍕', '🐶', '🌈', '⚡', '🧠',
+  '🎯', '🛰️', '🤝', '🥳', '😴', '🤯', '📌', '🍿',
+];
 
 const timeFormat = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' });
 
@@ -19,6 +26,12 @@ export function Message({
   onOpenThread?: (root: MessageDto) => void;
 }) {
   const { openProfile } = useUserActions();
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  function react(emoji: string) {
+    setPickerOpen(false);
+    void api.react(message.id, emoji);
+  }
   return (
     <div className={`msg ${compact ? 'compact' : ''}`}>
       {compact ? (
@@ -58,11 +71,23 @@ export function Message({
         </div>
       </div>
       <div className="msg-actions">
-        {EMOJIS.map((e) => (
-          <button key={e} title={`React ${e}`} onClick={() => void api.react(message.id, e)}>
+        {QUICK_EMOJIS.map((e) => (
+          <button key={e} title={`React ${e}`} onClick={() => react(e)}>
             {e}
           </button>
         ))}
+        <button className="more-emoji" title="More reactions" onClick={() => setPickerOpen((v) => !v)}>
+          +
+        </button>
+        {pickerOpen && (
+          <div className="emoji-grid" onMouseLeave={() => setPickerOpen(false)}>
+            {ALL_EMOJIS.map((e) => (
+              <button key={e} onClick={() => react(e)}>
+                {e}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

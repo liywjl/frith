@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { ProfilePageDto, UserDto } from '@app/shared';
+import type { MeDto, ProfilePageDto } from '@app/shared';
 import { api } from './api';
 import { Avatar } from './Avatar';
 import { useUserActions } from './userActions';
@@ -14,13 +14,15 @@ export function ProfileView({
   onOpenDm,
   onOpenChannel,
   onEditProfile,
+  onToggleBlock,
 }: {
   userId: string;
-  me: UserDto;
+  me: MeDto;
   online: Set<string>;
   onOpenDm: (userId: string) => void;
   onOpenChannel: (channelId: string) => void;
   onEditProfile: () => void;
+  onToggleBlock: (userId: string, blocked: boolean) => void;
 }) {
   const { openProfile } = useUserActions();
   const [profile, setProfile] = useState<ProfilePageDto | null>(null);
@@ -64,12 +66,31 @@ export function ProfileView({
             <button className="btn" onClick={onEditProfile}>
               Edit profile
             </button>
-          ) : (
-            <button className="btn primary" onClick={() => onOpenDm(user.id)}>
-              Message
+          ) : me.blockedUserIds.includes(user.id) ? (
+            <button className="btn" onClick={() => onToggleBlock(user.id, false)}>
+              Unblock
             </button>
+          ) : (
+            <>
+              <button className="btn primary" onClick={() => onOpenDm(user.id)}>
+                Message
+              </button>
+              <button
+                className="btn block-btn"
+                title="Hide this person's messages everywhere and stop DMs both ways"
+                onClick={() => onToggleBlock(user.id, true)}
+              >
+                Block
+              </button>
+            </>
           )}
         </header>
+        {me.blockedUserIds.includes(user.id) && (
+          <p className="profile-privacy">
+            You've blocked {user.name.split(' ')[0]} — their messages are hidden everywhere and neither of you
+            can start a DM. Unblock any time.
+          </p>
+        )}
 
         {(user.nowPlaying || user.interests.length > 0) && (
           <section className="beyond-work">

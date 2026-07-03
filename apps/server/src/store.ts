@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gt, inArray, isNull, isNotNull, ne, or, sql as raw } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, isNull, isNotNull, ne, notInArray, or, sql as raw } from 'drizzle-orm';
 import type {
   ChannelDto,
   ConnectDto,
@@ -9,8 +9,9 @@ import type {
   ReactionDto,
   UserDto,
 } from '@app/shared';
+import crypto from 'node:crypto';
 import { db } from './db/client.js';
-import { channelMembers, channelReads, channels, messages, reactions, users } from './db/schema.js';
+import { blocks, channelMembers, channelReads, channels, messages, reactions, spaces, users } from './db/schema.js';
 import { extractArtifacts } from './artifacts.js';
 
 /** Reactions + replies a message has drawn — the "engagement" score. */
@@ -247,13 +248,61 @@ const authorJoin = {
   authorAvatarEmoji: users.avatarEmoji,
 };
 
+/**
+ * Spaces: an instance belongs to one P2P space. The invite is a
+ * high-entropy key — knowing it is the capability to join, so it's
+ * unguessable by construction (unlike a human-chosen room name).
+ */
+const INVITE_PATTERN = /^lore:([^:]+):([0-9a-f]{48})$/;
+
+export function parseInvite(invite: string): { name: string; key: string } | null {
+  const match = INVITE_PATTERN.exec(invite.trim());
+  if (!match) return null;
+  return { name: decodeURIComponent(match[1]!), key: match[2]! };
+}
+
+export async function getSpace(): Promise<{ name: string; invite: string } | null> {
+  const [row] = await db.select().from(spaces);
+  if (!row) return null;
+  return { name: row.name, invite: `lore:${encodeURIComponent(row.name)}:${row.inviteKey}` };
+}
+
+export async function setSpace(name: string, key?: string): Promise<{ name: string; invite: string; key: string }> {
+  const inviteKey = key ?? crypto.randomBytes(24).toString('hex');
+  await db.delete(spaces);
+  await db.insert(spaces).values({ name, inviteKey });
+  return { name, key: inviteKey, invite: `lore:${encodeURIComponent(name)}:${inviteKey}` };
+}
+
+/** Authors whose content this viewer never sees. */
+export async function blockedIds(viewerId: string): Promise<string[]> {
+  const rows = await db.select({ id: blocks.blockedId }).from(blocks).where(eq(blocks.userId, viewerId));
+  return rows.map((r) => r.id);
+}
+
+export async function setBlocked(viewerId: string, targetId: string, blocked: boolean): Promise<string[]> {
+  if (blocked) {
+    await db.insert(blocks).values({ userId: viewerId, blockedId: targetId }).onConflictDoNothing();
+  } else {
+    await db.delete(blocks).where(and(eq(blocks.userId, viewerId), eq(blocks.blockedId, targetId)));
+  }
+  return blockedIds(viewerId);
+}
+
+/** Shared prelude: the author-joined message query minus the viewer's blocks. */
+async function messagesVisibleTo(viewerId: string) {
+  const blockedList = await blockedIds(viewerId);
+  return {
+    notBlocked: blockedList.length > 0 ? notInArray(messages.authorId, blockedList) : undefined,
+    query: () => db.select(authorJoin).from(messages).innerJoin(users, eq(users.id, messages.authorId)),
+  };
+}
+
 /** Top-level messages of a channel, oldest first. Caller must check ACL. */
 export async function listChannelMessages(channelId: string, viewerId: string): Promise<MessageDto[]> {
-  const rows = await db
-    .select(authorJoin)
-    .from(messages)
-    .innerJoin(users, eq(users.id, messages.authorId))
-    .where(and(eq(messages.channelId, channelId), isNull(messages.parentMessageId)))
+  const { notBlocked, query } = await messagesVisibleTo(viewerId);
+  const rows = await query()
+    .where(and(eq(messages.channelId, channelId), isNull(messages.parentMessageId), notBlocked))
     .orderBy(asc(messages.createdAt));
   const ids = rows.map((r) => r.id);
   const [counts, reacts] = await Promise.all([replyCounts(ids), reactionsFor(ids, viewerId)]);
@@ -262,11 +311,11 @@ export async function listChannelMessages(channelId: string, viewerId: string): 
 
 /** A thread: the root message plus replies, oldest first. Caller must check ACL. */
 export async function getThread(rootId: string, viewerId: string): Promise<MessageDto[] | null> {
-  const rows = await db
-    .select(authorJoin)
-    .from(messages)
-    .innerJoin(users, eq(users.id, messages.authorId))
-    .where(raw`${messages.id} = ${rootId} or ${messages.parentMessageId} = ${rootId}`)
+  const { notBlocked, query } = await messagesVisibleTo(viewerId);
+  const rows = await query()
+    .where(
+      and(raw`(${messages.id} = ${rootId} or ${messages.parentMessageId} = ${rootId})`, notBlocked),
+    )
     .orderBy(asc(messages.createdAt));
   if (rows.length === 0) return null;
   const reacts = await reactionsFor(rows.map((r) => r.id), viewerId);
@@ -498,8 +547,9 @@ export async function connectSuggestions(userId: string): Promise<ConnectDto> {
   const me = all.find((u) => u.id === userId);
   if (!me || me.interests.length === 0) return { people: [], groups: [] };
 
+  const blockedList = await blockedIds(userId);
   const mine = new Map(me.interests.map((i) => [i.toLowerCase(), i]));
-  const others = all.filter((u) => u.id !== userId);
+  const others = all.filter((u) => u.id !== userId && !blockedList.includes(u.id));
 
   const people = others
     .map((u) => ({

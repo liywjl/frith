@@ -446,6 +446,78 @@ describe('channel lifecycle', () => {
   });
 });
 
+describe('spaces', () => {
+  it('creates a space with an unguessable invite and reads it back', async () => {
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/space',
+      payload: { name: 'test hq' },
+      ...as(alice),
+    });
+    expect(created.statusCode).toBe(200);
+    expect(created.json().invite).toMatch(/^lore:test%20hq:[0-9a-f]{48}$/);
+
+    const read = await app.inject({ method: 'GET', url: '/api/space', ...as(bob) });
+    expect(read.json().name).toBe('test hq');
+  });
+
+  it('joins from an invite and rejects garbage', async () => {
+    const joined = await app.inject({
+      method: 'POST',
+      url: '/api/space/join',
+      payload: { invite: `lore:elsewhere:${'ab'.repeat(24)}` },
+      ...as(alice),
+    });
+    expect(joined.json().name).toBe('elsewhere');
+
+    const bad = await app.inject({
+      method: 'POST',
+      url: '/api/space/join',
+      payload: { invite: 'not-an-invite' },
+      ...as(alice),
+    });
+    expect(bad.statusCode).toBe(400);
+  });
+});
+
+describe('blocking', () => {
+  it('hides a blocked person everywhere and stops DMs both ways', async () => {
+    await app.inject({
+      method: 'POST',
+      url: `/api/channels/${publicChannel}/messages`,
+      payload: { body: 'the kraken schematics are ready' },
+      ...as(bob),
+    });
+    await app.inject({ method: 'POST', url: `/api/users/${bob}/block`, ...as(alice) });
+
+    const me = await app.inject({ method: 'GET', url: '/api/me', ...as(alice) });
+    expect(me.json().blockedUserIds).toContain(bob);
+
+    const list = await app.inject({ method: 'GET', url: `/api/channels/${publicChannel}/messages`, ...as(alice) });
+    expect(JSON.stringify(list.json())).not.toContain('kraken');
+
+    const searched = await app.inject({ method: 'GET', url: '/api/ask?q=kraken', ...as(alice) });
+    expect(searched.json().messages).toEqual([]);
+
+    const dmFromAlice = await app.inject({ method: 'POST', url: `/api/dms/${bob}`, ...as(alice) });
+    expect(dmFromAlice.statusCode).toBe(403);
+    const dmFromBob = await app.inject({ method: 'POST', url: `/api/dms/${alice}`, ...as(bob) });
+    expect(dmFromBob.statusCode).toBe(403);
+
+    // Everyone else still sees Bob fine.
+    const carolView = await app.inject({ method: 'GET', url: `/api/channels/${publicChannel}/messages`, ...as(carol) });
+    expect(JSON.stringify(carolView.json())).toContain('kraken');
+  });
+
+  it('unblocking restores everything', async () => {
+    await app.inject({ method: 'DELETE', url: `/api/users/${bob}/block`, ...as(alice) });
+    const list = await app.inject({ method: 'GET', url: `/api/channels/${publicChannel}/messages`, ...as(alice) });
+    expect(JSON.stringify(list.json())).toContain('kraken');
+    const dm = await app.inject({ method: 'POST', url: `/api/dms/${bob}`, ...as(alice) });
+    expect(dm.statusCode).toBe(200);
+  });
+});
+
 describe('connect suggestions', () => {
   it('suggests people and groups from shared interests', async () => {
     const setInterests = (uid: string, interests: string[]) =>

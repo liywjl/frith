@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { ChannelDto, MeDto, MessageDto, ServerEvent, UserDto } from '@app/shared';
+import type { ChannelDto, MeDto, MessageDto, ServerEvent, SpaceDto, UserDto } from '@app/shared';
 import { api } from './api';
 import { useRealtime } from './useRealtime';
 import { applyReaction } from './updates';
@@ -14,6 +14,7 @@ import { CreateChannelModal } from './CreateChannelModal';
 import { HomeView } from './HomeView';
 import { ProfileView } from './ProfileView';
 import { TaskView } from './TaskView';
+import { SpaceModal } from './SpaceModal';
 import { UserActionsContext, type UserActions } from './userActions';
 
 type View = { kind: 'home' } | { kind: 'task' } | { kind: 'channel' } | { kind: 'profile'; userId: string };
@@ -77,6 +78,12 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
   const [profileEditOpen, setProfileEditOpen] = useState(false);
   const [groupOpen, setGroupOpen] = useState(false);
   const [createChannelOpen, setCreateChannelOpen] = useState(false);
+  const [spaceOpen, setSpaceOpen] = useState(false);
+  const [space, setSpace] = useState<SpaceDto | null>(null);
+
+  useEffect(() => {
+    api.space().then(setSpace).catch(console.error);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -153,6 +160,10 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
         void api.channels().then(setChannels);
         return;
       }
+      if (event.type === 'p2p.peers') {
+        setSpace((cur) => (cur ? { ...cur, connectedPeers: event.count } : cur));
+        return;
+      }
       if (event.type === 'reaction.changed') {
         if (event.channelId === activeId) {
           setMessages((cur) => applyReaction(cur, event, me.id));
@@ -160,6 +171,7 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
         return;
       }
       const msg = event.message;
+      if (me.blockedUserIds.includes(msg.authorId)) return; // blocked: no feed, no badge
       const viewingThatChannel = view.kind === 'channel' && msg.channelId === activeId;
       if (msg.channelId === activeId) {
         // Keep the cached feed fresh even when Home or a profile is on screen.
@@ -187,9 +199,20 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
         if (view.kind === 'home') setHomeTick((t) => t + 1);
       }
     },
-    [activeId, me.id, view],
+    [activeId, me.id, me.blockedUserIds, view],
   );
   useRealtime(onEvent);
+
+  const toggleBlock = useCallback(
+    async (userId: string, blocked: boolean) => {
+      const { blockedUserIds } = await api.setBlocked(userId, blocked);
+      onMeChange({ ...me, blockedUserIds });
+      if (view.kind === 'channel' && activeId) {
+        setMessages(await api.messages(activeId));
+      }
+    },
+    [me, onMeChange, view.kind, activeId],
+  );
 
   const openDm = useCallback(
     async (userId: string) => {
@@ -276,8 +299,10 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
         activeId={view.kind === 'channel' ? activeId : null}
         homeActive={view.kind === 'home'}
         taskActive={view.kind === 'task'}
+        space={space}
         onHome={openHome}
         onTask={openTask}
+        onOpenSpace={() => setSpaceOpen(true)}
         onSelect={openChannel}
         onNewGroup={() => setGroupOpen(true)}
         onNewChannel={() => setCreateChannelOpen(true)}
@@ -301,6 +326,7 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
           onOpenDm={openDm}
           onOpenChannel={openChannel}
           onEditProfile={() => setProfileEditOpen(true)}
+          onToggleBlock={(userId, blocked) => void toggleBlock(userId, blocked)}
         />
       )}
       {view.kind === 'channel' && active && (
@@ -334,6 +360,9 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
       )}
       {createChannelOpen && (
         <CreateChannelModal onCreated={onChannelCreated} onClose={() => setCreateChannelOpen(false)} />
+      )}
+      {spaceOpen && (
+        <SpaceModal space={space} onSpaceChange={setSpace} onClose={() => setSpaceOpen(false)} />
       )}
     </div>
     </UserActionsContext.Provider>

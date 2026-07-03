@@ -1,6 +1,6 @@
 export type ChannelType = 'public' | 'private' | 'dm';
 
-export const THEMES = ['paper', 'midnight', 'forest', 'sunset'] as const;
+export const THEMES = ['paper', 'midnight', 'forest', 'sunset', 'ocean', 'mono'] as const;
 export type Theme = (typeof THEMES)[number];
 
 export interface UserDto {
@@ -23,6 +23,16 @@ export interface MeDto extends UserDto {
   theme: Theme;
   /** When the current status auto-clears (null = keeps until changed). */
   statusExpiresAt: string | null;
+  /** People this user has blocked — their content is hidden everywhere. */
+  blockedUserIds: string[];
+}
+
+/** The P2P space this instance belongs to. */
+export interface SpaceDto {
+  name: string;
+  /** Shareable invite: high-entropy key, unguessable. */
+  invite: string;
+  connectedPeers: number;
 }
 
 export interface ProfilePatch {
@@ -216,4 +226,6 @@ export type ServerEvent =
   | { type: 'presence.changed'; onlineUserIds: string[] }
   | { type: 'user.updated'; user: UserDto }
   /** A channel was created, archived, or unarchived — refetch the list. */
-  | { type: 'channels.changed' };
+  | { type: 'channels.changed' }
+  /** P2P peers connected to this instance's space. */
+  | { type: 'p2p.peers'; count: number };

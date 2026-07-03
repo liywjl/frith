@@ -79,6 +79,10 @@ interface BridgeState {
 
 let state: BridgeState | null = null;
 
+export function connectedPeers(): number {
+  return state?.connections.size ?? 0;
+}
+
 function loadIdentity(dataDir: string) {
   const file = path.join(dataDir, 'identity.json');
   if (fs.existsSync(file)) {
@@ -147,6 +151,8 @@ async function acceptFrame(frame: WireFrame) {
 }
 
 export async function startBridge(room: string, dataDir: string): Promise<void> {
+  if (state) return; // one space per instance for now
+  if (process.env.NODE_ENV === 'test') return; // no DHT in unit tests
   const identity = loadIdentity(dataDir);
   const swarm = new Hyperswarm();
   state = {
@@ -161,6 +167,7 @@ export async function startBridge(room: string, dataDir: string): Promise<void> 
   swarm.on('connection', (socket) => {
     state!.connections.add(socket);
     console.log(`[p2p] peer connected (${state!.connections.size} total)`);
+    publish({ type: 'p2p.peers', count: state!.connections.size }, 'all');
     let buffer = '';
     socket.on('data', (data: Buffer) => {
       buffer += b4a.toString(data);
@@ -179,6 +186,7 @@ export async function startBridge(room: string, dataDir: string): Promise<void> 
     const drop = () => {
       state?.connections.delete(socket);
       console.log(`[p2p] peer disconnected (${state?.connections.size ?? 0} total)`);
+      publish({ type: 'p2p.peers', count: state?.connections.size ?? 0 }, 'all');
     };
     socket.on('close', drop);
     socket.on('error', drop);

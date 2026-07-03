@@ -7,6 +7,7 @@ import type {
   MessageDto,
   ProfilePageDto,
   ProfilePatch,
+  SpaceDto,
   TaskScopeDto,
   UserDto,
 } from '@app/shared';
@@ -29,6 +30,15 @@ export const api = {
   users: () => request<UserDto[]>('/api/users'),
   home: () => request<HomeDto>('/api/home'),
   connect: () => request<ConnectDto>('/api/connect'),
+  space: () => request<SpaceDto | null>('/api/space'),
+  createSpace: (name: string) =>
+    request<SpaceDto>('/api/space', { method: 'POST', body: JSON.stringify({ name }) }),
+  joinSpace: (invite: string) =>
+    request<SpaceDto>('/api/space/join', { method: 'POST', body: JSON.stringify({ invite }) }),
+  setBlocked: (userId: string, blocked: boolean) =>
+    request<{ blockedUserIds: string[] }>(`/api/users/${userId}/block`, {
+      method: blocked ? 'POST' : 'DELETE',
+    }),
   profile: (userId: string) => request<ProfilePageDto>(`/api/users/${userId}/profile`),
   login: (handle: string) =>
     request<UserDto>('/api/dev/login', { method: 'POST', body: JSON.stringify({ handle }) }),

@@ -534,3 +534,56 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
 .connect-person span { display: flex; flex-direction: column; min-width: 0; }
 .connect-person b { font-size: 13.5px; }
 .connect-person small { color: var(--ink-soft); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* new themes */
+[data-theme='ocean'] {
+  --paper: #f0f5f7; --card: #ffffff; --hover: #e4edf1;
+  --line: #c3d4dc; --line-soft: #dbe6ec;
+  --ink: #22343c; --ink-soft: #64808c; --block: #dfeaf0;
+  --ai: #0f6bb5; --ai-soft: #ddebf6; --ai-hover: #cae0f2;
+  --unread: #c25a2e;
+}
+[data-theme='mono'] {
+  --paper: #fbfbfb; --card: #ffffff; --hover: #f1f1f1;
+  --line: #d4d4d4; --line-soft: #e8e8e8;
+  --ink: #1f1f1f; --ink-soft: #8a8a8a; --block: #ececec;
+  --ai: #1f1f1f; --ai-soft: #ececec; --ai-hover: #e0e0e0;
+  --unread: #d04b30;
+}
+.theme-ocean .theme-dot { background: linear-gradient(135deg, #f0f5f7 50%, #0f6bb5 50%); }
+.theme-mono .theme-dot { background: linear-gradient(135deg, #fbfbfb 50%, #1f1f1f 50%); }
+[data-theme='mono'] mark { color: var(--ink); }
+[data-theme='mono'] .btn.primary, [data-theme='mono'] .unread-badge { color: #fff; }
+
+/* emoji picker */
+.more-emoji { font-weight: 700; color: var(--ink-soft); }
+.emoji-grid {
+  position: absolute; top: 26px; right: 0; z-index: 5;
+  display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+  padding: 6px; box-shadow: 0 4px 18px rgba(0, 0, 0, 0.14); width: 264px;
+}
+.emoji-grid button { font-size: 16px; padding: 4px; border-radius: 6px; }
+.emoji-grid button:hover { background: var(--block); }
+
+/* spaces */
+.peer-badge {
+  margin-left: auto; font-family: var(--mono); font-size: 11px;
+  color: var(--ai); border: 1px solid var(--ai); border-radius: 99px; padding: 0 7px;
+}
+.space-share { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+.space-qr { border: 1px solid var(--line); border-radius: 10px; width: 160px; height: 160px; }
+.space-share-right { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 10px; }
+.space-hint { color: var(--ink-soft); font-size: 13px; }
+.space-invite {
+  font-family: var(--mono); font-size: 12px; color: var(--ink);
+  border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; background: var(--card); width: 100%;
+}
+.space-actions { display: flex; gap: 8px; }
+.space-actions .btn { text-decoration: none; display: inline-flex; align-items: center; }
+.space-row { display: flex; gap: 8px; }
+.space-row input { flex: 1; }
+
+/* blocking */
+.block-btn { color: var(--unread); border-color: var(--unread); }
+.block-btn:hover { border-color: var(--unread); opacity: 0.85; }

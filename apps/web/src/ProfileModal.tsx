@@ -26,6 +26,8 @@ const THEME_LABELS: Record<Theme, string> = {
   midnight: 'Midnight',
   forest: 'Forest',
   sunset: 'Sunset',
+  ocean: 'Ocean',
+  mono: 'Mono',
 };
 
 export function ProfileModal({

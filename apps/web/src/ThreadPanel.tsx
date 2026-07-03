@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { ChannelDto, MessageDto, ServerEvent, UserDto } from '@app/shared';
+import type { ChannelDto, MeDto, MessageDto, ServerEvent } from '@app/shared';
 import { api } from './api';
 import { useRealtime } from './useRealtime';
 import { applyReaction } from './updates';
@@ -12,7 +12,7 @@ export function ThreadPanel({
   root,
   onClose,
 }: {
-  me: UserDto;
+  me: MeDto;
   channel: ChannelDto;
   root: MessageDto;
   onClose: () => void;
@@ -32,6 +32,7 @@ export function ThreadPanel({
       if (event.type !== 'message.created') return;
       const msg = event.message;
       if (msg.parentMessageId !== root.id) return;
+      if (me.blockedUserIds.includes(msg.authorId)) return;
       setMessages((cur) => (cur.some((m) => m.id === msg.id) ? cur : [...cur, msg]));
     },
     [root.id, me.id],

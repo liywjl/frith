@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { ChannelDto, UserDto } from '@app/shared';
+import type { ChannelDto, SpaceDto, UserDto } from '@app/shared';
 import { Avatar } from './Avatar';
 import { UserHover } from './UserHover';
 import { useUserActions } from './userActions';
@@ -30,8 +30,10 @@ export function Sidebar({
   activeId,
   homeActive,
   taskActive,
+  space,
   onHome,
   onTask,
+  onOpenSpace,
   onSelect,
   onNewGroup,
   onNewChannel,
@@ -43,8 +45,10 @@ export function Sidebar({
   activeId: string | null;
   homeActive: boolean;
   taskActive: boolean;
+  space: SpaceDto | null;
   onHome: () => void;
   onTask: () => void;
+  onOpenSpace: () => void;
   onSelect: (id: string) => void;
   onNewGroup: () => void;
   onNewChannel: () => void;
@@ -72,6 +76,10 @@ export function Sidebar({
       </button>
       <button className={`side-item home-item ${taskActive ? 'active' : ''}`} onClick={onTask}>
         <span className="side-label">🎯 Start a task</span>
+      </button>
+      <button className="side-item home-item" title="Your P2P space — invite people" onClick={onOpenSpace}>
+        <span className="side-label">🛰 {space ? space.name : 'Join a space'}</span>
+        {space && space.connectedPeers > 0 && <span className="peer-badge">{space.connectedPeers} ⇄</span>}
       </button>
 
       <div className="side-h side-h-action">

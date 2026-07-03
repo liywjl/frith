@@ -50,6 +50,24 @@ export const messages = pgTable(
   (t) => [index('messages_channel_created_idx').on(t.channelId, t.createdAt)],
 );
 
+/** The P2P space this instance belongs to (one per instance for now). */
+export const spaces = pgTable('spaces', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull(),
+  inviteKey: text('invite_key').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** People this user chose not to interact with. */
+export const blocks = pgTable(
+  'blocks',
+  {
+    userId: uuid('user_id').notNull().references(() => users.id),
+    blockedId: uuid('blocked_id').notNull().references(() => users.id),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.blockedId] })],
+);
+
 /** How far each user has read each channel — powers unread badges. */
 export const channelReads = pgTable(
   'channel_reads',

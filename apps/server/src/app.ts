@@ -4,6 +4,7 @@ import websocket from '@fastify/websocket';
 import { z } from 'zod';
 import { THEMES } from '@app/shared';
 import {
+  blockedIds,
   canReadChannel,
   channelAudience,
   connectSuggestions,
@@ -14,20 +15,24 @@ import {
   getHome,
   getOrCreateGroup,
   getProfilePage,
+  getSpace,
   getThread,
   getUserByHandle,
   getUserById,
   listChannelMessages,
   listUsers,
   markChannelRead,
+  parseInvite,
+  setBlocked,
   setChannelArchived,
+  setSpace,
   toggleReaction,
   updateProfile,
   visibleChannels,
 } from './store.js';
 import { ask, taskScope } from './ask.js';
 import { publish, register } from './realtime.js';
-import { broadcastLocalMessage } from './p2p/bridge.js';
+import { broadcastLocalMessage, connectedPeers, startBridge } from './p2p/bridge.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -83,7 +88,40 @@ export async function buildApp() {
       statusEmoji: expired ? null : me.statusEmoji,
       statusText: expired ? null : me.statusText,
       statusExpiresAt: expired ? null : me.statusExpiresAt,
+      blockedUserIds: await blockedIds(req.userId),
     };
+  });
+
+  app.get('/api/space', async () => {
+    const space = await getSpace();
+    return space ? { ...space, connectedPeers: connectedPeers() } : null;
+  });
+
+  app.post('/api/space', async (req) => {
+    const { name } = z.object({ name: z.string().trim().min(1).max(60) }).parse(req.body);
+    const space = await setSpace(name);
+    await startBridge(`space:${space.key}`, process.env.LORE_P2P_DATA ?? '.lore-p2p');
+    return { name: space.name, invite: space.invite, connectedPeers: connectedPeers() };
+  });
+
+  app.post('/api/space/join', async (req, reply) => {
+    const { invite } = z.object({ invite: z.string().max(200) }).parse(req.body);
+    const parsed = parseInvite(invite);
+    if (!parsed) return reply.code(400).send({ error: 'that does not look like a Lore invite' });
+    const space = await setSpace(parsed.name, parsed.key);
+    await startBridge(`space:${space.key}`, process.env.LORE_P2P_DATA ?? '.lore-p2p');
+    return { name: space.name, invite: space.invite, connectedPeers: connectedPeers() };
+  });
+
+  app.post('/api/users/:id/block', async (req, reply) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+    if (id === req.userId) return reply.code(400).send({ error: 'you cannot block yourself' });
+    return { blockedUserIds: await setBlocked(req.userId, id, true) };
+  });
+
+  app.delete('/api/users/:id/block', async (req) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+    return { blockedUserIds: await setBlocked(req.userId, id, false) };
   });
 
   app.patch('/api/me', async (req) => {
@@ -190,6 +228,12 @@ export async function buildApp() {
     if (otherId === req.userId) return reply.code(400).send({ error: 'that is you' });
     const other = await getUserById(otherId);
     if (!other) return reply.code(404).send({ error: 'no such user' });
+    if ((await blockedIds(req.userId)).includes(otherId)) {
+      return reply.code(403).send({ error: 'you have blocked this person' });
+    }
+    if ((await blockedIds(otherId)).includes(req.userId)) {
+      return reply.code(403).send({ error: 'this person is not accepting messages from you' });
+    }
     const channelId = await getOrCreateGroup(req.userId, [otherId]);
     return { channelId };
   });

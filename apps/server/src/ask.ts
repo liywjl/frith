@@ -1,7 +1,7 @@
 import { sql as raw } from 'drizzle-orm';
 import type { AskEvidence, AskPerson, AskResponse, AskThread, TaskScopeDto } from '@app/shared';
 import { db } from './db/client.js';
-import { visibleChannelIds } from './store.js';
+import { blockedIds, visibleChannelIds } from './store.js';
 import { extractArtifacts } from './artifacts.js';
 
 interface Hit {
@@ -51,6 +51,11 @@ async function retrieve(
   if (channelIds.length === 0 || query.trim() === '') {
     return { hits: [], people: [], threads: [] };
   }
+  const blockedList = await blockedIds(userId);
+  const notBlocked =
+    blockedList.length > 0
+      ? raw`and m.author_id not in (${raw.join(blockedList.map((id) => raw`${id}::uuid`), raw`, `)})`
+      : raw``;
 
   async function search(tsQueryText: string): Promise<Hit[]> {
     const rows = await db.execute(raw`
@@ -69,6 +74,7 @@ async function retrieve(
         websearch_to_tsquery('english', ${tsQueryText}) q
       where m.search @@ q
         and m.channel_id in (${raw.join(channelIds.map((id) => raw`${id}::uuid`), raw`, `)})
+        ${notBlocked}
       order by rank desc
       limit 40`);
     return [...rows] as unknown as Hit[];
