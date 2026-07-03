@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import type { ChannelDto, SpaceDto, UserDto } from '@app/shared';
 import { Avatar } from './Avatar';
-import { UserHover } from './UserHover';
 import { useUserActions } from './userActions';
 
 function Presence({ online }: { online: boolean }) {
@@ -129,7 +128,7 @@ export function Sidebar({
         const partnerIds = c.dmPartnerIds ?? [];
         const isGroup = partnerIds.length > 1;
         const solo = !isGroup ? byId.get(partnerIds[0] ?? '') : undefined;
-        const row = (
+        return (
           <button
             key={c.id}
             className={`side-item ${c.id === activeId ? 'active' : ''} ${c.unreadCount > 0 ? 'has-unread' : ''}`}
@@ -145,22 +144,18 @@ export function Sidebar({
             <Unread count={c.unreadCount} />
           </button>
         );
-        return solo ? (
-          <UserHover key={c.id} userId={solo.id} name={solo.name}>
-            {row}
-          </UserHover>
-        ) : (
-          row
-        );
       })}
       {others.map((u) => (
-        <UserHover key={u.id} userId={u.id} name={u.name}>
-          <button className="side-item muted" title={`Message ${u.name}`} onClick={() => openDm(u.id)}>
-            <Presence online={online.has(u.id)} />
-            <span className="side-label">{u.name}</span>
-            <Status user={u} />
-          </button>
-        </UserHover>
+        <button
+          key={u.id}
+          className="side-item muted"
+          title={`Message ${u.name}`}
+          onClick={() => openDm(u.id)}
+        >
+          <Presence online={online.has(u.id)} />
+          <span className="side-label">{u.name}</span>
+          <Status user={u} />
+        </button>
       ))}
 
       <button className="side-me" title="View your profile" onClick={() => openProfile(me.id)}>

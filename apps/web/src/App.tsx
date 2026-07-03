@@ -15,6 +15,7 @@ import { HomeView } from './HomeView';
 import { ProfileView } from './ProfileView';
 import { TaskView } from './TaskView';
 import { SpaceModal } from './SpaceModal';
+import { ProfilePanel } from './ProfilePanel';
 import { UserActionsContext, type UserActions } from './userActions';
 
 type View = { kind: 'home' } | { kind: 'task' } | { kind: 'channel' } | { kind: 'profile'; userId: string };
@@ -340,6 +341,17 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
       {view.kind === 'channel' && threadRoot && active && (
         <ThreadPanel me={me} channel={active} root={threadRoot} onClose={() => setThreadRoot(null)} />
       )}
+      {view.kind === 'channel' &&
+        !threadRoot &&
+        active?.type === 'dm' &&
+        (active.dmPartnerIds ?? []).length === 1 && (
+          <ProfilePanel
+            userId={active.dmPartnerIds![0]!}
+            channels={channels}
+            online={online}
+            onOpenChannel={openChannel}
+          />
+        )}
       {switcherOpen && (
         <QuickSwitcher
           me={me}

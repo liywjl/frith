@@ -587,3 +587,34 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
 /* blocking */
 .block-btn { color: var(--unread); border-color: var(--unread); }
 .block-btn:hover { border-color: var(--unread); opacity: 0.85; }
+
+/* DM profile panel */
+.profile-panel {
+  width: 320px; border-left: 1px solid var(--line-soft); height: 100vh;
+  overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px;
+}
+.panel-card {
+  border: 1px solid var(--line); border-radius: 10px; background: var(--card);
+  padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;
+}
+.panel-head { flex-direction: row; align-items: center; gap: 10px; flex-wrap: wrap; }
+.panel-id { display: flex; flex-direction: column; min-width: 0; flex: 1; font-size: 13px; }
+.panel-id b { font-size: 14.5px; }
+.panel-id span { color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.panel-full { padding: 5px 11px; font-size: 12.5px; flex: none; }
+.panel-h {
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--ink-soft);
+}
+.panel-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+.panel-row {
+  display: flex; align-items: center; gap: 8px; text-align: left;
+  padding: 5px 7px; margin: 0 -7px; border-radius: 7px; font-size: 13.5px; width: calc(100% + 14px);
+}
+.panel-row:hover { background: var(--hover); }
+.panel-msg { flex-direction: column; align-items: flex-start; gap: 2px; }
+.panel-msg-body {
+  font-size: 13px; color: var(--ink);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+@media (max-width: 980px) { .profile-panel { display: none; } }

@@ -1,7 +1,6 @@
-import { useEffect, useState } from 'react';
-import type { MeDto, ProfilePageDto } from '@app/shared';
-import { api } from './api';
+import type { MeDto } from '@app/shared';
 import { Avatar } from './Avatar';
+import { useProfile } from './useProfile';
 import { useUserActions } from './userActions';
 import { ArtifactChips } from './ArtifactChips';
 
@@ -25,12 +24,7 @@ export function ProfileView({
   onToggleBlock: (userId: string, blocked: boolean) => void;
 }) {
   const { openProfile } = useUserActions();
-  const [profile, setProfile] = useState<ProfilePageDto | null>(null);
-
-  useEffect(() => {
-    setProfile(null);
-    api.profile(userId).then(setProfile).catch(console.error);
-  }, [userId]);
+  const profile = useProfile(userId);
 
   if (!profile) return <main className="main profile" />;
   const { user, stats, topChannels, teammates, popular, artifacts, recent } = profile;
