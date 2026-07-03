@@ -1,5 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { THEMES, type ChannelDto, type MeDto, type MessageDto, type ServerEvent, type SpaceDto, type Theme, type UserDto } from '@app/shared';
+import {
+  THEMES,
+  type ChannelDto,
+  type MeDto,
+  type MessageDto,
+  type ScheduledMessageDto,
+  type ServerEvent,
+  type SpaceDto,
+  type Theme,
+  type UserDto,
+} from '@app/shared';
 import { api } from './api';
 import { useRealtime } from './useRealtime';
 import { applyReaction } from './updates';
@@ -19,9 +29,16 @@ import { ProfilePanel } from './ProfilePanel';
 import { CallPanel } from './CallPanel';
 import { CallManager } from './call';
 import type { SlashCommand } from './Composer';
+import { PeopleView } from './PeopleView';
+import { TagModal } from './TagModal';
 import { UserActionsContext, type UserActions } from './userActions';
 
-type View = { kind: 'home' } | { kind: 'task' } | { kind: 'channel' } | { kind: 'profile'; userId: string };
+type View =
+  | { kind: 'home' }
+  | { kind: 'task' }
+  | { kind: 'people' }
+  | { kind: 'channel' }
+  | { kind: 'profile'; userId: string };
 
 export function App() {
   const [me, setMe] = useState<MeDto | null>(null);
@@ -84,6 +101,8 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
   const [createChannelOpen, setCreateChannelOpen] = useState(false);
   const [spaceOpen, setSpaceOpen] = useState(false);
   const [space, setSpace] = useState<SpaceDto | null>(null);
+  const [openedTag, setOpenedTag] = useState<string | null>(null);
+  const [scheduled, setScheduled] = useState<ScheduledMessageDto[]>([]);
 
   // Campfires (calls)
   const [calls, setCalls] = useState<Record<string, string[]>>({});
@@ -96,6 +115,7 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
   useEffect(() => {
     api.space().then(setSpace).catch(console.error);
     api.calls().then(setCalls).catch(console.error);
+    api.scheduled().then(setScheduled).catch(console.error);
   }, []);
 
   const startCall = useCallback(async (channelId: string, withVideo: boolean) => {
@@ -169,6 +189,25 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
     setThreadRoot(null);
     setView({ kind: 'task' });
   }, [closeOverlays]);
+
+  const openPeople = useCallback(() => {
+    closeOverlays();
+    setThreadRoot(null);
+    setView({ kind: 'people' });
+  }, [closeOverlays]);
+
+  const togglePin = useCallback(async (channelId: string, pinned: boolean) => {
+    await api.setPinned(channelId, pinned);
+    setChannels(await api.channels());
+  }, []);
+
+  const reorderPins = useCallback(async (channelIds: string[]) => {
+    // Optimistic: reflect the new order immediately.
+    setChannels((cur) =>
+      cur.map((c) => (channelIds.includes(c.id) ? { ...c, pinned: channelIds.indexOf(c.id) } : c)),
+    );
+    await api.reorderPins(channelIds);
+  }, []);
 
   const openProfile = useCallback(
     (userId: string) => {
@@ -329,6 +368,16 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
     { name: 'campfire', hint: 'Start a voice campfire here', run: () => active && void startCall(active.id, false) },
     { name: 'video', hint: 'Start a video campfire here', run: () => active && void startCall(active.id, true) },
     {
+      name: 'schedule',
+      hint: '/schedule 30m|2h message — send it later',
+      run: (arg) => {
+        const match = /^(\d+)\s*([mh])\s+(.+)$/.exec(arg);
+        if (!match || !active) return;
+        const minutes = Number(match[1]) * (match[2] === 'h' ? 60 : 1);
+        void api.schedule(active.id, match[3]!, minutes).then((s) => setScheduled((cur) => [...cur, s]));
+      },
+    },
+    {
       name: 'status',
       hint: '/status ☕ deep work — set your status',
       run: (arg) => {
@@ -360,6 +409,7 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
   const userActions: UserActions = {
     openDm: (userId) => void openDm(userId),
     openProfile,
+    openTag: setOpenedTag,
     getUser: (userId) => users.find((u) => u.id === userId),
     isOnline: (userId) => online.has(userId),
   };
@@ -375,15 +425,28 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
         activeId={view.kind === 'channel' ? activeId : null}
         homeActive={view.kind === 'home'}
         taskActive={view.kind === 'task'}
+        peopleActive={view.kind === 'people'}
         space={space}
         liveCalls={new Set(Object.keys(calls).filter((id) => (calls[id] ?? []).length > 0))}
         onHome={openHome}
         onTask={openTask}
+        onPeople={openPeople}
         onOpenSpace={() => setSpaceOpen(true)}
         onSelect={openChannel}
         onNewGroup={() => setGroupOpen(true)}
         onNewChannel={() => setCreateChannelOpen(true)}
+        onTogglePin={(id, pinned) => void togglePin(id, pinned)}
+        onReorderPins={(ids) => void reorderPins(ids)}
       />
+      {view.kind === 'people' && (
+        <PeopleView
+          me={me}
+          users={users}
+          online={online}
+          space={space}
+          onToggleBlock={(userId, blocked) => void toggleBlock(userId, blocked)}
+        />
+      )}
       {view.kind === 'task' && <TaskView onOpenChannel={openChannel} onOpenThread={openThread} />}
       {view.kind === 'home' && (
         <HomeView
@@ -414,6 +477,10 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
           inCall={myCall?.channelId === active.id}
           onStartCall={(withVideo) => void startCall(active.id, withVideo)}
           commands={slashCommands}
+          scheduled={scheduled.filter((s) => s.channelId === active.id)}
+          onCancelScheduled={(id) =>
+            void api.cancelScheduled(id).then(() => setScheduled((cur) => cur.filter((s) => s.id !== id)))
+          }
           onOpenThread={setThreadRoot}
           onOpenAsk={() => setAskOpen(true)}
         />
@@ -456,6 +523,7 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
       {spaceOpen && (
         <SpaceModal space={space} onSpaceChange={setSpace} onClose={() => setSpaceOpen(false)} />
       )}
+      {openedTag && <TagModal tag={openedTag} users={users} meId={me.id} onClose={() => setOpenedTag(null)} />}
       {myCall && (
         <CallPanel
           channelLabel={(() => {

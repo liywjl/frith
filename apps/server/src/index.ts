@@ -2,6 +2,7 @@ import { buildApp } from './app.js';
 import { clearExpiredStatuses, getSpace, parseInvite } from './store.js';
 import { publish } from './realtime.js';
 import { startBridge } from './p2p/bridge.js';
+import { deliverDueScheduled } from './scheduler.js';
 
 const app = await buildApp();
 await app.listen({ port: Number(process.env.PORT ?? 3001), host: '127.0.0.1' });
@@ -22,3 +23,6 @@ setInterval(() => {
     for (const user of cleared) publish({ type: 'user.updated', user }, 'all');
   });
 }, 30_000);
+
+// Schedule-send: deliver due messages.
+setInterval(() => void deliverDueScheduled(), 15_000);

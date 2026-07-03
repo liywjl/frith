@@ -9,6 +9,8 @@ import type { UserDto } from '@app/shared';
 export interface UserActions {
   openDm: (userId: string) => void;
   openProfile: (userId: string) => void;
+  /** Show everyone in the network who shares this interest tag. */
+  openTag: (tag: string) => void;
   getUser: (userId: string) => UserDto | undefined;
   isOnline: (userId: string) => boolean;
 }

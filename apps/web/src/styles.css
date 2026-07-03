@@ -670,3 +670,73 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
 .panel-hero .avatar { width: 58px; height: 58px; border-radius: 14px; font-size: 17px; }
 .panel-hero .avatar.emoji { font-size: 31px; }
 .panel-hero .panel-id b { font-size: 16px; }
+
+/* ===== density pass: tighter everything, less scrolling ===== */
+.sidebar { padding: 10px 8px; gap: 1px; }
+.ws-name { margin: 0 8px 8px; }
+.side-h { margin: 10px 8px 3px; }
+.side-item { padding: 3px 8px; }
+.side-me { padding: 8px; }
+.topbar { padding: 7px 14px; }
+.feed { padding: 8px 14px; }
+.msg:not(.compact) { margin-top: 6px; }
+.msg { padding: 2px 6px; }
+.day-sep { margin: 8px 0 6px; }
+.home-scroll { padding: 18px 24px; }
+.home-scroll section { margin-bottom: 18px; }
+.home-head { margin-bottom: 16px; }
+.home-head h1 { font-size: 21px; }
+.home-card { padding: 9px 12px; margin-bottom: 6px; }
+.panel-card { padding: 10px 12px; gap: 6px; }
+.profile-panel { padding: 10px; gap: 8px; }
+.composer { padding: 0 14px 10px; }
+.composer textarea { padding: 8px 12px; }
+.composer-hint { margin-top: 2px; font-size: 10.5px; }
+.profile-stats > div { padding: 10px 14px; }
+.profile-head { margin-bottom: 16px; }
+
+/* pins / favourites */
+.side-row { display: flex; align-items: center; }
+.side-row .side-item { flex: 1; min-width: 0; }
+.side-row .pin-btn {
+  visibility: hidden; font-size: 13px; color: var(--ink-soft);
+  padding: 0 4px; flex: none;
+}
+.side-row:hover .pin-btn { visibility: visible; }
+.side-row .pin-btn.pinned { visibility: visible; color: var(--ai); }
+.side-row.dragging { opacity: 0.4; }
+
+/* people view */
+.people-row {
+  display: flex; align-items: center; gap: 10px;
+  border-bottom: 1px solid var(--line-soft); padding: 6px 2px;
+}
+.people-who { display: flex; align-items: center; gap: 9px; text-align: left; flex: 1; min-width: 0; }
+.people-who .avatar { width: 30px; height: 30px; }
+.people-who .avatar.emoji { font-size: 16px; }
+.people-name { display: flex; flex-direction: column; min-width: 0; }
+.people-name b { font-size: 13.5px; }
+.people-name small { color: var(--ink-soft); font-size: 11.5px; }
+.people-tags { display: flex; gap: 4px; flex-wrap: wrap; max-width: 220px; }
+.tag-mini {
+  font-size: 11px; border: 1px solid var(--line); border-radius: 99px;
+  padding: 1px 8px; color: var(--ink-soft); white-space: nowrap;
+}
+.tag-mini:hover { border-color: var(--ai); color: var(--ai); }
+.people-actions { display: flex; gap: 6px; }
+.people-actions .btn { padding: 4px 10px; font-size: 12.5px; }
+
+/* scheduled sends */
+.scheduled-strip { padding: 0 14px 6px; display: flex; gap: 6px; flex-wrap: wrap; }
+.scheduled-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--ink-soft);
+  border: 1px dashed var(--line); border-radius: 99px; padding: 2px 10px;
+}
+.scheduled-chip button { color: var(--unread); font-weight: 700; }
+
+/* autosave flash */
+.saved-flash { color: var(--ai); font-weight: 600; }
+.people-name { min-width: 0; }
+.people-name b, .people-name small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 900px) { .people-tags { display: none; } }

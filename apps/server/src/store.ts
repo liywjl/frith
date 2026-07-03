@@ -7,11 +7,23 @@ import type {
   ProfilePageDto,
   ProfilePatch,
   ReactionDto,
+  ScheduledMessageDto,
   UserDto,
 } from '@app/shared';
 import crypto from 'node:crypto';
 import { db } from './db/client.js';
-import { blocks, channelMembers, channelReads, channels, messages, reactions, spaces, users } from './db/schema.js';
+import {
+  blocks,
+  channelMembers,
+  channelReads,
+  channels,
+  messages,
+  pins,
+  reactions,
+  scheduledMessages,
+  spaces,
+  users,
+} from './db/schema.js';
 import { extractArtifacts } from './artifacts.js';
 
 /** Reactions + replies a message has drawn — the "engagement" score. */
@@ -85,6 +97,12 @@ export async function visibleChannels(userId: string): Promise<ChannelDto[]> {
     .groupBy(messages.channelId);
   const unread = new Map(unreadRows.map((r) => [r.channelId, r.count]));
 
+  const pinRows = await db
+    .select({ channelId: pins.channelId, position: pins.position })
+    .from(pins)
+    .where(eq(pins.userId, userId));
+  const pinnedBy = new Map(pinRows.map((p) => [p.channelId, p.position]));
+
   const dmIds = rows.filter((c) => c.type === 'dm').map((c) => c.id);
   const partners = new Map<string, { id: string; name: string }[]>();
   if (dmIds.length > 0) {
@@ -105,6 +123,7 @@ export async function visibleChannels(userId: string): Promise<ChannelDto[]> {
     type: c.type,
     topic: c.topic,
     archivedAt: c.archivedAt?.toISOString() ?? null,
+    pinned: pinnedBy.get(c.id) ?? null,
     unreadCount: unread.get(c.id) ?? 0,
     ...(c.type === 'dm'
       ? {
@@ -272,6 +291,62 @@ export async function setSpace(name: string, key?: string): Promise<{ name: stri
   await db.delete(spaces);
   await db.insert(spaces).values({ name, inviteKey });
   return { name, key: inviteKey, invite: `lore:${encodeURIComponent(name)}:${inviteKey}` };
+}
+
+export async function setPinned(userId: string, channelId: string, pinned: boolean): Promise<void> {
+  if (!pinned) {
+    await db.delete(pins).where(and(eq(pins.userId, userId), eq(pins.channelId, channelId)));
+    return;
+  }
+  const [max] = await db
+    .select({ max: raw<number>`coalesce(max(${pins.position}), -1)::int` })
+    .from(pins)
+    .where(eq(pins.userId, userId));
+  await db
+    .insert(pins)
+    .values({ userId, channelId, position: (max?.max ?? -1) + 1 })
+    .onConflictDoNothing();
+}
+
+export async function reorderPins(userId: string, channelIds: string[]): Promise<void> {
+  for (const [position, channelId] of channelIds.entries()) {
+    await db
+      .update(pins)
+      .set({ position })
+      .where(and(eq(pins.userId, userId), eq(pins.channelId, channelId)));
+  }
+}
+
+export async function scheduleMessage(input: {
+  authorId: string;
+  channelId: string;
+  body: string;
+  sendAt: Date;
+}): Promise<ScheduledMessageDto> {
+  const [row] = await db.insert(scheduledMessages).values(input).returning();
+  return { id: row!.id, channelId: row!.channelId, body: row!.body, sendAt: row!.sendAt.toISOString() };
+}
+
+export async function listScheduled(authorId: string): Promise<ScheduledMessageDto[]> {
+  const rows = await db
+    .select()
+    .from(scheduledMessages)
+    .where(eq(scheduledMessages.authorId, authorId))
+    .orderBy(asc(scheduledMessages.sendAt));
+  return rows.map((r) => ({ id: r.id, channelId: r.channelId, body: r.body, sendAt: r.sendAt.toISOString() }));
+}
+
+export async function cancelScheduled(authorId: string, id: string): Promise<boolean> {
+  const deleted = await db
+    .delete(scheduledMessages)
+    .where(and(eq(scheduledMessages.id, id), eq(scheduledMessages.authorId, authorId)))
+    .returning();
+  return deleted.length > 0;
+}
+
+/** Due scheduled messages, removed from the queue as they're claimed. */
+export async function claimDueScheduled() {
+  return db.delete(scheduledMessages).where(raw`${scheduledMessages.sendAt} <= now()`).returning();
 }
 
 /** Authors whose content this viewer never sees. */

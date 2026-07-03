@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useRef } from 'react';
-import type { ChannelDto, MessageDto } from '@app/shared';
+import type { ChannelDto, MessageDto, ScheduledMessageDto } from '@app/shared';
 import { api } from './api';
 import { Avatar } from './Avatar';
 import { Composer, type SlashCommand } from './Composer';
@@ -27,6 +27,8 @@ export function ChannelView({
   inCall,
   onStartCall,
   commands,
+  scheduled,
+  onCancelScheduled,
   onOpenThread,
   onOpenAsk,
 }: {
@@ -36,6 +38,8 @@ export function ChannelView({
   inCall: boolean;
   onStartCall: (withVideo: boolean) => void;
   commands: SlashCommand[];
+  scheduled: ScheduledMessageDto[];
+  onCancelScheduled: (id: string) => void;
   onOpenThread: (root: MessageDto) => void;
   onOpenAsk: () => void;
 }) {
@@ -120,7 +124,22 @@ export function ChannelView({
           </button>
         </div>
       ) : (
-        <Composer channelId={channel.id} placeholder={`Message ${label}`} commands={commands} />
+        <>
+          {scheduled.length > 0 && (
+            <div className="scheduled-strip">
+              {scheduled.map((s) => (
+                <span key={s.id} className="scheduled-chip">
+                  ⏱ “{s.body.length > 40 ? `${s.body.slice(0, 40)}…` : s.body}” sends{' '}
+                  {new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' }).format(new Date(s.sendAt))}
+                  <button title="Cancel" onClick={() => onCancelScheduled(s.id)}>
+                    ✕
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+          <Composer channelId={channel.id} placeholder={`Message ${label}`} commands={commands} />
+        </>
       )}
     </main>
   );

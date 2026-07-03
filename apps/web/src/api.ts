@@ -7,6 +7,7 @@ import type {
   MessageDto,
   ProfilePageDto,
   ProfilePatch,
+  ScheduledMessageDto,
   SpaceDto,
   TaskScopeDto,
   UserDto,
@@ -68,6 +69,20 @@ export const api = {
     }),
   ask: (q: string) => request<AskResponse>(`/api/ask?q=${encodeURIComponent(q)}`),
   calls: () => request<Record<string, string[]>>('/api/calls'),
+  schedule: (channelId: string, body: string, inMinutes: number) =>
+    request<ScheduledMessageDto>(`/api/channels/${channelId}/schedule`, {
+      method: 'POST',
+      body: JSON.stringify({ body, inMinutes }),
+    }),
+  scheduled: () => request<ScheduledMessageDto[]>('/api/scheduled'),
+  cancelScheduled: (id: string) => request<{ ok: boolean }>(`/api/scheduled/${id}`, { method: 'DELETE' }),
+  setPinned: (channelId: string, pinned: boolean) =>
+    request<{ ok: boolean }>(`/api/channels/${channelId}/pin`, {
+      method: 'POST',
+      body: JSON.stringify({ pinned }),
+    }),
+  reorderPins: (channelIds: string[]) =>
+    request<{ ok: boolean }>('/api/pins', { method: 'PUT', body: JSON.stringify({ channelIds }) }),
   joinCall: (channelId: string) =>
     request<{ participants: string[] }>(`/api/channels/${channelId}/call/join`, { method: 'POST' }),
   leaveCall: (channelId: string) =>

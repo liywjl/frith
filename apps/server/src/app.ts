@@ -21,9 +21,14 @@ import {
   getUserById,
   listChannelMessages,
   listUsers,
+  cancelScheduled,
+  listScheduled,
   markChannelRead,
   parseInvite,
+  reorderPins,
+  scheduleMessage,
   setBlocked,
+  setPinned,
   setChannelArchived,
   setSpace,
   toggleReaction,
@@ -285,6 +290,44 @@ export async function buildApp() {
   });
 
   app.get('/api/calls', async () => activeCalls());
+
+  app.post('/api/channels/:id/schedule', async (req, reply) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+    const { body, inMinutes } = z
+      .object({ body: z.string().min(1).max(10_000), inMinutes: z.number().int().min(1).max(10_080) })
+      .parse(req.body);
+    if (!(await requireChannelAccess(req, reply, id))) return reply;
+    const channel = await getChannel(id);
+    if (channel?.archivedAt) return reply.code(409).send({ error: 'this channel is archived' });
+    return scheduleMessage({
+      authorId: req.userId,
+      channelId: id,
+      body,
+      sendAt: new Date(Date.now() + inMinutes * 60_000),
+    });
+  });
+
+  app.get('/api/scheduled', async (req) => listScheduled(req.userId));
+
+  app.delete('/api/scheduled/:id', async (req, reply) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+    if (!(await cancelScheduled(req.userId, id))) return reply.code(404).send({ error: 'not found' });
+    return { ok: true };
+  });
+
+  app.post('/api/channels/:id/pin', async (req, reply) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+    const { pinned } = z.object({ pinned: z.boolean() }).parse(req.body);
+    if (!(await requireChannelAccess(req, reply, id))) return reply;
+    await setPinned(req.userId, id, pinned);
+    return { ok: true };
+  });
+
+  app.put('/api/pins', async (req) => {
+    const { channelIds } = z.object({ channelIds: z.array(z.string().uuid()).max(50) }).parse(req.body);
+    await reorderPins(req.userId, channelIds);
+    return { ok: true };
+  });
 
   app.post('/api/channels/:id/call/join', async (req, reply) => {
     const { id } = z.object({ id: z.string().uuid() }).parse(req.params);

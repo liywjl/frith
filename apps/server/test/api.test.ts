@@ -2,6 +2,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import type { FastifyInstance } from 'fastify';
 import { buildApp } from '../src/app.js';
+import { scheduleMessage } from '../src/store.js';
+import { deliverDueScheduled } from '../src/scheduler.js';
 import { db, sql } from '../src/db/client.js';
 import { channelMembers, channels, messages, users } from '../src/db/schema.js';
 
@@ -443,6 +445,56 @@ describe('channel lifecycle', () => {
       ...as(alice),
     });
     expect(res.statusCode).toBe(400);
+  });
+});
+
+describe('pins (favourites)', () => {
+  it('pins are per-user and ordered', async () => {
+    await app.inject({ method: 'POST', url: `/api/channels/${publicChannel}/pin`, payload: { pinned: true }, ...as(alice) });
+    const mine = await app.inject({ method: 'GET', url: '/api/channels', ...as(alice) });
+    expect(mine.json().find((c: { id: string }) => c.id === publicChannel).pinned).toBe(0);
+
+    const theirs = await app.inject({ method: 'GET', url: '/api/channels', ...as(bob) });
+    expect(theirs.json().find((c: { id: string }) => c.id === publicChannel).pinned).toBeNull();
+
+    await app.inject({ method: 'POST', url: `/api/channels/${publicChannel}/pin`, payload: { pinned: false }, ...as(alice) });
+    const after = await app.inject({ method: 'GET', url: '/api/channels', ...as(alice) });
+    expect(after.json().find((c: { id: string }) => c.id === publicChannel).pinned).toBeNull();
+  });
+});
+
+describe('scheduled sends', () => {
+  it('schedules, lists, and cancels', async () => {
+    const created = await app.inject({
+      method: 'POST',
+      url: `/api/channels/${publicChannel}/schedule`,
+      payload: { body: 'future greetings', inMinutes: 60 },
+      ...as(alice),
+    });
+    expect(created.statusCode).toBe(200);
+
+    const list = await app.inject({ method: 'GET', url: '/api/scheduled', ...as(alice) });
+    expect(list.json().some((s: { body: string }) => s.body === 'future greetings')).toBe(true);
+
+    await app.inject({ method: 'DELETE', url: `/api/scheduled/${created.json().id}`, ...as(alice) });
+    const after = await app.inject({ method: 'GET', url: '/api/scheduled', ...as(alice) });
+    expect(after.json().some((s: { body: string }) => s.body === 'future greetings')).toBe(false);
+  });
+
+  it('delivers due messages as real posts', async () => {
+    await scheduleMessage({
+      authorId: alice,
+      channelId: publicChannel,
+      body: 'delivered from the past',
+      sendAt: new Date(Date.now() - 1000),
+    });
+    const delivered = await deliverDueScheduled();
+    expect(delivered).toBeGreaterThan(0);
+
+    const messages = await app.inject({ method: 'GET', url: `/api/channels/${publicChannel}/messages`, ...as(bob) });
+    expect(JSON.stringify(messages.json())).toContain('delivered from the past');
+    const queue = await app.inject({ method: 'GET', url: '/api/scheduled', ...as(alice) });
+    expect(queue.json().some((s: { body: string }) => s.body === 'delivered from the past')).toBe(false);
   });
 });
 

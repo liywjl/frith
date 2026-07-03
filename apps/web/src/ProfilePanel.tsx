@@ -21,7 +21,7 @@ export function ProfilePanel({
   online: Set<string>;
   onOpenChannel: (channelId: string) => void;
 }) {
-  const { openProfile } = useUserActions();
+  const { openProfile, openTag } = useUserActions();
   const profile = useProfile(userId);
 
   if (!profile) return <aside className="profile-panel" />;
@@ -56,9 +56,9 @@ export function ProfilePanel({
           {user.interests.length > 0 && (
             <div className="panel-tags">
               {user.interests.map((i) => (
-                <span key={i} className="interest-chip">
+                <button key={i} className="interest-chip" title={`See who else is into ${i}`} onClick={() => openTag(i)}>
                   {i}
-                </span>
+                </button>
               ))}
             </div>
           )}

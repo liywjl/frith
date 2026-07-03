@@ -27,6 +27,14 @@ export interface MeDto extends UserDto {
   blockedUserIds: string[];
 }
 
+/** A message written now, delivering later. */
+export interface ScheduledMessageDto {
+  id: string;
+  channelId: string;
+  body: string;
+  sendAt: string;
+}
+
 /** The P2P space this instance belongs to. */
 export interface SpaceDto {
   name: string;
@@ -75,6 +83,8 @@ export interface ChannelDto {
   topic: string | null;
   /** Archived channels are read-only and tucked away, but stay searchable. */
   archivedAt: string | null;
+  /** Favourite position (0-based) when pinned, null otherwise. */
+  pinned: number | null;
   unreadCount: number;
   /** For DMs: the other participants' names, used as the display label. */
   dmPartnerNames?: string[];

@@ -23,7 +23,7 @@ export function ProfileView({
   onEditProfile: () => void;
   onToggleBlock: (userId: string, blocked: boolean) => void;
 }) {
-  const { openProfile } = useUserActions();
+  const { openProfile, openTag } = useUserActions();
   const profile = useProfile(userId);
 
   if (!profile) return <main className="main profile" />;
@@ -92,12 +92,12 @@ export function ProfileView({
             {user.interests.length > 0 && (
               <div className="profile-chips">
                 {user.interests.map((i) => (
-                  <span key={i} className="interest-chip">
+                  <button key={i} className="interest-chip" title={`See who else is into ${i}`} onClick={() => openTag(i)}>
                     {i}
                     {me.id !== user.id && me.interests.some((m) => m.toLowerCase() === i.toLowerCase()) && (
-                      <small title="You're into this too"> · you too</small>
+                      <small> · you too</small>
                     )}
-                  </span>
+                  </button>
                 ))}
               </div>
             )}

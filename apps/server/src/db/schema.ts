@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, pgEnum, primaryKey, index, jsonb } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, timestamp, pgEnum, primaryKey, index, integer, jsonb } from 'drizzle-orm/pg-core';
 
 export const channelType = pgEnum('channel_type', ['public', 'private', 'dm']);
 
@@ -37,18 +37,19 @@ export const channelMembers = pgTable(
   (t) => [primaryKey({ columns: [t.channelId, t.userId] })],
 );
 
-export const messages = pgTable(
-  'messages',
-  {
-    id: uuid('id').primaryKey().defaultRandom(),
-    channelId: uuid('channel_id').notNull().references(() => channels.id),
-    authorId: uuid('author_id').notNull().references(() => users.id),
-    parentMessageId: uuid('parent_message_id'),
-    body: text('body').notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  },
-  (t) => [index('messages_channel_created_idx').on(t.channelId, t.createdAt)],
-);
+/** Columns shared by live and scheduled messages (fresh builders per call). */
+const messageColumns = () => ({
+  id: uuid('id').primaryKey().defaultRandom(),
+  channelId: uuid('channel_id').notNull().references(() => channels.id),
+  authorId: uuid('author_id').notNull().references(() => users.id),
+  parentMessageId: uuid('parent_message_id'),
+  body: text('body').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const messages = pgTable('messages', messageColumns(), (t) => [
+  index('messages_channel_created_idx').on(t.channelId, t.createdAt),
+]);
 
 /** The P2P space this instance belongs to (one per instance for now). */
 export const spaces = pgTable('spaces', {
@@ -66,6 +67,23 @@ export const blocks = pgTable(
     blockedId: uuid('blocked_id').notNull().references(() => users.id),
   },
   (t) => [primaryKey({ columns: [t.userId, t.blockedId] })],
+);
+
+/** Messages written now, delivered later. */
+export const scheduledMessages = pgTable('scheduled_messages', {
+  ...messageColumns(),
+  sendAt: timestamp('send_at', { withTimezone: true }).notNull(),
+});
+
+/** Favourite conversations, ordered by the user. */
+export const pins = pgTable(
+  'pins',
+  {
+    userId: uuid('user_id').notNull().references(() => users.id),
+    channelId: uuid('channel_id').notNull().references(() => channels.id),
+    position: integer('position').notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.channelId] })],
 );
 
 /** How far each user has read each channel — powers unread badges. */
