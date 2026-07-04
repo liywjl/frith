@@ -15,7 +15,8 @@ import type {
   UserDto,
 } from '@app/shared';
 import { space } from '../space/space.js';
-import type { MessageRow, UserRow } from '../space/state.js';
+import type { AttachmentRow, MessageRow, UserRow } from '../space/state.js';
+import { isDangerousName } from './files.js';
 
 export { parseInvite } from '../space/space.js';
 
@@ -250,6 +251,11 @@ function attachmentDtos(messageId: string): AttachmentDto[] {
     kind: attachmentKind(a.mime),
     name: a.name,
     url: `/api/files/${a.id}`,
+    size: a.size,
+    dangerous: isDangerousName(a.name),
+    // Pre-blob attachments have bytes only on the uploader's disk; report
+    // them cached so they render as a plain link (a peer's GET just 404s).
+    cached: a.blob ? space.blobs.isCachedSync(a.blob) : true,
   }));
 }
 
@@ -341,8 +347,18 @@ export async function toggleReaction(userId: string, messageId: string, emoji: s
 
 /* ---------------------------- attachments ----------------------------- */
 
-export async function addAttachment(messageId: string, name: string, mime: string, size: number) {
-  const attachment = { id: space.newId(), messageId, name, mime, size };
+/** Store the bytes in this instance's blob core, then append the metadata op. */
+export async function addAttachment(messageId: string, name: string, mime: string, bytes: Buffer) {
+  const { ref, hash } = await space.blobs.put(bytes);
+  const attachment: AttachmentRow = {
+    id: space.newId(),
+    messageId,
+    name,
+    mime,
+    size: bytes.length,
+    hash,
+    blob: ref,
+  };
   await space.append({ t: 'att', attachment });
   return attachment;
 }
@@ -352,7 +368,7 @@ export async function getAttachment(id: string) {
   if (!attachment) return null;
   const message = state().messages.get(attachment.messageId);
   if (!message) return null;
-  return { id: attachment.id, mime: attachment.mime, name: attachment.name, channelId: message.channelId };
+  return { ...attachment, channelId: message.channelId, authorId: message.authorId };
 }
 
 /* ------------------------- pins & scheduling -------------------------- */

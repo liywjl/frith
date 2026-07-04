@@ -43,8 +43,11 @@ import {
   visibleChannels,
 } from '../domain/store.js';
 import { ask, taskScope } from '../domain/ask.js';
-import { publish, register, sendToUser, setOnUserOffline } from './realtime.js';
+import { onlineUserIds, publish, register, sendToUser, setOnUserOffline } from './realtime.js';
 import { activeCalls, joinCall, leaveAllCalls, leaveCall } from '../domain/calls.js';
+import { getPolicies, setPolicies, mb } from '../domain/policies.js';
+import { effectiveMime, isDangerousName } from '../domain/files.js';
+import { library } from '../domain/library.js';
 import { space } from '../space/space.js';
 import { seedCorpus } from '../domain/seed.js';
 
@@ -69,6 +72,28 @@ async function requireChannelAccess(
   return false;
 }
 
+/**
+ * Warm the local cache for a just-arrived message's files — within this
+ * device's policies, and never for authors someone at this device blocked.
+ */
+async function autoFetchAttachments(message: { id: string; channelId: string; authorId: string; createdAt: string }) {
+  const policies = getPolicies();
+  const attachments = space.state.attachmentsByMessage.get(message.id) ?? [];
+  const tooOld = Date.now() - new Date(message.createdAt).getTime() > policies.autoFetchRecentDays * 86_400_000;
+  const blockedLocally = onlineUserIds().some((uid) => space.state.blocks.get(uid)?.has(message.authorId));
+  if (tooOld || blockedLocally) return;
+  for (const a of attachments) {
+    if (!a.blob || space.blobs.isOwn(a.blob) || a.size > mb(policies.autoFetchMB)) continue;
+    const bytes = await space.blobs.get(a.blob, { wait: true, expectedHash: a.hash }).catch(() => null);
+    if (!bytes) continue;
+    publish(
+      { type: 'file.cached', channelId: message.channelId, messageId: message.id, attachmentId: a.id },
+      await channelAudience(message.channelId),
+    );
+  }
+  await space.blobs.enforceBudget(mb(policies.storageBudgetMB));
+}
+
 export async function buildApp() {
   if (!space.isOpen) await space.open(process.env.LORE_DATA ?? '.lore-data');
 
@@ -83,6 +108,7 @@ export async function buildApp() {
             { type: 'message.created', message: toMessageDto(op.message, '') },
             await channelAudience(op.message.channelId),
           );
+          void autoFetchAttachments(op.message);
         } else if (op.t === 'react') {
           const message = await getMessage(op.messageId);
           if (!message) return;
@@ -379,31 +405,123 @@ export async function buildApp() {
     const channel = await getChannel(id);
     if (channel?.archivedAt) return reply.code(409).send({ error: 'this channel is archived' });
 
-    const part = await req.file();
+    const part = await req.file({ limits: { fileSize: mb(getPolicies().maxUploadMB) } });
     if (!part) return reply.code(400).send({ error: 'no file' });
     const fields = part.fields as Record<string, { value?: string } | undefined>;
     const caption = (fields.caption?.value ?? '').slice(0, 10_000);
     const parentMessageId = fields.parentMessageId?.value || null;
 
-    // Attachment op lands before the message op so the fan-out sees a
-    // complete message; the file is on disk before either.
+    let bytes: Buffer;
+    try {
+      bytes = await part.toBuffer();
+    } catch {
+      return reply.code(413).send({ error: `files are capped at ${getPolicies().maxUploadMB} MB here` });
+    }
+
+    // Attachment op (bytes already in our blob core) lands before the
+    // message op so the fan-out sees a complete message.
     const messageId = space.newId();
-    const attachment = await addAttachment(messageId, part.filename || 'file', part.mimetype, 0);
-    await fs.promises.writeFile(path.join(filesDir, attachment.id), await part.toBuffer());
+    // Trust the bytes over the declared type: media that isn't what it
+    // claims to be gets stored as a plain download.
+    const mime = effectiveMime(bytes, part.mimetype);
+    await addAttachment(messageId, part.filename || 'file', mime, bytes);
     return createMessage({ id: messageId, channelId: id, authorId: req.userId, body: caption, parentMessageId });
   });
 
-  // Files inherit the ACL of the message they're attached to.
+  // Files inherit the ACL of the message they're attached to. Bytes come
+  // from this device when we have them; `?wait=1` pulls them from a peer
+  // first (the explicit "download this" click).
   app.get('/api/files/:id', async (req, reply) => {
     const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+    const { wait } = z.object({ wait: z.string().optional() }).parse(req.query);
     const attachment = await getAttachment(id);
     if (!attachment) return reply.code(404).send({ error: 'no such file' });
     if (!(await requireChannelAccess(req, reply, attachment.channelId))) return reply;
-    return reply
-      .header('content-type', attachment.mime)
-      .header('content-disposition', `inline; filename="${attachment.name.replace(/"/g, '')}"`)
-      .send(fs.createReadStream(path.join(filesDir, id)));
+
+    const sendBytes = (body: Buffer | fs.ReadStream) =>
+      reply
+        .header('content-type', attachment.mime)
+        .header('x-content-type-options', 'nosniff')
+        .header(
+          'content-disposition',
+          // Media renders inline; everything else downloads — a spoofed or
+          // executable file never executes in the window that shows chat.
+          `${/^(image|video|audio)\//.test(attachment.mime) && !isDangerousName(attachment.name) ? 'inline' : 'attachment'}; filename="${attachment.name.replace(/"/g, '')}"`,
+        )
+        .send(body);
+
+    if (!attachment.blob) {
+      // Pre-blob attachment: bytes exist only on the uploader's disk.
+      const legacy = path.join(filesDir, id);
+      if (!fs.existsSync(legacy)) return reply.code(404).send({ error: 'file is not on this device' });
+      return sendBytes(fs.createReadStream(legacy));
+    }
+
+    const wasCached = space.blobs.isCachedSync(attachment.blob);
+    const bytes = await space.blobs.get(attachment.blob, {
+      wait: wait === '1',
+      expectedHash: attachment.hash,
+    });
+    if (!bytes) {
+      return reply.code(409).send({
+        error: 'file is not on this device yet',
+        needsFetch: true,
+        size: attachment.size,
+      });
+    }
+    if (!wasCached) {
+      publish(
+        { type: 'file.cached', channelId: attachment.channelId, messageId: attachment.messageId, attachmentId: id },
+        await channelAudience(attachment.channelId),
+      );
+      void space.blobs.enforceBudget(mb(getPolicies().storageBudgetMB));
+    }
+    return sendBytes(bytes);
   });
+
+  // Device-local storage policies: what this machine stores and downloads.
+  app.get('/api/storage', async () => ({ policies: getPolicies(), usage: space.blobs.usage() }));
+
+  app.put('/api/storage/policies', async (req) => {
+    const patch = z
+      .object({
+        maxUploadMB: z.number().int().min(1).max(4096).optional(),
+        autoFetchMB: z.number().int().min(0).max(4096).optional(),
+        autoFetchRecentDays: z.number().int().min(0).max(3650).optional(),
+        storageBudgetMB: z.number().int().min(0).max(1_048_576).optional(),
+      })
+      .parse(req.body);
+    const policies = setPolicies(patch);
+    await space.blobs.enforceBudget(mb(policies.storageBudgetMB));
+    return { policies, usage: space.blobs.usage() };
+  });
+
+  app.delete('/api/storage/cache', async () => {
+    await space.blobs.clearCache();
+    return { policies: getPolicies(), usage: space.blobs.usage() };
+  });
+
+  // Local library: folders/repos on THIS device, indexed into Ask.
+  app.get('/api/library', async () => library.list());
+
+  app.post('/api/library/sources', async (req, reply) => {
+    const { path: dir, name } = z
+      .object({ path: z.string().min(1).max(500), name: z.string().trim().max(80).optional() })
+      .parse(req.body);
+    try {
+      return await library.addSource(dir, name);
+    } catch (err) {
+      return reply.code(400).send({ error: err instanceof Error ? err.message : 'could not add that folder' });
+    }
+  });
+
+  app.delete('/api/library/sources/:id', async (req, reply) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+    if (!library.removeSource(id)) return reply.code(404).send({ error: 'no such source' });
+    return { ok: true };
+  });
+
+  app.post('/api/library/reindex', async () => library.reindexAll());
 
   app.get('/api/calls', async () => activeCalls());
 

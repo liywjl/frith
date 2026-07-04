@@ -25,6 +25,8 @@ import { HomeView } from './views/HomeView';
 import { ProfileView } from './views/ProfileView';
 import { TaskView } from './views/TaskView';
 import { SpaceModal } from './modals/SpaceModal';
+import { StorageModal } from './modals/StorageModal';
+import { LibraryModal } from './modals/LibraryModal';
 import { ProfilePanel } from './panels/ProfilePanel';
 import { CallPanel } from './panels/CallPanel';
 import { CallManager } from './lib/call';
@@ -99,6 +101,8 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
   const [homeTick, setHomeTick] = useState(0);
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [askOpen, setAskOpen] = useState(false);
+  const [storageOpen, setStorageOpen] = useState(false);
+  const [libraryOpen, setLibraryOpen] = useState(false);
   const [profileEditOpen, setProfileEditOpen] = useState(false);
   const [groupOpen, setGroupOpen] = useState(false);
   const [createChannelOpen, setCreateChannelOpen] = useState(false);
@@ -256,6 +260,19 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
         }
         return;
       }
+      if (event.type === 'file.cached') {
+        // Bytes arrived from a peer — flip the fetch chip into real media.
+        if (event.channelId === activeId) {
+          setMessages((cur) =>
+            cur.map((m) =>
+              m.id === event.messageId
+                ? { ...m, attachments: m.attachments.map((a) => (a.id === event.attachmentId ? { ...a, cached: true } : a)) }
+                : m,
+            ),
+          );
+        }
+        return;
+      }
       const msg = event.message;
       if (me.blockedUserIds.includes(msg.authorId)) return; // blocked: no feed, no badge
       const viewingThatChannel = view.kind === 'channel' && msg.channelId === activeId;
@@ -402,6 +419,8 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
     },
     { name: 'task', hint: 'Scope a task', run: () => openTask() },
     { name: 'home', hint: 'Back to your digest', run: () => openHome() },
+    { name: 'storage', hint: 'What this device stores & auto-downloads', run: () => setStorageOpen(true) },
+    { name: 'library', hint: 'Local folders & repos Ask can cite', run: () => setLibraryOpen(true) },
     {
       name: 'archive',
       hint: 'Archive this channel (stays searchable)',
@@ -527,6 +546,8 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
       {spaceOpen && (
         <SpaceModal space={space} onSpaceChange={setSpace} onClose={() => setSpaceOpen(false)} />
       )}
+      {storageOpen && <StorageModal onClose={() => setStorageOpen(false)} />}
+      {libraryOpen && <LibraryModal onClose={() => setLibraryOpen(false)} />}
       {openedTag && <TagModal tag={openedTag} users={users} meId={me.id} onClose={() => setOpenedTag(null)} />}
       {myCall && (
         <CallPanel

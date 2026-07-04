@@ -19,18 +19,31 @@ declare module 'hyperswarm' {
 declare module 'corestore' {
   import type { Duplex } from 'node:stream';
   export interface StoreCore {
+    readonly key: Buffer;
     length: number;
     ready(): Promise<void>;
     get(index: number): Promise<unknown>;
+    has(index: number): Promise<boolean>;
+    clear(start: number, end?: number): Promise<unknown>;
     append(value: unknown): Promise<void>;
     on(event: 'append', listener: () => void): void;
     on(event: 'truncate', listener: (to: number) => void): void;
   }
   export default class Corestore {
     constructor(storage: string);
-    get(opts: { name: string; valueEncoding?: string }): StoreCore;
-    replicate(stream: Duplex): unknown;
+    get(opts: { name: string; valueEncoding?: string } | Buffer): StoreCore;
+    replicate(stream: Duplex | boolean): Duplex;
     close(): Promise<void>;
+  }
+}
+
+declare module 'hyperblobs' {
+  import type { StoreCore } from 'corestore';
+  export default class Hyperblobs {
+    constructor(core: StoreCore);
+    readonly core: StoreCore;
+    put(bytes: Buffer): Promise<unknown>;
+    get(id: unknown, opts?: { timeout?: number; wait?: boolean }): Promise<Buffer | null>;
   }
 }
 

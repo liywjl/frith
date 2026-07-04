@@ -1,9 +1,57 @@
 import { useState } from 'react';
-import type { MessageDto } from '@app/shared';
+import type { AttachmentDto, MessageDto } from '@app/shared';
 import { api } from '../lib/api';
 import { Avatar } from './Avatar';
 import { UserHover } from './UserHover';
 import { useUserActions } from '../lib/userActions';
+
+const fmtSize = (n: number) =>
+  n >= 1024 * 1024 ? `${(n / (1024 * 1024)).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`;
+
+/**
+ * One attachment. Cached media renders inline; uncached bytes show a fetch
+ * chip (they live on a peer until you ask); dangerous files never render and
+ * say why.
+ */
+function Attachment({ a }: { a: AttachmentDto }) {
+  const [state, setState] = useState<'idle' | 'fetching' | 'failed'>('idle');
+
+  if (a.dangerous) {
+    return (
+      <a className="att-file att-danger" href={a.url} download title="This file type can run code. Only open it if you trust the sender.">
+        ⚠️ {a.name} · {fmtSize(a.size)}
+      </a>
+    );
+  }
+  if (!a.cached) {
+    // Bytes are on a peer, not on this device — fetching is a choice
+    // (auto-fetch already declined it: too big, too old, or author blocked).
+    const fetchNow = () => {
+      setState('fetching');
+      api.fetchFile(a.id).catch(() => setState('failed'));
+      // success flips `cached` via the file.cached realtime event
+    };
+    return (
+      <button className="att-file att-fetch" onClick={fetchNow} disabled={state === 'fetching'}>
+        {state === 'fetching' ? '⏳ fetching from peers…' : state === 'failed' ? '📡 no peer online has this — retry?' : `⬇️ ${a.name} · ${fmtSize(a.size)}`}
+      </button>
+    );
+  }
+  if (a.kind === 'image') {
+    return (
+      <a href={a.url} target="_blank" rel="noreferrer">
+        <img className="att-img" src={a.url} alt={a.name} />
+      </a>
+    );
+  }
+  if (a.kind === 'video') return <video className="att-video" src={a.url} controls />;
+  if (a.kind === 'audio') return <audio className="att-audio" src={a.url} controls />;
+  return (
+    <a className="att-file" href={a.url} target="_blank" rel="noreferrer">
+      📎 {a.name} · {fmtSize(a.size)}
+    </a>
+  );
+}
 
 const QUICK_EMOJIS = ['👍', '❤️', '✅', '😂', '🎉'];
 const ALL_EMOJIS = [
@@ -53,21 +101,9 @@ export function Message({
           </div>
         )}
         {message.body && <div className="body">{message.body}</div>}
-        {message.attachments.map((a) =>
-          a.kind === 'image' ? (
-            <a key={a.id} href={a.url} target="_blank" rel="noreferrer">
-              <img className="att-img" src={a.url} alt={a.name} />
-            </a>
-          ) : a.kind === 'video' ? (
-            <video key={a.id} className="att-video" src={a.url} controls />
-          ) : a.kind === 'audio' ? (
-            <audio key={a.id} className="att-audio" src={a.url} controls />
-          ) : (
-            <a key={a.id} className="att-file" href={a.url} target="_blank" rel="noreferrer">
-              📎 {a.name}
-            </a>
-          ),
-        )}
+        {message.attachments.map((a) => (
+          <Attachment key={a.id} a={a} />
+        ))}
         <div className="msg-meta">
           {message.reactions.map((r) => (
             <button

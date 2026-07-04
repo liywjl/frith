@@ -11,30 +11,31 @@ keep the two in sync.
 - Later: opt-in **community directory** — a curated list of public spaces
   (itself just a signed Autobase feed, no server needed).
 
-## 2. Storage & sharing policies
+## 2. Storage & sharing policies — shipped (v1)
 
-The differentiator: retention is a *user policy*, not a pricing tier.
+Retention is a *user policy*, not a pricing tier. Attachment bytes live in
+per-instance blob cores (`space/blobs.ts`) and move to a peer only on
+request; policies (`domain/policies.ts` + the `/storage` UI) are per-device:
+upload cap, auto-download size + recency, cache budget with LRU eviction.
 
-- **Default: recent-only sync.** New members replicate a sliding window
-  (e.g. last 90 days / N MB per channel), not the full archive. Autobase
-  sparse replication makes this natural — don't build a second sync layer.
-- **Backfill on request.** Explicit "load older history" pulls from peers
-  holding it, up to a per-space cap the user sets.
-- **File-size caps.** Blobs above a threshold (default ~25 MB) are fetched
-  lazily on click, never auto-replicated. Hard per-device storage budget with
-  LRU eviction for lazily-fetched blobs.
-- **Sharing layers**, per user: (a) share into the space, (b) keep local-only,
-  (c) willing to *relay/seed* history for others. Three toggles, not a matrix.
+Still open:
+- **Recent-only sync of the log itself.** Ops are tiny JSON, so full log
+  replication is cheap today; windowed history needs per-epoch cores —
+  revisit when spaces get big.
+- **Relay/seed toggle.** Corestore serves any core it holds to any space
+  member; per-core serve control needs deeper Pears surgery.
 
-## 3. Abuse & malicious-content defenses
+## 3. Abuse & malicious-content defenses — shipped (v1)
 
-- Content-addressed blobs: hash-verified on receipt; corrupt/spoofed data
-  doesn't replicate further.
-- Writers are explicit (blind-pairing admit) and revocable; a removed writer's
-  future ops are ignored by all peers deterministically.
-- Block = stop replicating from that peer, not just hide.
-- Don't render risky content: no remote images by default, attachments open
-  via OS (never executed), MIME sniffing on receipt, warn on executable types.
+Done: content-addressed blobs (sha256 in the op, verified on fetch, dropped
+on mismatch); MIME magic-byte sniffing on upload (spoofed media demoted to
+plain downloads, never rendered); executable-type warnings; `nosniff` +
+attachment disposition on serving; blocked authors' files are never
+auto-fetched.
+
+Still open:
+- **Writer revocation** — needs a roles/admin model first (today any member
+  is an equal writer).
 - Out of scope for now: reputation systems, automated scanning.
 
 ## 4. Desktop app (Electron) — shipped (v1)
@@ -50,17 +51,20 @@ Still to do, in rough order:
 - filesystem access for §5
 - auto-update — not until there are users.
 
-## 5. Local files, repos & docs integration
+## 5. Local files, repos & docs integration — shipped (v1)
 
-Prereq: desktop shell (§4). Point Lore at local folders / git repos.
+Point Lore at local folders / git repos (`domain/library.ts`, `/library` UI):
+lexical index over text/code/docs plus git commit history, cited in Ask next
+to chat evidence. Indexing is device-local; nothing enters the space's log.
 
-- **Index**, don't copy: embeddings + full-text over docs and code, stored
-  locally; sharing an index into a space is an explicit act (§2 layers apply).
-- Git-aware: commits, authors, and file history become citable objects in
-  Ask answers ("decided in #infra, implemented in abc123").
-- **Graph search** (later): people ↔ threads ↔ decisions ↔ commits ↔ docs as
-  one graph. Start with the edges we already have (mentions, replies, file
+Still open:
+- **Embeddings + synthesis** via local models (Ollama) — the lexical index
+  keeps the result shapes; models slot in on top.
+- **Sharing an index into a space** as an explicit act (§2 layers apply).
+- **Graph search**: people ↔ threads ↔ decisions ↔ commits ↔ docs as one
+  graph. Start with the edges we already have (mentions, replies, file
   shares, commit authorship) before inventing an ontology.
+- Watch mode: re-index on file change instead of manual re-index.
 
 ## Sequencing rationale
 

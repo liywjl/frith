@@ -3,6 +3,7 @@ import type { AskResponse } from '@app/shared';
 import { api } from '../lib/api';
 import { Avatar } from '../components/Avatar';
 import { Snippet } from '../components/Snippet';
+import { LibraryModal } from '../modals/LibraryModal';
 
 const EXAMPLES = [
   'payments migration',
@@ -25,6 +26,7 @@ export function AskPanel({
   const [query, setQuery] = useState('');
   const [result, setResult] = useState<AskResponse | null>(null);
   const [loading, setLoading] = useState(false);
+  const [libraryOpen, setLibraryOpen] = useState(false);
 
   async function run(q: string) {
     const trimmed = q.trim();
@@ -117,15 +119,40 @@ export function AskPanel({
                 </div>
               ))}
               {result.people.length === 0 && <div className="ask-none">No one matched.</div>}
+
+              <div className="ask-h">From your library</div>
+              {result.local.map((hit) => (
+                <div key={`${hit.sourceId}:${hit.ref}`} className="ask-local" title={hit.ref}>
+                  <span className="ask-ref">
+                    {hit.kind === 'commit' ? '🔀' : '📄'} {hit.sourceName} ·{' '}
+                    {hit.kind === 'commit' ? hit.ref : hit.title} · {dateFormat.format(new Date(hit.when))}
+                  </span>
+                  {hit.kind === 'commit' && <span className="ask-root">{hit.title}</span>}
+                  <span className="ask-snippet">
+                    <Snippet text={hit.snippet} />
+                  </span>
+                </div>
+              ))}
+              {result.local.length === 0 && (
+                <div className="ask-none">
+                  Nothing from this device’s library.{' '}
+                  <button className="ask-link" onClick={() => setLibraryOpen(true)}>
+                    Add folders
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}
 
         <div className="ask-foot">
-          <span>only sources you can read</span>
-          <span>retrieval: Postgres FTS · synthesis: coming with local models</span>
+          <span>only sources you can read · library results stay on this device</span>
+          <button className="ask-link" onClick={() => setLibraryOpen(true)}>
+            ⚙ library
+          </button>
         </div>
       </div>
+      {libraryOpen && <LibraryModal onClose={() => setLibraryOpen(false)} />}
     </div>
   );
 }

@@ -9,7 +9,8 @@ export function setOnUserOffline(handler: (userId: string) => void) {
   onUserOffline = handler;
 }
 
-function onlineUserIds(): string[] {
+/** Users with a live socket to THIS instance — i.e. the people at this device. */
+export function onlineUserIds(): string[] {
   return [...new Set(sockets.values())];
 }
 

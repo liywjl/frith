@@ -104,6 +104,29 @@ export interface AttachmentDto {
   kind: 'image' | 'video' | 'audio' | 'file';
   name: string;
   url: string;
+  size: number;
+  /** Bytes are on this device — render/serve immediately. False = a click
+   *  (or auto-fetch policy) pulls them from whichever peer holds them. */
+  cached: boolean;
+  /** Could execute if opened carelessly — never rendered inline. */
+  dangerous: boolean;
+}
+
+/** Device-local storage policies — what THIS machine stores and downloads. */
+export interface PoliciesDto {
+  maxUploadMB: number;
+  autoFetchMB: number;
+  autoFetchRecentDays: number;
+  storageBudgetMB: number;
+}
+
+export interface StorageDto {
+  policies: PoliciesDto;
+  usage: {
+    /** Bytes of other peers' files cached on this device (evictable). */
+    cachedBytes: number;
+    cachedCount: number;
+  };
 }
 
 export interface MessageDto {
@@ -150,11 +173,39 @@ export interface AskThread {
   lastActivityAt: string;
 }
 
+/** A hit from this device's local library (files/repos the user indexed). */
+export interface AskLocalHit {
+  kind: 'file' | 'commit';
+  sourceId: string;
+  sourceName: string;
+  /** Relative file path, or short commit sha. */
+  ref: string;
+  /** File name, or commit subject line. */
+  title: string;
+  snippet: string;
+  /** File mtime or commit date (ISO). */
+  when: string;
+}
+
 export interface AskResponse {
   query: string;
   people: AskPerson[];
   threads: AskThread[];
   messages: AskEvidence[];
+  /** From this device's library — never shared into the space. */
+  local: AskLocalHit[];
+}
+
+/** A local folder/repo indexed into Ask on this device only. */
+export interface LibrarySourceDto {
+  id: string;
+  name: string;
+  path: string;
+  /** Indexed text/code files. */
+  fileCount: number;
+  /** Indexed git commits (0 when the folder isn't a repo). */
+  commitCount: number;
+  indexedAt: string | null;
 }
 
 /** A code path, repo, or link that conversations keep referring to. */
@@ -250,6 +301,8 @@ export type ServerEvent =
   | { type: 'p2p.peers'; count: number }
   /** Campfire (call) membership changed in a channel. */
   | { type: 'call.changed'; channelId: string; participants: string[] }
+  /** A file's bytes finished downloading to this device. */
+  | { type: 'file.cached'; channelId: string; messageId: string; attachmentId: string }
   /** WebRTC signaling relayed between two users. */
   | { type: 'rtc.signal'; from: string; payload: RtcPayload };
 

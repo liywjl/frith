@@ -20,6 +20,7 @@
     "blind-pairing": "^2.3.1",
     "corestore": "^7.11.0",
     "fastify": "^5.9.0",
+    "hyperblobs": "^2.12.1",
     "hyperswarm": "^4.17.0",
     "zod": "^4.4.3"
   },

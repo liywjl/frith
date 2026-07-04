@@ -15,3 +15,6 @@ ds-bundle/
 .design-sync/.cache/
 .design-sync/learnings/
 apps/web/.ds-entry.tsx
+.ds-sync/
+.design-sync/
+ds-bundle/

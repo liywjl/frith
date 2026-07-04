@@ -8,6 +8,7 @@ members. This folder is the only place that touches the P2P stack.
 | --- | --- |
 | [space.ts](space.ts) | Lifecycle of the one open space — create/join/open, append ops, admit members. Wires the four Pears modules below; no custom protocol. |
 | [state.ts](state.ts) | The `Op` union (every kind of write in the app) and `LoreState`, the reducer that folds the log into in-memory state. |
+| [blobs.ts](blobs.ts) | Attachment bytes: per-instance Hyperblobs cores, fetched sparsely from peers on demand, verified by sha256, evicted LRU under a device budget. |
 | [modules.d.ts](modules.d.ts) | Minimal typings for the Pears modules (no official `@types`). |
 
 ## What gets stored
@@ -17,11 +18,17 @@ an `Op`: a small JSON value appended to the log. Nothing is updated in place;
 current state is whatever `LoreState` says after replaying the log, and the
 reducer is deterministic, so every peer materializes identical state.
 
-Two honest caveats:
+**Attachment bytes are not in the log** — only their metadata op is (name,
+sniffed mime, size, sha256, and a blob ref). The bytes live in the uploader's
+blob core and move to a peer only when that peer asks: automatically when the
+file fits the device's policies (size, recency — see `domain/policies.ts`),
+or on an explicit click. Fetched bytes are hash-verified against the op and
+count against a per-device cache budget with least-recently-used eviction.
+Ops are tiny, so the full log replicating everywhere is cheap; the heavy
+data is exactly the part you control.
 
-- **Attachment bytes are not in the log.** Only their metadata op is. The
-  bytes sit on the receiving instance's disk (`.data/uploads/`) and stream
-  over HTTP — they don't replicate to peers yet.
+One honest caveat:
+
 - **Private channels are logically private, not yet physically.** Every
   member replicates the whole log; the API layer enforces who can *read*
   what (guarded by the ACL test suite). Physical ACL — separate cores with

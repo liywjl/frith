@@ -41,6 +41,19 @@ export interface AttachmentRow {
   name: string;
   mime: string;
   size: number;
+  /** sha256 of the bytes — verified when fetched from a peer. */
+  hash?: string;
+  /** Where the bytes live: which instance's blob core, and where in it.
+   *  Absent on pre-blob attachments (bytes on the uploader's disk only). */
+  blob?: { key: string; id: BlobId };
+}
+
+/** Hyperblobs' locator for one blob within a core. */
+export interface BlobId {
+  blockOffset: number;
+  blockLength: number;
+  byteOffset: number;
+  byteLength: number;
 }
 
 export interface ScheduledRow {

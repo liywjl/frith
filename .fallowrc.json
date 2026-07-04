@@ -1,14 +1,18 @@
 {
   "ignorePatterns": [
+    ".ds-sync/**",
+    "ds-bundle/**",
     "spikes/**"
   ],
   "usedClassMembers": [
+    "clearCache",
+    "enableCamera",
     "handleSignal",
+    "isCachedSync",
+    "leave",
     "prune",
     "setMuted",
-    "setVideoEnabled",
-    "enableCamera",
-    "leave"
+    "setVideoEnabled"
   ],
   "ignoreDependencies": [
     "autobase",

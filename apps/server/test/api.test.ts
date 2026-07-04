@@ -446,41 +446,96 @@ describe('channel lifecycle', () => {
 });
 
 describe('attachments', () => {
-  function multipart(fields: Record<string, string>, filename: string, content: string, mime: string) {
+  // A real (tiny) PNG prefix: magic bytes are what the upload sniffer checks.
+  const PNG_BYTES = Buffer.concat([
+    Buffer.from('89504e470d0a1a0a', 'hex'),
+    Buffer.from('lore-test-image-payload'),
+  ]);
+
+  function multipart(fields: Record<string, string>, filename: string, content: Buffer, mime: string) {
     const boundary = 'lore-test-boundary';
-    const parts = Object.entries(fields).map(
-      ([k, v]) => `--${boundary}\r\nContent-Disposition: form-data; name="${k}"\r\n\r\n${v}\r\n`,
+    const parts: Buffer[] = Object.entries(fields).map(([k, v]) =>
+      Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="${k}"\r\n\r\n${v}\r\n`),
     );
     parts.push(
-      `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${filename}"\r\nContent-Type: ${mime}\r\n\r\n${content}\r\n--${boundary}--\r\n`,
+      Buffer.from(
+        `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${filename}"\r\nContent-Type: ${mime}\r\n\r\n`,
+      ),
+      content,
+      Buffer.from(`\r\n--${boundary}--\r\n`),
     );
     return {
-      payload: parts.join(''),
+      payload: Buffer.from(Buffer.concat(parts)),
       headers: { 'content-type': `multipart/form-data; boundary=${boundary}` },
     };
   }
 
-  it('uploads a file as a message and serves it back with the channel ACL', async () => {
-    const appWithFiles = app;
-
-    const upload = await appWithFiles.inject({
+  const upload = (channelId: string, filename: string, content: Buffer, mime: string, uid: string) =>
+    app.inject({
       method: 'POST',
-      url: `/api/channels/${privateChannel}/attachments`,
-      ...multipart({ caption: 'the secret diagram' }, 'diagram.png', 'PNGDATA', 'image/png'),
-      cookies: { uid: alice },
+      url: `/api/channels/${channelId}/attachments`,
+      ...multipart({ caption: 'attached' }, filename, content, mime),
+      cookies: { uid },
     });
-    expect(upload.statusCode).toBe(200);
-    const message = upload.json();
-    expect(message.attachments[0].kind).toBe('image');
-    const fileUrl = message.attachments[0].url;
 
-    const asMember = await appWithFiles.inject({ method: 'GET', url: fileUrl, cookies: { uid: alice } });
+  it('uploads a file as a message and serves it back with the channel ACL', async () => {
+    const res = await upload(privateChannel, 'diagram.png', PNG_BYTES, 'image/png', alice);
+    expect(res.statusCode).toBe(200);
+    const attachment = res.json().attachments[0];
+    expect(attachment.kind).toBe('image');
+    expect(attachment.cached).toBe(true); // our own upload — bytes are here
+    expect(attachment.size).toBe(PNG_BYTES.length);
+
+    const asMember = await app.inject({ method: 'GET', url: attachment.url, cookies: { uid: alice } });
     expect(asMember.statusCode).toBe(200);
-    expect(asMember.body).toBe('PNGDATA');
+    expect(asMember.rawPayload.equals(PNG_BYTES)).toBe(true);
+    expect(asMember.headers['content-disposition']).toContain('inline');
 
     // Non-members must not fetch files from private channels.
-    const asOutsider = await appWithFiles.inject({ method: 'GET', url: fileUrl, cookies: { uid: bob } });
+    const asOutsider = await app.inject({ method: 'GET', url: attachment.url, cookies: { uid: bob } });
     expect(asOutsider.statusCode).toBe(403);
+  });
+
+  it('demotes media whose bytes are not what they claim (no inline render)', async () => {
+    const res = await upload(publicChannel, 'totally-a-photo.png', Buffer.from('#!/bin/sh\necho pwned'), 'image/png', alice);
+    expect(res.statusCode).toBe(200);
+    const attachment = res.json().attachments[0];
+    expect(attachment.kind).toBe('file'); // sniffed, not believed
+
+    const served = await app.inject({ method: 'GET', url: attachment.url, cookies: { uid: bob } });
+    expect(served.headers['content-type']).toBe('application/octet-stream');
+    expect(served.headers['content-disposition']).toContain('attachment');
+    expect(served.headers['x-content-type-options']).toBe('nosniff');
+  });
+
+  it('flags executable-looking files as dangerous', async () => {
+    const res = await upload(publicChannel, 'setup.sh', Buffer.from('#!/bin/sh'), 'text/x-sh', alice);
+    expect(res.json().attachments[0].dangerous).toBe(true);
+  });
+
+  it('enforces the device upload cap from storage policies', async () => {
+    const put = await app.inject({
+      method: 'PUT',
+      url: '/api/storage/policies',
+      payload: { maxUploadMB: 1 },
+      ...as(alice),
+    });
+    expect(put.statusCode).toBe(200);
+    expect(put.json().policies.maxUploadMB).toBe(1);
+
+    const big = Buffer.alloc(1024 * 1024 + 1, 7);
+    const res = await upload(publicChannel, 'huge.bin', big, 'application/octet-stream', alice);
+    expect(res.statusCode).toBe(413);
+
+    await app.inject({ method: 'PUT', url: '/api/storage/policies', payload: { maxUploadMB: 100 }, ...as(alice) });
+  });
+
+  it('reports storage policies and cache usage', async () => {
+    const res = await app.inject({ method: 'GET', url: '/api/storage', ...as(alice) });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.policies.autoFetchMB).toBeGreaterThan(0);
+    expect(body.usage.cachedBytes).toBe(0); // nothing fetched from peers in tests
   });
 });
 

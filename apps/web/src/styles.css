@@ -272,6 +272,28 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
   border-top: 1px solid var(--line-soft); padding: 10px 20px;
   font-family: var(--mono); font-size: 11px; color: var(--ai);
 }
+.ask-link {
+  font-family: var(--mono); font-size: 11px; color: var(--ai);
+  background: none; border: none; padding: 0; cursor: pointer; text-decoration: underline;
+}
+.ask-local { display: flex; flex-direction: column; gap: 2px; padding: 8px 0; border-bottom: 1px solid var(--line-soft); text-align: left; }
+.ask-local:last-of-type { border-bottom: none; }
+
+/* storage & library modals */
+.field-help { font-style: normal; font-weight: 400; color: var(--ink-soft); margin-left: 6px; }
+.storage-usage {
+  display: flex; align-items: center; gap: 10px; justify-content: space-between;
+  margin-top: 14px; padding: 10px 12px; border: 1px solid var(--line-soft);
+  border-radius: 10px; background: var(--block); font-size: 13px;
+}
+.library-source {
+  display: flex; align-items: center; gap: 10px; justify-content: space-between;
+  padding: 10px 0; border-bottom: 1px solid var(--line-soft);
+}
+.library-source-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: 13.5px; }
+.library-path { font-family: var(--mono); font-size: 11px; color: var(--ink-soft); overflow-wrap: anywhere; }
+.library-source-main small { color: var(--ink-soft); }
+.library-empty { color: var(--ink-soft); font-size: 13.5px; margin: 4px 0 10px; }
 
 /* avatars & status */
 .avatar.emoji { font-size: 19px; font-family: inherit; background: var(--block); }
@@ -770,6 +792,10 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
   border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px;
   background: var(--card); color: var(--ink); text-decoration: none;
 }
+.att-fetch { cursor: pointer; border-style: dashed; color: var(--ink-soft); }
+.att-fetch:hover { background: var(--hover); color: var(--ink); }
+.att-fetch:disabled { cursor: default; }
+.att-danger { border-color: var(--unread); color: var(--unread); }
 
 /* composer tools */
 .composer-row { display: flex; align-items: flex-end; gap: 6px; }

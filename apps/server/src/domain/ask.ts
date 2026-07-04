@@ -1,7 +1,8 @@
-import type { AskEvidence, AskPerson, AskResponse, AskThread, TaskScopeDto, UserDto } from '@app/shared';
+import type { AskEvidence, AskLocalHit, AskPerson, AskResponse, AskThread, TaskScopeDto, UserDto } from '@app/shared';
 import { channelName, messagesVisibleTo, userDtoById } from './store.js';
 import type { MessageRow } from '../space/state.js';
 import { extractArtifacts } from './artifacts.js';
+import { library } from './library.js';
 
 const STOPWORDS = new Set([
   'the', 'a', 'an', 'to', 'of', 'in', 'on', 'for', 'and', 'or', 'is', 'are', 'was', 'be',
@@ -132,6 +133,40 @@ function retrieve(userId: string, query: string): { hits: Hit[]; people: AskPers
   return { hits, people, threads };
 }
 
+/**
+ * Score this device's library (files, docs, commits) with the same tokens
+ * the chat search uses. Results stay local — they're never shared into the
+ * space, they just sit next to the chat evidence for whoever is asking.
+ */
+function searchLibrary(query: string): AskLocalHit[] {
+  const tokens = tokenize(query);
+  if (tokens.length === 0) return [];
+  return library
+    .allDocs()
+    .map((doc) => {
+      const lower = `${doc.ref}\n${doc.text}`.toLowerCase();
+      const perToken = tokens.map((t) => occurrences(lower, t));
+      const matched = perToken.filter((c) => c > 0).length;
+      // Require most tokens to appear — code files are big enough that
+      // single-token noise would drown the chat results otherwise.
+      if (matched < Math.max(1, tokens.length - 1)) return null;
+      const score = perToken.reduce((a, b) => a + b, 0) + matched * 5;
+      return { doc, score };
+    })
+    .filter((h): h is NonNullable<typeof h> => h !== null)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 6)
+    .map(({ doc }) => ({
+      kind: doc.kind,
+      sourceId: doc.sourceId,
+      sourceName: library.sourceName(doc.sourceId),
+      ref: doc.ref,
+      title: doc.title,
+      snippet: makeSnippet(doc.text, tokens),
+      when: doc.when,
+    }));
+}
+
 export async function ask(userId: string, query: string): Promise<AskResponse> {
   const { hits, people, threads } = retrieve(userId, query);
   return {
@@ -145,6 +180,7 @@ export async function ask(userId: string, query: string): Promise<AskResponse> {
       snippet: h.snippet,
       createdAt: h.row.createdAt,
     })),
+    local: searchLibrary(query),
   };
 }
 

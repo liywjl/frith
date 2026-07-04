@@ -11,6 +11,7 @@ import Hyperswarm from 'hyperswarm';
 import BlindPairing from 'blind-pairing';
 import b4a from 'b4a';
 import { LoreState, type Op } from './state.js';
+import { BlobStore } from './blobs.js';
 
 interface SpaceConfig {
   name: string;
@@ -52,6 +53,7 @@ class Space {
   state = new LoreState();
   name = 'local';
   private dataDir = '.lore-data';
+  private _blobs: BlobStore | null = null;
   private store: Corestore | null = null;
   private base: Autobase | null = null;
   private swarm: Hyperswarm | null = null;
@@ -121,6 +123,10 @@ class Space {
     this.store = new Corestore(path.join(this.dataDir, config.dir));
     this.base = new Autobase(this.store, config.key ? b4a.from(config.key, 'hex') : null, baseOptions);
     await this.base.ready();
+
+    // Attachment bytes live beside the log, in per-instance blob cores.
+    this._blobs = new BlobStore(this.store, path.join(this.dataDir, `${config.dir}-blob-cache.json`));
+    await this._blobs.ready();
 
     if (!config.key) config.key = b4a.toString(this.base.key, 'hex');
     // The founding instance mints the pairing credentials; the invite is the
@@ -273,9 +279,15 @@ class Space {
     this.swarm = null;
     await this.base?.close().catch(() => {});
     this.base = null;
+    this._blobs = null; // its cores close with the corestore
     await this.store?.close().catch(() => {});
     this.store = null;
     this.peers = 0;
+  }
+
+  get blobs(): BlobStore {
+    if (!this._blobs) throw new Error('space not open');
+    return this._blobs;
   }
 
   newId(): string {

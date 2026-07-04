@@ -3,12 +3,15 @@ import type {
   ChannelDto,
   ConnectDto,
   HomeDto,
+  LibrarySourceDto,
   MeDto,
   MessageDto,
+  PoliciesDto,
   ProfilePageDto,
   ProfilePatch,
   ScheduledMessageDto,
   SpaceDto,
+  StorageDto,
   TaskScopeDto,
   UserDto,
 } from '@app/shared';
@@ -98,4 +101,19 @@ export const api = {
     request<{ ok: boolean }>(`/api/channels/${channelId}/call/leave`, { method: 'POST' }),
   taskScope: (requirements: string) =>
     request<TaskScopeDto>('/api/task-scope', { method: 'POST', body: JSON.stringify({ requirements }) }),
+  /** Pull a file's bytes from whichever peer holds them (explicit click). */
+  fetchFile: async (id: string) => {
+    const res = await fetch(`/api/files/${id}?wait=1`);
+    if (!res.ok) throw new Error('no connected peer has this file right now');
+  },
+  storage: () => request<StorageDto>('/api/storage'),
+  setPolicies: (patch: Partial<PoliciesDto>) =>
+    request<StorageDto>('/api/storage/policies', { method: 'PUT', body: JSON.stringify(patch) }),
+  clearFileCache: () => request<StorageDto>('/api/storage/cache', { method: 'DELETE' }),
+  library: () => request<LibrarySourceDto[]>('/api/library'),
+  addLibrarySource: (path: string, name?: string) =>
+    request<LibrarySourceDto>('/api/library/sources', { method: 'POST', body: JSON.stringify({ path, name }) }),
+  removeLibrarySource: (id: string) =>
+    request<{ ok: boolean }>(`/api/library/sources/${id}`, { method: 'DELETE' }),
+  reindexLibrary: () => request<LibrarySourceDto[]>('/api/library/reindex', { method: 'POST' }),
 };
