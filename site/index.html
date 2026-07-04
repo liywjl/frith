@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Lore — your team's memory, on your machines</title>
+<meta name="description" content="Peer-to-peer team chat where the knowledge accumulates and stays yours. No cloud, no landlord, no data mining." />
+<style>
+  :root {
+    --paper: #fafaf8; --card: #ffffff; --hover: #f3f2ee;
+    --line: #d5d3cc; --line-soft: #e7e5df;
+    --ink: #3a3833; --ink-soft: #8a867c; --block: #edebe5;
+    --ai: #0e7568; --ai-soft: #e3f0ed; --ai-hover: #d4e8e3;
+    --unread: #c24a2c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #17181c; --card: #212227; --hover: #232429;
+      --line: #3a3c44; --line-soft: #26282e;
+      --ink: #e8e6df; --ink-soft: #97948a; --block: #2a2c33;
+      --ai: #52c7b3; --ai-soft: #133f38; --ai-hover: #17544a;
+      --unread: #e06546;
+    }
+  }
+  * { margin: 0; box-sizing: border-box; }
+  body {
+    background: var(--paper); color: var(--ink);
+    font: 16px/1.65 ui-sans-serif, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--ai); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 24px; }
+
+  header {
+    position: sticky; top: 0; z-index: 10;
+    background: color-mix(in srgb, var(--paper) 88%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line-soft);
+  }
+  nav { display: flex; align-items: center; gap: 24px; height: 60px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; color: var(--ink); }
+  .brand:hover { text-decoration: none; }
+  nav .links { margin-left: auto; display: flex; gap: 22px; font-size: 14.5px; }
+  nav .links a { color: var(--ink-soft); }
+  nav .links a:hover { color: var(--ink); text-decoration: none; }
+  @media (max-width: 720px) { nav .links { display: none; } nav .btn { margin-left: auto; } }
+  .btn {
+    display: inline-block; padding: 10px 20px; border-radius: 10px;
+    background: var(--ai); color: var(--paper); font-weight: 600; font-size: 15px;
+    border: none; cursor: pointer;
+  }
+  .btn:hover { text-decoration: none; filter: brightness(1.08); }
+  .btn.ghost { background: var(--ai-soft); color: var(--ai); }
+  .btn.ghost:hover { background: var(--ai-hover); }
+
+  .hero { padding: 96px 0 72px; text-align: center; }
+  .hero .eyebrow {
+    display: inline-block; font-size: 13px; font-weight: 600; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--ai); background: var(--ai-soft);
+    padding: 5px 14px; border-radius: 999px; margin-bottom: 24px;
+  }
+  h1 { font-size: clamp(34px, 6vw, 58px); line-height: 1.1; letter-spacing: -0.02em; max-width: 760px; margin: 0 auto 20px; }
+  h1 em { font-style: normal; color: var(--ai); }
+  .hero p { font-size: 19px; color: var(--ink-soft); max-width: 620px; margin: 0 auto 36px; }
+  .hero .cta { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+
+  .strip {
+    border-block: 1px solid var(--line-soft); background: var(--card);
+    padding: 18px 0; font-size: 14px; color: var(--ink-soft); text-align: center;
+  }
+  .strip b { color: var(--ink); }
+
+  section { padding: 80px 0; }
+  section.alt { background: var(--card); border-block: 1px solid var(--line-soft); }
+  .kicker { font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ai); margin-bottom: 10px; }
+  h2 { font-size: clamp(26px, 4vw, 36px); letter-spacing: -0.015em; margin-bottom: 14px; }
+  .lede { font-size: 17.5px; color: var(--ink-soft); max-width: 640px; margin-bottom: 40px; }
+
+  .grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+  .cardbox {
+    background: var(--card); border: 1px solid var(--line-soft); border-radius: 14px; padding: 26px;
+  }
+  section.alt .cardbox { background: var(--paper); }
+  .cardbox .icon {
+    width: 40px; height: 40px; border-radius: 10px; background: var(--ai-soft);
+    display: grid; place-items: center; margin-bottom: 16px; font-size: 20px;
+  }
+  .cardbox h3 { font-size: 17px; margin-bottom: 8px; }
+  .cardbox p { font-size: 14.5px; color: var(--ink-soft); }
+
+  .policy { display: grid; gap: 0; border: 1px solid var(--line-soft); border-radius: 14px; overflow: hidden; }
+  .policy .row {
+    display: grid; grid-template-columns: 190px 1fr; gap: 18px; padding: 20px 24px;
+    background: var(--card); border-bottom: 1px solid var(--line-soft); font-size: 15px;
+  }
+  .policy .row:last-child { border-bottom: none; }
+  .policy .row b { color: var(--ai); }
+  .policy .row span { color: var(--ink-soft); }
+  @media (max-width: 640px) { .policy .row { grid-template-columns: 1fr; gap: 4px; } }
+
+  .roadmap { display: grid; gap: 14px; }
+  .roadmap .item {
+    display: flex; gap: 16px; align-items: baseline; padding: 18px 22px;
+    background: var(--paper); border: 1px solid var(--line-soft); border-radius: 12px;
+  }
+  .roadmap .tag {
+    flex-shrink: 0; font-size: 12px; font-weight: 700; letter-spacing: .05em;
+    padding: 3px 10px; border-radius: 999px; background: var(--ai-soft); color: var(--ai);
+  }
+  .roadmap .tag.now { background: var(--ai); color: var(--paper); }
+  .roadmap .item p { font-size: 14.5px; color: var(--ink-soft); }
+  .roadmap .item h3 { font-size: 16px; margin-bottom: 2px; }
+
+  .final { text-align: center; padding: 96px 0; }
+  .final h2 { margin-bottom: 12px; }
+  .final p { color: var(--ink-soft); max-width: 520px; margin: 0 auto 32px; }
+
+  footer { border-top: 1px solid var(--line-soft); padding: 32px 0 48px; font-size: 14px; color: var(--ink-soft); }
+  footer .wrap { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  footer .links { margin-left: auto; display: flex; gap: 18px; }
+</style>
+</head>
+<body>
+
+<header>
+  <nav class="wrap">
+    <a class="brand" href="#">
+      <svg width="26" height="26" viewBox="0 0 32 32" aria-label="Lore" role="img">
+        <rect x="1" y="1" width="30" height="30" rx="9" fill="var(--ai)"/>
+        <path d="M16.5 5.5c.6 3.4 5.6 5.6 5.6 11a6.1 6.1 0 1 1-12.2 0c0-2.9 1.8-4.4 2.8-7 .9 1.6 2.4 2.3 2.6 4.4 1-1.2 1.4-2.7 1.2-4.6z" fill="var(--paper)" opacity=".95"/>
+        <circle cx="16" cy="19.5" r="2.6" fill="var(--ai)" opacity=".55"/>
+      </svg>
+      Lore
+    </a>
+    <div class="links">
+      <a href="#p2p">How it works</a>
+      <a href="#control">Your data</a>
+      <a href="#communities">Communities</a>
+      <a href="#roadmap">Roadmap</a>
+    </div>
+    <a class="btn" href="#waitlist">Get early access</a>
+  </nav>
+</header>
+
+<main>
+  <div class="hero wrap">
+    <span class="eyebrow">Peer-to-peer team chat</span>
+    <h1>Your team's memory.<br /><em>Nobody's servers.</em></h1>
+    <p>
+      Lore is team chat where the accumulated knowledge is the product — and it
+      lives entirely on your machines. Every workspace replicates directly
+      between the people in it. No cloud, no landlord, no data mining.
+    </p>
+    <div class="cta">
+      <a class="btn" href="#waitlist">Get early access</a>
+      <a class="btn ghost" href="#p2p">See how it works</a>
+    </div>
+  </div>
+
+  <div class="strip">
+    <div class="wrap">
+      <b>No sign-up. No database. No middleman.</b> &nbsp;An invite from a teammate is the whole onboarding.
+    </div>
+  </div>
+
+  <section id="p2p">
+    <div class="wrap">
+      <div class="kicker">How it works</div>
+      <h2>Peer-to-peer, end to end</h2>
+      <p class="lede">
+        A Lore workspace is a multi-writer log replicated over an encrypted
+        peer-to-peer network. Your messages travel from your machine to your
+        teammates' machines — and nowhere else.
+      </p>
+      <div class="grid">
+        <div class="cardbox">
+          <div class="icon">🛰</div>
+          <h3>Invites, not accounts</h3>
+          <p>Paste an invite and your machine becomes a writer in the space. There's no account with us — because there is no "us" in the middle.</p>
+        </div>
+        <div class="cardbox">
+          <div class="icon">🔐</div>
+          <h3>Private means physically private</h3>
+          <p>Private channels aren't a permissions flag on someone's server. They're separate encrypted logs with their own keys — peers outside them never even hold the bytes.</p>
+        </div>
+        <div class="cardbox">
+          <div class="icon">📴</div>
+          <h3>Works offline, syncs when you meet</h3>
+          <p>Write on a plane, sync at the office. Any two members of a space can sync with each other directly — no coordinator required.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="alt" id="control">
+    <div class="wrap">
+      <div class="kicker">Your data, your policies</div>
+      <h2>You decide what you store — and what you share</h2>
+      <p class="lede">
+        In a cloud app, retention is a pricing tier. In Lore it's a policy you
+        set, per space and per device. Sensible defaults, full control.
+      </p>
+      <div class="policy">
+        <div class="row"><b>Recent by default</b><span>Join a busy space and you sync recent history only. The ten-year archive doesn't land on your laptop unless you ask for it.</span></div>
+        <div class="row"><b>Backfill on request</b><span>Need the deep history? Request it from peers who hold it — as far back as you want, up to the limits you set.</span></div>
+        <div class="row"><b>Size caps</b><span>Large files are capped and fetched lazily. A 4&nbsp;GB screen recording never auto-downloads to your phone.</span></div>
+        <div class="row"><b>Sharing layers</b><span>Choose what leaves your device: what you share with a space, what you keep local, and what you'll relay for others.</span></div>
+        <div class="row"><b>Verified content</b><span>Files are content-addressed and hash-verified, from senders you chose to admit. Tampered or spoofed data doesn't replicate.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="knowledge">
+    <div class="wrap">
+      <div class="kicker">Institutional memory</div>
+      <h2>Ask your team's history — without shipping it to a datacenter</h2>
+      <p class="lede">
+        The knowledge that today lives in people's heads and dies in scrollback
+        becomes something you can ask. All of it runs on local models, on your
+        hardware.
+      </p>
+      <div class="grid">
+        <div class="cardbox">
+          <div class="icon">💬</div>
+          <h3>Answers with receipts</h3>
+          <p>Ask "why did we pick this vendor?" and get a cited answer pointing at the actual threads, calls, and people — not a hallucinated summary.</p>
+        </div>
+        <div class="cardbox">
+          <div class="icon">🎙</div>
+          <h3>Calls become knowledge</h3>
+          <p>Campfire calls are transcribed and summarized on-device. Decisions and action items flow into the same searchable memory.</p>
+        </div>
+        <div class="cardbox">
+          <div class="icon">🖥</div>
+          <h3>Local AI, literally</h3>
+          <p>Generation, embeddings, and transcription run on your machines via local models. Your company's memory never leaves the company.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="alt" id="communities">
+    <div class="wrap">
+      <div class="kicker">Communities</div>
+      <h2>Start a fire, gather your people</h2>
+      <p class="lede">
+        Lore isn't only for companies. A space costs nothing to create and
+        nothing to run — so make one for your open-source project, your study
+        group, your neighborhood, your guild.
+      </p>
+      <div class="grid">
+        <div class="cardbox">
+          <div class="icon">🔥</div>
+          <h3>Free forever, structurally</h3>
+          <p>There's no server bill to pass on to you. A community of 5 or 5,000 runs on its members' own machines.</p>
+        </div>
+        <div class="cardbox">
+          <div class="icon">🧭</div>
+          <h3>An opt-in directory</h3>
+          <p>List your space publicly so people can find it, or stay invite-only and invisible. Discovery is a choice, never a default.</p>
+        </div>
+        <div class="cardbox">
+          <div class="icon">🛡</div>
+          <h3>Moderation with teeth</h3>
+          <p>Admits are explicit, writers are revocable, and blocked peers stop replicating to you — not just hidden behind a mute.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="roadmap">
+    <div class="wrap">
+      <div class="kicker">Roadmap</div>
+      <h2>Where this is going</h2>
+      <p class="lede">Built in the open. The chat core works today; here's what's next.</p>
+      <div class="roadmap">
+        <div class="item"><span class="tag now">Now</span><div><h3>P2P chat core</h3><p>Spaces, channels, DMs, threads, calls — replicating peer-to-peer with no central database.</p></div></div>
+        <div class="item"><span class="tag">Next</span><div><h3>Desktop app</h3><p>A proper desktop client that manages your local AI models, storage policies, and notifications — your node, running quietly in the tray.</p></div></div>
+        <div class="item"><span class="tag">Next</span><div><h3>Local files &amp; repos</h3><p>Point Lore at your codebase and docs. Ask questions that connect a decision in chat to the commit that implemented it and the doc that explains it.</p></div></div>
+        <div class="item"><span class="tag">Later</span><div><h3>Knowledge graph search</h3><p>People, threads, files, commits, and decisions as one connected graph — so "who knows about X?" is a query, not a guess.</p></div></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="final" id="waitlist">
+    <div class="wrap">
+      <h2>Own the conversation. Literally.</h2>
+      <p>Lore is in early development. Tell us who you'd bring — we're onboarding small teams and communities first.</p>
+      <a class="btn" href="mailto:contact@thabotech.com?subject=Lore%20early%20access">Request early access</a>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>Lore — your team's memory, on your machines.</span>
+    <div class="links">
+      <a href="#p2p">How it works</a>
+      <a href="#roadmap">Roadmap</a>
+      <a href="mailto:contact@thabotech.com">Contact</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
