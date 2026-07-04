@@ -1,4 +1,19 @@
 {
-  "ignorePatterns": ["spikes/**"],
-  "usedClassMembers": ["handleSignal", "prune", "setMuted", "setVideoEnabled", "enableCamera", "leave"]
+  "ignorePatterns": [
+    "spikes/**"
+  ],
+  "usedClassMembers": [
+    "handleSignal",
+    "prune",
+    "setMuted",
+    "setVideoEnabled",
+    "enableCamera",
+    "leave"
+  ],
+  "ignoreDependencies": [
+    "autobase",
+    "blind-pairing",
+    "corestore",
+    "hyperswarm"
+  ]
 }

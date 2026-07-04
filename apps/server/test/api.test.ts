@@ -1,9 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
-import { buildApp } from '../src/app.js';
-import { scheduleMessage } from '../src/store.js';
-import { deliverDueScheduled } from '../src/scheduler.js';
-import { space } from '../src/data/space.js';
+import { buildApp } from '../src/api/routes.js';
+import { scheduleMessage } from '../src/domain/store.js';
+import { deliverDueScheduled } from '../src/domain/scheduler.js';
+import { space } from '../src/space/space.js';
 
 let app: FastifyInstance;
 

@@ -1,0 +1,31 @@
+{
+  "shape": "package",
+  "pkg": "web",
+  "globalName": "Lore",
+  "entry": "./apps/web/.ds-entry.tsx",
+  "srcDir": "src/components",
+  "tsconfig": "tsconfig.json",
+  "cssEntry": "src/styles.css",
+  "componentSrcMap": {
+    "Avatar": "src/components/Avatar.tsx",
+    "Logo": "src/components/Logo.tsx",
+    "Snippet": "src/components/Snippet.tsx",
+    "ArtifactChips": "src/components/ArtifactChips.tsx",
+    "ThreadCard": "src/components/ThreadCard.tsx",
+    "UserHover": "src/components/UserHover.tsx",
+    "Message": "src/components/Message.tsx",
+    "Composer": "src/components/Composer.tsx",
+    "Sidebar": "src/components/Sidebar.tsx"
+  },
+  "dtsPropsFor": {
+    "Avatar": "  /** Person's display name — its initials are shown when no emoji is given. */\n  name: string;\n  /** Emoji avatar; falls back to initials when null/undefined. */\n  emoji?: string | null;",
+    "Logo": "  /** Square edge length in px (default 22). */\n  size?: number;",
+    "Snippet": "  /** Search-result text whose hits are wrapped in [[double brackets]] and rendered as <mark>. */\n  text: string;",
+    "ArtifactChips": "  /** Section heading (e.g. \"Code & links this channel keeps referencing\"). */\n  title: string;\n  artifacts: Array<{ ref: string; kind: 'code' | 'link'; mentions: number; channelId: string; channelName: string }>;\n  onOpenChannel: (channelId: string) => void;",
+    "ThreadCard": "  channelName: string;\n  /** Optional top-right adornment (e.g. a timestamp or count). */\n  corner?: React.ReactNode;\n  onClick: () => void;\n  children: React.ReactNode;",
+    "UserHover": "  userId: string;\n  name: string;\n  /** The element representing the person; hovering reveals a profile card. */\n  children: React.ReactNode;",
+    "Message": "  message: {\n    id: string;\n    channelId: string;\n    authorId: string;\n    authorName: string;\n    authorAvatarEmoji: string | null;\n    parentMessageId: string | null;\n    body: string;\n    createdAt: string;\n    replyCount: number;\n    reactions: Array<{ emoji: string; count: number; mine: boolean }>;\n    attachments: Array<{ id: string; kind: 'image' | 'video' | 'audio' | 'file'; name: string; url: string }>;\n  };\n  /** Consecutive message from the same author — hides the avatar/header. */\n  compact?: boolean;\n  onOpenThread?: (root: MessageProps['message']) => void;",
+    "Composer": "  channelId: string;\n  parentMessageId?: string;\n  placeholder: string;\n  /** Slash-command quick actions surfaced as you type \"/\". */\n  commands?: Array<{ name: string; hint: string; run: (arg: string) => void }>;",
+    "Sidebar": "  me: { id: string; name: string; title: string | null; team: string | null; avatarEmoji: string | null; statusEmoji: string | null; statusText: string | null };\n  channels: Array<{ id: string; name: string; type: 'public' | 'private' | 'dm'; topic: string | null; archivedAt: string | null; pinned: number | null; unreadCount: number; dmPartnerNames?: string[]; dmPartnerIds?: string[] }>;\n  users: SidebarProps['me'][];\n  online: Set<string>;\n  activeId: string | null;\n  homeActive: boolean;\n  taskActive: boolean;\n  peopleActive: boolean;\n  space: { name: string; invite: string; connectedPeers: number } | null;\n  liveCalls: Set<string>;\n  onHome: () => void;\n  onTask: () => void;\n  onPeople: () => void;\n  onOpenSpace: () => void;\n  onSelect: (id: string) => void;\n  onNewGroup: () => void;\n  onNewChannel: () => void;\n  onTogglePin: (channelId: string, pinned: boolean) => void;\n  onReorderPins: (channelIds: string[]) => void;"
+  }
+}

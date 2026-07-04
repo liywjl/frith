@@ -1,0 +1,9 @@
+appId: chat.lore.desktop
+productName: Lore
+directories:
+  app: .deploy
+  output: release
+asarUnpack:
+  - "**/*.node"
+mac:
+  identity: null

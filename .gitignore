@@ -6,3 +6,12 @@ dist/
 .lore-p2p*/
 .data/
 .lore-data*/
+apps/desktop/.deploy/
+apps/desktop/release/
+
+# design-sync build artifacts
+.ds-sync/
+ds-bundle/
+.design-sync/.cache/
+.design-sync/learnings/
+apps/web/.ds-entry.tsx

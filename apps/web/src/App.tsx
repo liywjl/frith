@@ -10,29 +10,29 @@ import {
   type Theme,
   type UserDto,
 } from '@app/shared';
-import { api } from './api';
-import { useRealtime } from './useRealtime';
-import { applyReaction } from './updates';
-import { Sidebar } from './Sidebar';
-import { ChannelView } from './ChannelView';
-import { ThreadPanel } from './ThreadPanel';
-import { QuickSwitcher } from './QuickSwitcher';
-import { AskPanel } from './AskPanel';
-import { ProfileModal } from './ProfileModal';
-import { GroupModal } from './GroupModal';
-import { CreateChannelModal } from './CreateChannelModal';
-import { HomeView } from './HomeView';
-import { ProfileView } from './ProfileView';
-import { TaskView } from './TaskView';
-import { SpaceModal } from './SpaceModal';
-import { ProfilePanel } from './ProfilePanel';
-import { CallPanel } from './CallPanel';
-import { CallManager } from './call';
-import type { SlashCommand } from './Composer';
-import { Logo } from './Logo';
-import { PeopleView } from './PeopleView';
-import { TagModal } from './TagModal';
-import { UserActionsContext, type UserActions } from './userActions';
+import { api } from './lib/api';
+import { useRealtime } from './lib/useRealtime';
+import { applyReaction } from './lib/updates';
+import { Sidebar } from './components/Sidebar';
+import { ChannelView } from './views/ChannelView';
+import { ThreadPanel } from './panels/ThreadPanel';
+import { QuickSwitcher } from './modals/QuickSwitcher';
+import { AskPanel } from './panels/AskPanel';
+import { ProfileModal } from './modals/ProfileModal';
+import { GroupModal } from './modals/GroupModal';
+import { CreateChannelModal } from './modals/CreateChannelModal';
+import { HomeView } from './views/HomeView';
+import { ProfileView } from './views/ProfileView';
+import { TaskView } from './views/TaskView';
+import { SpaceModal } from './modals/SpaceModal';
+import { ProfilePanel } from './panels/ProfilePanel';
+import { CallPanel } from './panels/CallPanel';
+import { CallManager } from './lib/call';
+import type { SlashCommand } from './components/Composer';
+import { Logo } from './components/Logo';
+import { PeopleView } from './views/PeopleView';
+import { TagModal } from './modals/TagModal';
+import { UserActionsContext, type UserActions } from './lib/userActions';
 
 type View =
   | { kind: 'home' }

@@ -23,12 +23,22 @@ around.
 
 ## Layout
 
-- `apps/server` — Fastify API + WebSocket realtime, Drizzle ORM, Postgres
-- `apps/web` — React (Vite) client
-- `packages/shared` — DTO and realtime-event types shared end-to-end
+Each folder has its own short README; the deep one is
+[`apps/server/src/space/`](apps/server/src/space/README.md) — how the P2P
+storage works, what gets stored, and where.
+
+- [`apps/server`](apps/server/README.md) — Fastify API + WebSocket realtime
+  over the Autobase log (`api/` → `domain/` → `space/`)
+- [`apps/web`](apps/web/README.md) — React (Vite) client
+  (`views/`, `panels/`, `modals/`, `components/`, `lib/`)
+- [`apps/desktop`](apps/desktop/README.md) — Electron shell: the server
+  in-process, data under the OS per-user dir, packaged with electron-builder
+- [`packages/shared`](packages/shared/README.md) — DTO and realtime-event
+  types shared end-to-end
 - `apps/server/seed/corpus.json` — the checked-in fictional company: coherent
   storylines (a migration, an incident, a private channel, a DM) that later
   double as the retrieval eval set
+- `site/` — the static landing page; `ROADMAP.md` — what's next and why
 
 ## Two instances, peer-to-peer
 

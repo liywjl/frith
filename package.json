@@ -10,7 +10,8 @@
     "test": "pnpm -r test",
     "deadcode": "fallow dead-code && fallow dupes",
     "check": "pnpm typecheck && pnpm lint && pnpm test && pnpm deadcode",
-    "dev:peer": "./scripts/dev-peer.sh"
+    "dev:peer": "./scripts/dev-peer.sh",
+    "desktop": "pnpm --filter desktop build && pnpm --filter desktop start"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "typecheck": "tsc"
+    "typecheck": "tsc",
+    "build": "vite build"
   },
   "dependencies": {
     "@app/shared": "workspace:*",

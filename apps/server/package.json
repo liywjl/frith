@@ -13,6 +13,7 @@
     "@app/shared": "workspace:*",
     "@fastify/cookie": "^11.0.2",
     "@fastify/multipart": "^10.0.0",
+    "@fastify/static": "^9.1.3",
     "@fastify/websocket": "^11.2.0",
     "autobase": "^7.28.1",
     "b4a": "^1.8.1",
