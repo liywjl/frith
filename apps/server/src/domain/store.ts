@@ -139,6 +139,16 @@ function unreadCount(userId: string, channelId: string): number {
   return count;
 }
 
+function lastActivityAt(channelId: string): string | null {
+  const ids = state().messagesByChannel.get(channelId) ?? [];
+  let latest: string | null = null;
+  for (const id of ids) {
+    const at = state().messages.get(id)!.createdAt;
+    if (!latest || at > latest) latest = at;
+  }
+  return latest;
+}
+
 function dmPartners(channelId: string, userId: string): UserRow[] {
   return [...(state().members.get(channelId) ?? [])]
     .filter((id) => id !== userId)
@@ -160,6 +170,7 @@ export async function visibleChannels(userId: string): Promise<ChannelDto[]> {
       archivedAt: c.archivedAt,
       pinned: pinnedBy?.get(c.id) ?? null,
       unreadCount: unreadCount(userId, c.id),
+      lastActivityAt: lastActivityAt(c.id),
       ...(c.type === 'dm'
         ? {
             dmPartnerNames: dmPartners(c.id, userId).map((p) => p.name),

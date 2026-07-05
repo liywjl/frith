@@ -124,6 +124,8 @@ export interface ChannelDto {
   /** Favourite position (0-based) when pinned, null otherwise. */
   pinned: number | null;
   unreadCount: number;
+  /** When the channel last saw a message (null = never). */
+  lastActivityAt: string | null;
   /** For DMs: the other participants' names, used as the display label. */
   dmPartnerNames?: string[];
   /** For DMs: the other participants' user ids (presence dots, dedupe). */

@@ -22,7 +22,7 @@ export function SpaceRail({ onNewSpace }: { onNewSpace?: () => void }) {
 
   function switchTo(dir: string) {
     if (!list || dir === list.active || switching) return;
-    setSwitching(dir);
+    setSwitching(dir); // ring moves instantly; the content area shows the load
     api
       .switchSpace(dir)
       // Everything — users, channels, session — belongs to the new space.
@@ -30,23 +30,36 @@ export function SpaceRail({ onNewSpace }: { onNewSpace?: () => void }) {
       .catch(() => setSwitching(null));
   }
 
+  const activeDir = switching ?? list?.active;
+  const switchingTo = list?.spaces.find((s) => s.dir === switching);
+
   return (
-    <nav className="rail">
-      {(list?.spaces ?? []).map((s) => (
-        <button
-          key={s.dir}
-          className={`rail-space ${s.dir === list?.active ? 'active' : ''}`}
-          title={s.name}
-          onClick={() => switchTo(s.dir)}
-        >
-          {switching === s.dir ? '…' : spaceGlyph(s.name)}
-        </button>
-      ))}
-      {onNewSpace && (
-        <button className="rail-space rail-new" title="Create or join a space" onClick={onNewSpace}>
-          +
-        </button>
+    <>
+      <nav className="rail">
+        {(list?.spaces ?? []).map((s) => (
+          <button
+            key={s.dir}
+            className={`rail-space ${s.dir === activeDir ? 'active' : ''}`}
+            title={s.name}
+            onClick={() => switchTo(s.dir)}
+          >
+            {spaceGlyph(s.name)}
+          </button>
+        ))}
+        {onNewSpace && (
+          <button className="rail-space rail-new" title="Create or join a space" onClick={onNewSpace}>
+            +
+          </button>
+        )}
+      </nav>
+      {switchingTo && (
+        <div className="switch-veil">
+          <div className="switch-veil-card">
+            <span className="switch-veil-glyph">{spaceGlyph(switchingTo.name)}</span>
+            Opening {switchingTo.name}…
+          </div>
+        </div>
       )}
-    </nav>
+    </>
   );
 }

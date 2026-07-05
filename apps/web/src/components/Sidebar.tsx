@@ -86,7 +86,14 @@ export function Sidebar({
   const pinnedIds = new Set(pinnedChannels.map((c) => c.id));
   const rooms = channels.filter((c) => c.type !== 'dm' && !c.archivedAt && !pinnedIds.has(c.id));
   const archived = channels.filter((c) => c.type !== 'dm' && c.archivedAt);
-  const dms = channels.filter((c) => c.type === 'dm' && !pinnedIds.has(c.id));
+  // Quiet DMs fall off the list (still in ⌘K search and People) — the
+  // sidebar shows who you actually talk to. Unread or brand-new ones stay.
+  const DM_QUIET_DAYS = 30;
+  const dmRecent = (c: ChannelDto) =>
+    c.unreadCount > 0 ||
+    !c.lastActivityAt ||
+    Date.now() - new Date(c.lastActivityAt).getTime() < DM_QUIET_DAYS * 86_400_000;
+  const dms = channels.filter((c) => c.type === 'dm' && !pinnedIds.has(c.id) && dmRecent(c));
   const soloPartnerIds = new Set(
     channels
       .filter((c) => c.type === 'dm' && (c.dmPartnerIds ?? []).length === 1)
@@ -147,115 +154,128 @@ export function Sidebar({
 
   return (
     <nav className="sidebar">
-      <div className="ws-name">
-        <Logo /> Lore {space && <span className="ws-sub">{space.name}</span>}
-      </div>
+      {/* Fixed top: identity + destinations. */}
+      <div className="side-top">
+        <div className="ws-name">
+          <Logo /> Lore {space && <span className="ws-sub">{space.name}</span>}
+        </div>
 
-      <button className={`side-item home-item ${homeActive ? 'active' : ''}`} onClick={onHome}>
-        <span className="side-label">🏠 Home</span>
-      </button>
-      <button className={`side-item home-item ${taskActive ? 'active' : ''}`} onClick={onTask}>
-        <span className="side-label">🎯 Start a task</span>
-      </button>
-      <button className={`side-item home-item ${peopleActive ? 'active' : ''}`} onClick={onPeople}>
-        <span className="side-label">👥 People</span>
-      </button>
-      <button className={`side-item home-item ${filesActive ? 'active' : ''}`} onClick={onFiles}>
-        <span className="side-label">📁 Files</span>
-      </button>
-      <button className="side-item home-item" title="Your P2P space — invite people" onClick={onOpenSpace}>
-        <span className="side-label">🛰 {space ? space.name : 'Join a space'}</span>
-        {space && space.connectedPeers > 0 && <span className="peer-badge">{space.connectedPeers} ⇄</span>}
-      </button>
-
-      <div className="side-h side-h-action">
-        <span>Add-ons</span>
-        <button className="side-add" title="Add a custom tab" onClick={onNewAddon}>
-          +
+        <button className={`side-item home-item ${homeActive ? 'active' : ''}`} onClick={onHome}>
+          <span className="side-label">🏠 Home</span>
         </button>
-      </div>
-      {addons.map((a) => (
-        <button
-          key={a.id}
-          className={`side-item ${a.id === activeAddonId ? 'active' : ''}`}
-          onClick={() => onAddon(a.id)}
-        >
-          <span className="side-label">
-            {a.emoji} {a.name}
-          </span>
+        <button className={`side-item home-item ${taskActive ? 'active' : ''}`} onClick={onTask}>
+          <span className="side-label">🎯 Start a task</span>
         </button>
-      ))}
-
-      {pinnedChannels.length > 0 && (
-        <>
-          <div className="side-h" title="Drag to reorder">★ Favourites</div>
-          {pinnedChannels.map((c) => (
-            <ChannelRow key={c.id} c={c} draggable />
-          ))}
-        </>
-      )}
-
-      <div className="side-h side-h-action">
-        <span>Channels</span>
-        <button className="side-add" title="Create a channel" onClick={onNewChannel}>
-          +
+        <button className={`side-item home-item ${peopleActive ? 'active' : ''}`} onClick={onPeople}>
+          <span className="side-label">👥 People</span>
         </button>
-      </div>
-      {rooms.map((c) => (
-        <ChannelRow key={c.id} c={c} />
-      ))}
-      {archived.length > 0 && (
-        <>
-          <button className="side-item muted archived-toggle" onClick={() => setShowArchived((v) => !v)}>
+        <button className={`side-item home-item ${filesActive ? 'active' : ''}`} onClick={onFiles}>
+          <span className="side-label">📁 Files</span>
+        </button>
+        <button className="side-item home-item" title="Your P2P space — invite people" onClick={onOpenSpace}>
+          <span className="side-label">🛰 {space ? space.name : 'Join a space'}</span>
+          {space && space.connectedPeers > 0 && <span className="peer-badge">{space.connectedPeers} ⇄</span>}
+        </button>
+
+        <div className="side-h side-h-action">
+          <span>Add-ons</span>
+          <button className="side-add" title="Add a custom tab" onClick={onNewAddon}>
+            +
+          </button>
+        </div>
+        {addons.map((a) => (
+          <button
+            key={a.id}
+            className={`side-item ${a.id === activeAddonId ? 'active' : ''}`}
+            onClick={() => onAddon(a.id)}
+          >
             <span className="side-label">
-              {showArchived ? '▾' : '▸'} Archived ({archived.length})
+              {a.emoji} {a.name}
             </span>
           </button>
-          {showArchived &&
-            archived.map((c) => (
-              <button
-                key={c.id}
-                className={`side-item muted ${c.id === activeId ? 'active' : ''}`}
-                onClick={() => onSelect(c.id)}
-              >
-                <span className="side-label">🗄 {c.name}</span>
-              </button>
+        ))}
+
+        {pinnedChannels.length > 0 && (
+          <>
+            <div className="side-h" title="Drag to reorder">★ Favourites</div>
+            {pinnedChannels.map((c) => (
+              <ChannelRow key={c.id} c={c} draggable />
             ))}
-        </>
-      )}
-
-      <div className="side-h side-h-action" title="Direct messages are never indexed by the AI">
-        <span>Direct messages 🔒</span>
-        <button className="side-add" title="New group conversation" onClick={onNewGroup}>
-          +
-        </button>
+          </>
+        )}
       </div>
-      {dms.map((c) => (
-        <ChannelRow key={c.id} c={c} />
-      ))}
-      {others.map((u) => (
-        <button
-          key={u.id}
-          className="side-item muted"
-          title={`Message ${u.name}`}
-          onClick={() => openDm(u.id)}
-        >
-          <Presence online={online.has(u.id)} />
-          <span className="side-label">{u.name}</span>
-          <Status user={u} />
-        </button>
-      ))}
 
-      <button className="side-me" title="View your profile" onClick={() => openProfile(me.id)}>
-        <Avatar name={me.name} emoji={me.avatarEmoji} />
-        <span className="side-me-text">
-          <b>
-            {me.name} <Status user={me} />
-          </b>
-          <span className="side-me-sub">{[me.title, me.team].filter(Boolean).join(' · ') || 'Set up your profile'}</span>
-        </span>
-      </button>
-      <div className="side-hints">⌘K jump · ⌘J ask · / actions</div>
+      {/* Channels and DMs scroll independently between the fixed ends. */}
+      <div className="side-scrolls">
+        <div className="side-block">
+          <div className="side-h side-h-action">
+            <span>Channels</span>
+            <button className="side-add" title="Create a channel" onClick={onNewChannel}>
+              +
+            </button>
+          </div>
+          {rooms.map((c) => (
+            <ChannelRow key={c.id} c={c} />
+          ))}
+          {archived.length > 0 && (
+            <>
+              <button className="side-item muted archived-toggle" onClick={() => setShowArchived((v) => !v)}>
+                <span className="side-label">
+                  {showArchived ? '▾' : '▸'} Archived ({archived.length})
+                </span>
+              </button>
+              {showArchived &&
+                archived.map((c) => (
+                  <button
+                    key={c.id}
+                    className={`side-item muted ${c.id === activeId ? 'active' : ''}`}
+                    onClick={() => onSelect(c.id)}
+                  >
+                    <span className="side-label">🗄 {c.name}</span>
+                  </button>
+                ))}
+            </>
+          )}
+        </div>
+
+        <div className="side-block">
+          <div className="side-h side-h-action" title="Direct messages are never indexed by the AI">
+            <span>Direct messages 🔒</span>
+            <button className="side-add" title="New group conversation" onClick={onNewGroup}>
+              +
+            </button>
+          </div>
+          {dms.map((c) => (
+            <ChannelRow key={c.id} c={c} />
+          ))}
+          {others.map((u) => (
+            <button
+              key={u.id}
+              className="side-item muted"
+              title={`Message ${u.name}`}
+              onClick={() => openDm(u.id)}
+            >
+              <Presence online={online.has(u.id)} />
+              <span className="side-label">{u.name}</span>
+              <Status user={u} />
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Fixed bottom: you + the shortcuts. */}
+      <div className="side-foot">
+        <button className="side-me" title="View your profile" onClick={() => openProfile(me.id)}>
+          <Avatar name={me.name} emoji={me.avatarEmoji} />
+          <span className="side-me-text">
+            <b>
+              {me.name} <Status user={me} />
+            </b>
+            <span className="side-me-sub">{[me.title, me.team].filter(Boolean).join(' · ') || 'Set up your profile'}</span>
+          </span>
+        </button>
+        <div className="side-hints">⌘K jump · ⌘J ask · / actions</div>
+      </div>
     </nav>
   );
 }
