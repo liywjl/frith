@@ -122,7 +122,7 @@ const defaultUser = (id: string): UserRow => ({
   statusExpiresAt: null,
   interests: [],
   nowPlaying: null,
-  theme: 'bubbly',
+  theme: 'ember',
 });
 
 export class LoreState {

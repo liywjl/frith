@@ -1,6 +1,35 @@
-/* Default theme: 'bubbly' — fun on purpose. Candy tints, soft round
-   corners. The old default lives on as 'paper' below. */
+/* Default theme: 'ember' — Lore's own identity. Warm paper, ember-orange
+   accents, roasted-charcoal rail: the campfire the stories get told around.
+   Deliberately nowhere near the aubergine/white of a certain other chat
+   app (see DESIGN.md, IP posture). 'bubbly' and 'paper' live on as options. */
 :root {
+  --paper: #faf5eb;
+  --card: #fffdf6;
+  --hover: #f4ebda;
+  --line: #e0d2b8;
+  --line-soft: #efe5d2;
+  --ink: #33291c;
+  --ink-soft: #97876c;
+  --block: #f2e7d1;
+  --ai: #c25e1e;
+  --ai-soft: #f8e8d6;
+  --ai-hover: #f1dcc0;
+  --unread: #c94f2e;
+  --side: #f5ecd9;
+  --rail: #241d14;
+  --radius: 14px;
+  --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  /* Serif display voice for headings — lore reads like a story, not a memo. */
+  --display: 'Iowan Old Style', 'Palatino Nova', Palatino, Georgia, 'Times New Roman', serif;
+}
+
+/* Headings carry the storybook voice; body stays modern sans. */
+h1, h2, .modal-title, .ws-name, .login-brand {
+  font-family: var(--display);
+  letter-spacing: -0.01em;
+}
+
+[data-theme='bubbly'] {
   --paper: #fdf7fb;
   --card: #ffffff;
   --hover: #f7ecf5;
@@ -14,11 +43,8 @@
   --ai-hover: #e4d4ff;
   --unread: #ff5d8f;
   --side: #f9edf6;
-  /* The rail is a neutral dark slate on every theme — deliberately NOT a
-     purple: the dark-aubergine sidebar is another chat app's signature. */
   --rail: #262b3d;
   --radius: 16px;
-  --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 }
 
 [data-theme='paper'] {
@@ -35,6 +61,7 @@
   --ai-hover: #c9e6dd;
   --unread: #d34f2a;
   --side: #eef1ea;
+  --rail: #23272e;
   --radius: 10px;
 }
 
@@ -831,12 +858,12 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
 .people-name b, .people-name small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 900px) { .people-tags { display: none; } }
 
-/* ===== tinted sidebar (per-theme --side lives with each palette) ===== */
-[data-theme='midnight'] { --side: #101114; --radius: 10px; }
-[data-theme='forest'] { --side: #e7efe1; --radius: 10px; }
-[data-theme='sunset'] { --side: #f8ecdc; --radius: 10px; }
-[data-theme='ocean'] { --side: #e5eef3; --radius: 10px; }
-[data-theme='mono'] { --side: #f2f2f2; --radius: 10px; }
+/* ===== tinted sidebar + rail (per-theme, all dark-neutral rails) ===== */
+[data-theme='midnight'] { --side: #101114; --rail: #0b0c10; --radius: 10px; }
+[data-theme='forest'] { --side: #e7efe1; --rail: #1e2619; --radius: 10px; }
+[data-theme='sunset'] { --side: #f8ecdc; --rail: #2b1d12; --radius: 10px; }
+[data-theme='ocean'] { --side: #e5eef3; --rail: #14212b; --radius: 10px; }
+[data-theme='mono'] { --side: #f2f2f2; --rail: #191919; --radius: 10px; }
 .home-card, .modal, .file-tile, .ask-panel, .btn, .side-item, .att-file { border-radius: var(--radius, 10px); }
 
 /* ===== the space rail: one icon per space on this device ===== */

@@ -15,6 +15,7 @@ const STATUS_DURATIONS = [
 ] as const;
 
 const THEME_LABELS: Record<Theme, string> = {
+  ember: 'Ember',
   bubbly: 'Bubbly',
   paper: 'Paper',
   midnight: 'Midnight',

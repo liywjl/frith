@@ -1,6 +1,6 @@
 export type ChannelType = 'public' | 'private' | 'dm';
 
-export const THEMES = ['bubbly', 'paper', 'midnight', 'forest', 'sunset', 'ocean', 'mono'] as const;
+export const THEMES = ['ember', 'bubbly', 'paper', 'midnight', 'forest', 'sunset', 'ocean', 'mono'] as const;
 export type Theme = (typeof THEMES)[number];
 
 export interface UserDto {

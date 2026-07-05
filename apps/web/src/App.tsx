@@ -63,7 +63,7 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    document.documentElement.dataset.theme = me?.theme ?? 'bubbly';
+    document.documentElement.dataset.theme = me?.theme ?? 'ember';
   }, [me?.theme]);
 
   if (!checked) return null;
