@@ -18,6 +18,7 @@
     "autobase",
     "blind-pairing",
     "corestore",
+    "hyperblobs",
     "hyperswarm"
   ]
 }
