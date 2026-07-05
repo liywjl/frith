@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "pnpm --parallel -r dev",
+    "dev": "./scripts/dev.sh",
     "seed": "pnpm --filter server seed",
     "typecheck": "pnpm -r typecheck",
     "lint": "eslint .",
@@ -11,7 +11,8 @@
     "deadcode": "fallow dead-code && fallow dupes",
     "check": "pnpm typecheck && pnpm lint && pnpm test && pnpm deadcode",
     "dev:peer": "./scripts/dev-peer.sh",
-    "desktop": "pnpm --filter desktop build && pnpm --filter desktop start"
+    "desktop": "pnpm --filter desktop build && pnpm --filter desktop start",
+    "dev:web": "pnpm --parallel -r dev"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

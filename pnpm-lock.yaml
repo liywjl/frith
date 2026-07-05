@@ -35,6 +35,9 @@ importers:
       corestore:
         specifier: ^7.11.0
         version: 7.11.0(bare-url@2.4.5)
+      hyperblobs:
+        specifier: ^2.12.1
+        version: 2.12.1(bare-url@2.4.5)
       hyperswarm:
         specifier: ^4.17.0
         version: 4.17.0(bare-url@2.4.5)

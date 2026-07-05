@@ -1,6 +1,10 @@
 // Electron shell: run the Lore server in-process (the user's own P2P node)
 // and open the web client it serves. All data lives on this machine, under
 // the OS per-user app directory.
+//
+// Dev mode (LORE_DEV_URL set by scripts/dev.sh): the window is just the
+// shell — vite serves the client with HMR and tsx watch runs the server, so
+// code changes land without restarting Electron.
 import path from 'node:path';
 import { app, BrowserWindow, shell } from 'electron';
 import { startServer } from '../../server/src/start.js';
@@ -16,7 +20,7 @@ function configureEnv() {
   process.env.LORE_CORPUS ??= path.join(import.meta.dirname, 'corpus.json');
 }
 
-async function createWindow(port: number) {
+async function createWindow(url: string) {
   const win = new BrowserWindow({
     width: 1280,
     height: 860,
@@ -26,19 +30,22 @@ async function createWindow(port: number) {
   });
   // The window shows only our own local server; anything else goes to the
   // system browser.
-  win.webContents.setWindowOpenHandler(({ url }) => {
-    void shell.openExternal(url);
+  win.webContents.setWindowOpenHandler(({ url: external }) => {
+    void shell.openExternal(external);
     return { action: 'deny' };
   });
-  await win.loadURL(`http://127.0.0.1:${port}`);
+  await win.loadURL(url);
 }
 
 app.whenReady().then(async () => {
-  configureEnv();
-  const port = await startServer(0);
-  await createWindow(port);
+  let url = process.env.LORE_DEV_URL;
+  if (!url) {
+    configureEnv();
+    url = `http://127.0.0.1:${await startServer(0)}`;
+  }
+  await createWindow(url);
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) void createWindow(port);
+    if (BrowserWindow.getAllWindows().length === 0) void createWindow(url);
   });
 });
 

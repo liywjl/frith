@@ -13,13 +13,17 @@ peer-to-peer Autobase log under `.lore-data/`.
 
 ```sh
 pnpm install
-pnpm dev          # API on :3001, web on :5173
+pnpm dev          # opens the DESKTOP app (server :3001 + vite :5173 under it)
 pnpm seed         # load the fictional Acme corpus (server must be running)
 ```
 
-Open http://localhost:5173 and pick a user (dev auth — no passwords locally).
-Log in as **Tomas Novak** for the new-hire perspective the product is designed
-around.
+The desktop app is the product; `pnpm dev` opens its Electron window over a
+hot-reloading server and client, so code changes land without restarting it.
+Prefer a browser? `pnpm dev:web` runs just the server + web client on
+http://localhost:5173. Either way, pick a user (dev auth — no passwords
+locally); log in as **Tomas Novak** for the new-hire perspective the product
+is designed around. `pnpm --filter desktop run dist` packages the real,
+shareable app.
 
 ## Layout
 

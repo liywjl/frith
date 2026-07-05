@@ -15,10 +15,14 @@ Node and Electron — no rebuilds, no toolchain.
 ## Run it
 
 ```sh
-pnpm --filter desktop build   # builds web, bundles main.js via esbuild
-pnpm --filter desktop start   # opens the app
+pnpm dev                      # day-to-day: window over tsx watch + vite HMR
+pnpm --filter desktop build   # self-contained: builds web, bundles main.js
+pnpm --filter desktop start   # …and opens it (exactly what ships)
 ```
 
+In dev the window loads the vite URL (`LORE_DEV_URL`) and the server runs
+under tsx watch outside Electron — every code change lands live. The
+build+start pair runs the same self-contained thing the packaged app ships.
 Set `LORE_HOME=/some/dir` to relocate all data (handy for a second instance).
 
 ## Ship it
