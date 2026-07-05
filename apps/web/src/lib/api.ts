@@ -62,6 +62,13 @@ export const api = {
   profile: (userId: string) => request<ProfilePageDto>(`/api/users/${userId}/profile`),
   login: (handle: string) =>
     request<UserDto>('/api/dev/login', { method: 'POST', body: JSON.stringify({ handle }) }),
+  createProfile: (input: { name: string; handle: string; avatarEmoji?: string | null }) =>
+    request<UserDto>('/api/profiles', { method: 'POST', body: JSON.stringify(input) }),
+  channelMembers: (channelId: string) => request<UserDto[]>(`/api/channels/${channelId}/members`),
+  addChannelMember: (channelId: string, userId: string) =>
+    request<UserDto[]>(`/api/channels/${channelId}/members`, { method: 'POST', body: JSON.stringify({ userId }) }),
+  removeChannelMember: (channelId: string, userId: string) =>
+    request<UserDto[]>(`/api/channels/${channelId}/members/${userId}`, { method: 'DELETE' }),
   channels: () => request<ChannelDto[]>('/api/channels'),
   createChannel: (input: { name: string; type: 'public' | 'private'; topic?: string | null }) =>
     request<{ channelId: string }>('/api/channels', { method: 'POST', body: JSON.stringify(input) }),

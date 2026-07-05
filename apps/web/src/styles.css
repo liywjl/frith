@@ -92,9 +92,24 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
 mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding: 0 2px; }
 
 /* login */
-.login { max-width: 420px; margin: 12vh auto; padding: 0 24px; }
+.login { max-width: 420px; margin: 10vh auto; padding: 0 24px; flex: 1; }
 .login h1 { font-size: 28px; margin-bottom: 4px; }
 .login p { color: var(--ink-soft); margin-bottom: 20px; }
+.login-create { display: flex; flex-direction: column; gap: 10px; }
+.login-first { color: var(--ink); font-weight: 600; }
+.login-emoji-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.login-emoji-pick {
+  font-size: 20px; width: 40px; height: 40px; border-radius: 12px;
+  border: 1.5px solid var(--line-soft); background: var(--card); cursor: pointer;
+}
+.login-emoji-pick.active { border-color: var(--ai); background: var(--ai-soft); }
+.login-create-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+.login-new { width: 100%; margin-top: 12px; padding: 10px; }
+.login-space-link {
+  display: block; margin: 18px auto 0; background: none; border: none;
+  color: var(--ink-soft); cursor: pointer; font-size: 13px; text-decoration: underline;
+}
+.login-space-link:hover { color: var(--ai); }
 .login-list { display: flex; flex-direction: column; gap: 8px; }
 .login-list button {
   text-align: left; padding: 10px 14px; border: 1px solid var(--line);
@@ -307,6 +322,27 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
 }
 .ask-local { display: flex; flex-direction: column; gap: 2px; padding: 8px 0; border-bottom: 1px solid var(--line-soft); text-align: left; }
 .ask-local:last-of-type { border-bottom: none; }
+
+/* members (private channels & groups) */
+.members-btn {
+  font-size: 15px; padding: 3px 9px; border: 1px solid var(--line);
+  border-radius: 8px; background: var(--card); cursor: pointer;
+}
+.members-btn:hover { border-color: var(--ai); }
+.member-row {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  padding: 8px 4px; border-bottom: 1px solid var(--line-soft); text-align: left;
+}
+.member-name { flex: 1; font-size: 14px; }
+.member-name small { color: var(--ink-soft); }
+.member-add { background: none; border-left: none; border-right: none; border-top: none; cursor: pointer; }
+.member-add:hover { background: var(--hover); }
+.member-plus { color: var(--ai); font-weight: 600; font-size: 13px; }
+.member-add-list { max-height: 260px; overflow-y: auto; }
+
+/* people view head */
+.people-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; flex-wrap: wrap; }
+.people-trust { font-size: 12.5px; margin-top: -12px; }
 
 /* storage & library modals */
 .field-help { font-style: normal; font-weight: 400; color: var(--ink-soft); margin-left: 6px; }

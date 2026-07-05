@@ -9,12 +9,14 @@ export function PeopleView({
   online,
   space,
   onToggleBlock,
+  onInvite,
 }: {
   me: MeDto;
   users: UserDto[];
   online: Set<string>;
   space: SpaceDto | null;
   onToggleBlock: (userId: string, blocked: boolean) => void;
+  onInvite: () => void;
 }) {
   const { openDm, openProfile, openTag } = useUserActions();
   const blocked = users.filter((u) => me.blockedUserIds.includes(u.id));
@@ -59,13 +61,21 @@ export function PeopleView({
   return (
     <main className="main home">
       <div className="home-scroll">
-        <header className="home-head">
-          <h1>People</h1>
-          <p>
-            {everyone.length + 1} in this space · {online.size} online
-            {space && ` · ${space.connectedPeers} peer instance${space.connectedPeers === 1 ? '' : 's'} connected`}
-            {blocked.length > 0 && ` · ${blocked.length} blocked`}
-          </p>
+        <header className="home-head people-head">
+          <div>
+            <h1>People</h1>
+            <p>
+              {everyone.length + 1} in this space · {online.size} online
+              {space && ` · ${space.connectedPeers} peer instance${space.connectedPeers === 1 ? '' : 's'} connected`}
+              {blocked.length > 0 && ` · ${blocked.length} blocked`}
+            </p>
+            <p className="people-trust">
+              Everyone here joined with this space's invite — devices connect directly, no server in between.
+            </p>
+          </div>
+          <button className="btn primary" onClick={onInvite}>
+            ✉️ Invite someone
+          </button>
         </header>
         <section>
           {everyone.map((u) => (

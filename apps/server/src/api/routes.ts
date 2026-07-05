@@ -10,11 +10,15 @@ import { THEMES } from '@app/shared';
 import {
   addAddonItem,
   addAttachment,
+  addChannelMember,
   blockedIds,
   createAddon,
+  createProfile,
   listAddons,
+  listChannelMembers,
   listFiles,
   removeAddon,
+  removeChannelMember,
   toggleAddonItem,
   canReadChannel,
   getAttachment,
@@ -132,7 +136,7 @@ export async function buildApp() {
         } else if (op.t === 'user') {
           const user = userDtoById(op.id);
           if (user) publish({ type: 'user.updated', user }, 'all');
-        } else if (op.t === 'channel' || op.t === 'archive') {
+        } else if (op.t === 'channel' || op.t === 'archive' || op.t === 'member' || op.t === 'unmember') {
           publish({ type: 'channels.changed' }, 'all');
         } else if (op.t === 'addon' || op.t === 'addon-remove' || op.t === 'addon-item' || op.t === 'addon-toggle') {
           publish({ type: 'addons.changed' }, 'all');
@@ -167,12 +171,36 @@ export async function buildApp() {
 
   app.get('/api/users', async () => listUsers());
 
+  // Create a brand-new profile in this space and sign in as it — the path
+  // for someone who just joined via an invite.
+  app.post('/api/profiles', async (req, reply) => {
+    const input = z
+      .object({
+        name: z.string().trim().min(1).max(80),
+        handle: z.string().trim().min(1).max(40),
+        avatarEmoji: z.string().trim().max(16).nullable().optional(),
+      })
+      .parse(req.body);
+    const result = await createProfile(input);
+    if (result === 'invalid-handle') return reply.code(400).send({ error: 'handles are letters, numbers, and dashes' });
+    if (result === 'handle-taken') return reply.code(409).send({ error: 'that handle is taken in this space' });
+    reply.setCookie(AUTH_COOKIE, result.id, { path: '/' });
+    return { id: result.id, handle: result.handle, name: result.name };
+  });
+
   // Everything below requires auth. Space config is instance-level, not
   // user-level: a fresh instance must be able to join a space before any
   // user exists to log in as.
   app.addHook('preHandler', async (req, reply) => {
     if (!req.url.startsWith('/api/')) return; // static web client — the API guards the data
-    if (req.url.startsWith('/api/dev/') || req.url === '/api/users' || req.url.startsWith('/api/space')) return;
+    // Pre-login surface: pick/create a profile, create/join/switch spaces.
+    if (
+      req.url.startsWith('/api/dev/') ||
+      req.url === '/api/users' ||
+      req.url === '/api/profiles' ||
+      req.url.startsWith('/api/space')
+    )
+      return;
     const uid = req.cookies[AUTH_COOKIE];
     const user = uid ? await getUserById(uid) : null;
     if (!user) return reply.code(401).send({ error: 'not logged in' });
@@ -335,6 +363,37 @@ export async function buildApp() {
       return { ok: true };
     });
   }
+
+  // Membership of private channels and groups. Members manage the list;
+  // anyone may remove themself (leave). Public channels have no list —
+  // everyone in the space is in.
+  app.get('/api/channels/:id/members', async (req, reply) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+    if (!(await requireChannelAccess(req, reply, id))) return reply;
+    return listChannelMembers(id);
+  });
+
+  app.post('/api/channels/:id/members', async (req, reply) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+    const { userId } = z.object({ userId: z.string().uuid() }).parse(req.body);
+    const channel = await getChannel(id);
+    if (!channel) return reply.code(404).send({ error: 'no such channel' });
+    if (channel.type === 'public') return reply.code(400).send({ error: 'everyone in the space is already here' });
+    if (!(await requireChannelAccess(req, reply, id))) return reply; // members only
+    const result = await addChannelMember(id, userId);
+    if (result === 'no-user') return reply.code(404).send({ error: 'no such person' });
+    return listChannelMembers(id);
+  });
+
+  app.delete('/api/channels/:id/members/:userId', async (req, reply) => {
+    const { id, userId } = z.object({ id: z.string().uuid(), userId: z.string().uuid() }).parse(req.params);
+    const channel = await getChannel(id);
+    if (!channel) return reply.code(404).send({ error: 'no such channel' });
+    if (channel.type === 'public') return reply.code(400).send({ error: 'public channels have no member list' });
+    if (!(await requireChannelAccess(req, reply, id))) return reply; // members only (incl. removing yourself)
+    await removeChannelMember(id, userId);
+    return listChannelMembers(id);
+  });
 
   app.get('/api/channels/:id/messages', async (req, reply) => {
     const { id } = z.object({ id: z.string().uuid() }).parse(req.params);

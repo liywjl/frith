@@ -831,6 +831,65 @@ describe('files view', () => {
   });
 });
 
+describe('profiles (real onboarding)', () => {
+  it('creates a profile, signs in, and rejects taken handles', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/profiles',
+      payload: { name: 'Dana Novak', handle: 'Dana!', avatarEmoji: '🐙' },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().handle).toBe('dana'); // normalized
+    expect(res.cookies.find((c) => c.name === 'uid')?.value).toBe(res.json().id);
+
+    const dup = await app.inject({ method: 'POST', url: '/api/profiles', payload: { name: 'Other', handle: 'dana' } });
+    expect(dup.statusCode).toBe(409);
+
+    const bad = await app.inject({ method: 'POST', url: '/api/profiles', payload: { name: 'X', handle: '!!!' } });
+    expect(bad.statusCode).toBe(400);
+  });
+});
+
+describe('membership (add/remove people)', () => {
+  it('members manage the list; outsiders cannot; removal revokes access', async () => {
+    // Bob can't see in, so he can't add himself or anyone else.
+    const sneaky = await app.inject({
+      method: 'POST',
+      url: `/api/channels/${privateChannel}/members`,
+      payload: { userId: bob },
+      ...as(bob),
+    });
+    expect(sneaky.statusCode).toBe(403);
+
+    // Alice (member) brings Bob in; now he can read it.
+    const added = await app.inject({
+      method: 'POST',
+      url: `/api/channels/${privateChannel}/members`,
+      payload: { userId: bob },
+      ...as(alice),
+    });
+    expect(added.statusCode).toBe(200);
+    expect(added.json().some((u: { id: string }) => u.id === bob)).toBe(true);
+    const read = await app.inject({ method: 'GET', url: `/api/channels/${privateChannel}/messages`, ...as(bob) });
+    expect(read.statusCode).toBe(200);
+
+    // Bob leaves (removes himself) — access is gone again.
+    await app.inject({ method: 'DELETE', url: `/api/channels/${privateChannel}/members/${bob}`, ...as(bob) });
+    const after = await app.inject({ method: 'GET', url: `/api/channels/${privateChannel}/messages`, ...as(bob) });
+    expect(after.statusCode).toBe(403);
+  });
+
+  it('public channels have no member list to manage', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/channels/${publicChannel}/members`,
+      payload: { userId: bob },
+      ...as(alice),
+    });
+    expect(res.statusCode).toBe(400);
+  });
+});
+
 // LAST: switching spaces swaps the whole world; the fixtures above live in
 // the original space.
 describe('multi-space', () => {

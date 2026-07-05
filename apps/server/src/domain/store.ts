@@ -68,6 +68,28 @@ export async function createUser(handle: string, name: string): Promise<UserRow>
   return state().users.get(id)!;
 }
 
+/** A brand-new person in this space — the real onboarding path. */
+export async function createProfile(input: {
+  name: string;
+  handle: string;
+  avatarEmoji?: string | null;
+}): Promise<UserRow | 'handle-taken' | 'invalid-handle'> {
+  const handle = input.handle
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-_.]/g, '')
+    .slice(0, 30);
+  if (!handle) return 'invalid-handle';
+  if (await getUserByHandle(handle)) return 'handle-taken';
+  const id = space.newId();
+  await space.append({
+    t: 'user',
+    id,
+    patch: { handle, name: input.name.trim(), avatarEmoji: input.avatarEmoji ?? null },
+  });
+  return state().users.get(id)!;
+}
+
 export async function updateProfile(userId: string, patch: ProfilePatch): Promise<UserDto> {
   const user = state().users.get(userId);
   if (!user) throw new Error('no such user');
@@ -215,6 +237,37 @@ export async function createChannel(
 
 export async function setChannelArchived(channelId: string, archived: boolean): Promise<void> {
   await space.append({ t: 'archive', channelId, archived, at: new Date().toISOString() });
+}
+
+/* ----------------------- membership (private/dm) ----------------------- */
+
+export async function listChannelMembers(channelId: string): Promise<UserDto[]> {
+  return [...(state().members.get(channelId) ?? [])]
+    .map((id) => state().users.get(id))
+    .filter((u): u is UserRow => u !== undefined)
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map(toUserDto);
+}
+
+/** Add someone to a private channel or group — members only invite. */
+export async function addChannelMember(channelId: string, userId: string): Promise<'ok' | 'no-user' | 'public'> {
+  const channel = state().channels.get(channelId);
+  if (!channel || channel.type === 'public') return 'public'; // everyone is already in
+  if (!state().users.has(userId)) return 'no-user';
+  if (!state().members.get(channelId)?.has(userId)) {
+    await space.append({ t: 'member', channelId, userId });
+  }
+  return 'ok';
+}
+
+/** Remove someone (or yourself — leaving) from a private channel or group. */
+export async function removeChannelMember(channelId: string, userId: string): Promise<'ok' | 'public'> {
+  const channel = state().channels.get(channelId);
+  if (!channel || channel.type === 'public') return 'public';
+  if (state().members.get(channelId)?.has(userId)) {
+    await space.append({ t: 'unmember', channelId, userId });
+  }
+  return 'ok';
 }
 
 export async function getOrCreateGroup(creatorId: string, otherUserIds: string[]): Promise<string> {

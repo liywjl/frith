@@ -78,28 +78,136 @@ export function App() {
   return <Workspace me={me} onMeChange={setMe} />;
 }
 
+const WELCOME_EMOJIS = ['🛼', '🎸', '🦉', '🌊', '🔥', '🌸', '🧭', '☕', '🐙', '🌵', '🎨', '⚡'];
+
 function Login({ onLogin }: { onLogin: () => void }) {
   const [users, setUsers] = useState<UserDto[]>([]);
+  const [space, setSpace] = useState<SpaceDto | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [name, setName] = useState('');
+  const [handle, setHandle] = useState('');
+  const [handleTouched, setHandleTouched] = useState(false);
+  const [emoji, setEmoji] = useState(WELCOME_EMOJIS[Math.floor(Math.random() * WELCOME_EMOJIS.length)]!);
+  const [error, setError] = useState<string | null>(null);
+  const [spaceOpen, setSpaceOpen] = useState(false);
+
   useEffect(() => {
     api.users().then(setUsers).catch(console.error);
+    api.space().then(setSpace).catch(console.error);
   }, []);
+
+  const suggestedHandle = (n: string) =>
+    n
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 30);
+
+  async function create() {
+    if (!name.trim()) return;
+    setError(null);
+    try {
+      await api.createProfile({ name, handle: handle || suggestedHandle(name), avatarEmoji: emoji });
+      onLogin();
+    } catch (err) {
+      setError(err instanceof Error && err.message.includes('409') ? 'That handle is taken here.' : 'Could not create the profile.');
+    }
+  }
+
+  const firstEver = users.length === 0;
 
   return (
     <div className="login">
       <h1 className="login-brand">
         <Logo size={40} /> Lore
       </h1>
-      <p>Your team's memory. Dev login — pick who you are today.</p>
-      <div className="login-list">
-        {users.map((u) => (
-          <button key={u.id} onClick={() => api.login(u.handle).then(onLogin)}>
-            <span className="login-emoji">{u.avatarEmoji ?? '·'}</span>
-            {u.name} <span className="handle">@{u.handle}</span>
-            <span className="login-title">{[u.title, u.team].filter(Boolean).join(' · ')}</span>
+      <p>
+        {space ? <b>{space.name}</b> : 'This space'} lives on this device — nothing goes to a server, and only
+        people with the invite can connect.
+      </p>
+
+      {(creating || firstEver) && (
+        <div className="login-create">
+          {firstEver && <p className="login-first">You're the first one here. Make yourself a profile to get started.</p>}
+          <div className="login-emoji-row">
+            {WELCOME_EMOJIS.map((e) => (
+              <button key={e} className={`login-emoji-pick ${emoji === e ? 'active' : ''}`} onClick={() => setEmoji(e)}>
+                {e}
+              </button>
+            ))}
+          </div>
+          <label className="field">
+            <span>Your name</span>
+            <input
+              autoFocus
+              value={name}
+              placeholder="e.g. Mika Sørensen"
+              onChange={(e) => {
+                setName(e.target.value);
+                if (!handleTouched) setHandle(suggestedHandle(e.target.value));
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') void create();
+              }}
+            />
+          </label>
+          <label className="field">
+            <span>Handle</span>
+            <input
+              value={handle}
+              placeholder="mika"
+              onChange={(e) => {
+                setHandleTouched(true);
+                setHandle(e.target.value);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') void create();
+              }}
+            />
+          </label>
+          {error && <div className="form-error">{error}</div>}
+          <div className="login-create-actions">
+            {!firstEver && (
+              <button className="btn" onClick={() => setCreating(false)}>
+                Back
+              </button>
+            )}
+            <button className="btn primary" disabled={!name.trim()} onClick={() => void create()}>
+              {emoji} Join as {name.trim() ? `@${handle || suggestedHandle(name)}` : '…'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {!creating && !firstEver && (
+        <>
+          <div className="login-list">
+            {users.map((u) => (
+              <button key={u.id} onClick={() => api.login(u.handle).then(onLogin)}>
+                <span className="login-emoji">{u.avatarEmoji ?? '·'}</span>
+                {u.name} <span className="handle">@{u.handle}</span>
+                <span className="login-title">{[u.title, u.team].filter(Boolean).join(' · ')}</span>
+              </button>
+            ))}
+          </div>
+          <button className="btn primary login-new" onClick={() => setCreating(true)}>
+            ✨ I'm new — create my profile
           </button>
-        ))}
-      </div>
-      {users.length === 0 && <p className="hint">No users — run `pnpm seed` first.</p>}
+        </>
+      )}
+
+      <button className="login-space-link" onClick={() => setSpaceOpen(true)}>
+        {space ? 'Create or join a different space →' : 'Create or join a space →'}
+      </button>
+      {spaceOpen && (
+        <SpaceModal
+          mode="new"
+          space={space}
+          onSpaceChange={() => window.location.reload()}
+          onClose={() => setSpaceOpen(false)}
+        />
+      )}
     </div>
   );
 }
@@ -120,7 +228,7 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
   const [profileEditOpen, setProfileEditOpen] = useState(false);
   const [groupOpen, setGroupOpen] = useState(false);
   const [createChannelOpen, setCreateChannelOpen] = useState(false);
-  const [spaceOpen, setSpaceOpen] = useState(false);
+  const [spaceOpen, setSpaceOpen] = useState<false | 'share' | 'new'>(false);
   const [space, setSpace] = useState<SpaceDto | null>(null);
   const [openedTag, setOpenedTag] = useState<string | null>(null);
   const [scheduled, setScheduled] = useState<ScheduledMessageDto[]>([]);
@@ -479,7 +587,7 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
   return (
     <UserActionsContext.Provider value={userActions}>
     <div className="app">
-      <SpaceRail onNewSpace={() => setSpaceOpen(true)} />
+      <SpaceRail onNewSpace={() => setSpaceOpen('new')} />
       <Sidebar
         me={me}
         channels={channels}
@@ -500,7 +608,7 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
         onFiles={openFiles}
         onAddon={openAddon}
         onNewAddon={() => setAddonModalOpen(true)}
-        onOpenSpace={() => setSpaceOpen(true)}
+        onOpenSpace={() => setSpaceOpen('share')}
         onSelect={openChannel}
         onNewGroup={() => setGroupOpen(true)}
         onNewChannel={() => setCreateChannelOpen(true)}
@@ -525,6 +633,7 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
           online={online}
           space={space}
           onToggleBlock={(userId, blocked) => void toggleBlock(userId, blocked)}
+          onInvite={() => setSpaceOpen('share')}
         />
       )}
       {view.kind === 'task' && <TaskView onOpenChannel={openChannel} onOpenThread={openThread} />}
@@ -564,6 +673,11 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
           }
           onOpenThread={setThreadRoot}
           onOpenAsk={() => setAskOpen(true)}
+          meId={me.id}
+          onLeft={() => {
+            void api.channels().then(setChannels);
+            openHome();
+          }}
         />
       )}
       {view.kind === 'channel' && threadRoot && active && (
@@ -602,7 +716,16 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
         <CreateChannelModal onCreated={onChannelCreated} onClose={() => setCreateChannelOpen(false)} />
       )}
       {spaceOpen && (
-        <SpaceModal space={space} onSpaceChange={setSpace} onClose={() => setSpaceOpen(false)} />
+        <SpaceModal
+          mode={spaceOpen || 'share'}
+          space={space}
+          onSpaceChange={(next) => {
+            setSpace(next);
+            // A created/joined space is a different world — reload into it.
+            if (spaceOpen === 'new') window.location.reload();
+          }}
+          onClose={() => setSpaceOpen(false)}
+        />
       )}
       {storageOpen && <StorageModal onClose={() => setStorageOpen(false)} />}
       {libraryOpen && <LibraryModal onClose={() => setLibraryOpen(false)} />}

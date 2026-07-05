@@ -1,9 +1,10 @@
-import { Fragment, useEffect, useRef } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import type { ChannelDto, MessageDto, ScheduledMessageDto } from '@app/shared';
 import { api } from '../lib/api';
 import { Avatar } from '../components/Avatar';
 import { Composer, type SlashCommand } from '../components/Composer';
 import { Message } from '../components/Message';
+import { MembersModal } from '../modals/MembersModal';
 import { useUserActions } from '../lib/userActions';
 
 const dayFormat = new Intl.DateTimeFormat(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
@@ -31,6 +32,8 @@ export function ChannelView({
   onCancelScheduled,
   onOpenThread,
   onOpenAsk,
+  meId,
+  onLeft,
 }: {
   channel: ChannelDto;
   messages: MessageDto[];
@@ -42,9 +45,13 @@ export function ChannelView({
   onCancelScheduled: (id: string) => void;
   onOpenThread: (root: MessageDto) => void;
   onOpenAsk: () => void;
+  meId: string;
+  /** After leaving a private channel/group — it's gone for this user. */
+  onLeft: () => void;
 }) {
   const { getUser } = useUserActions();
   const feedRef = useRef<HTMLDivElement>(null);
+  const [membersOpen, setMembersOpen] = useState(false);
 
   useEffect(() => {
     feedRef.current?.scrollTo({ top: feedRef.current.scrollHeight });
@@ -62,6 +69,11 @@ export function ChannelView({
         {soloPartner && <Avatar name={soloPartner.name} emoji={soloPartner.avatarEmoji} />}
         <span className="chan">{label}</span>
         {channel.archivedAt && <span className="archived-chip">archived</span>}
+        {channel.type !== 'public' && (
+          <button className="members-btn" title="Who's here — add or remove people" onClick={() => setMembersOpen(true)}>
+            👥
+          </button>
+        )}
         {channel.topic && <span className="topic">{channel.topic}</span>}
         {!channel.archivedAt && !inCall && (
           callParticipants.length > 0 ? (
@@ -140,6 +152,17 @@ export function ChannelView({
           )}
           <Composer channelId={channel.id} placeholder={`Message ${label}`} commands={commands} />
         </>
+      )}
+      {membersOpen && (
+        <MembersModal
+          channel={channel}
+          meId={meId}
+          onLeft={() => {
+            setMembersOpen(false);
+            onLeft();
+          }}
+          onClose={() => setMembersOpen(false)}
+        />
       )}
     </main>
   );

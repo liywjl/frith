@@ -8,10 +8,13 @@ export function SpaceModal({
   space,
   onSpaceChange,
   onClose,
+  mode = 'share',
 }: {
   space: SpaceDto | null;
   onSpaceChange: (space: SpaceDto) => void;
   onClose: () => void;
+  /** 'share': show this space's invite. 'new': create/join another space. */
+  mode?: 'share' | 'new';
 }) {
   const [name, setName] = useState('');
   const [invite, setInvite] = useState('');
@@ -36,7 +39,7 @@ export function SpaceModal({
     }
   }
 
-  if (space) {
+  if (space && mode === 'share') {
     const mailto = `mailto:?subject=${encodeURIComponent(`Join "${space.name}" on Lore`)}&body=${encodeURIComponent(
       `Join my Lore space "${space.name}" — paste this invite into Lore:\n\n${space.invite}\n\nLore is peer-to-peer: your copy of the workspace lives on your machine.`,
     )}`;
@@ -77,7 +80,7 @@ export function SpaceModal({
   return (
     <Modal
       title="Spaces"
-      subtitle="A space connects Lore instances peer-to-peer. Create one and invite people, or join with an invite."
+      subtitle="A space connects people peer-to-peer — it lives on its members' devices, nowhere else. Start one, or join with an invite someone shared with you."
       onClose={onClose}
     >
       <label className="field">

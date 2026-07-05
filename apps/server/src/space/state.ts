@@ -95,6 +95,7 @@ export type Op =
   | { t: 'channel'; channel: ChannelRow }
   | { t: 'archive'; channelId: string; archived: boolean; at: string }
   | { t: 'member'; channelId: string; userId: string }
+  | { t: 'unmember'; channelId: string; userId: string }
   | { t: 'msg'; message: MessageRow }
   | { t: 'att'; attachment: AttachmentRow }
   | { t: 'react'; messageId: string; userId: string; emoji: string; on: boolean }
@@ -173,6 +174,9 @@ export class LoreState {
       }
       case 'member':
         this.memberSet(op.channelId).add(op.userId);
+        break;
+      case 'unmember':
+        this.memberSet(op.channelId).delete(op.userId);
         break;
       case 'msg':
         if (this.messages.has(op.message.id)) break;
