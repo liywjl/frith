@@ -866,6 +866,22 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
 [data-theme='mono'] { --side: #f2f2f2; --rail: #191919; --radius: 10px; }
 .home-card, .modal, .file-tile, .ask-panel, .btn, .side-item, .att-file { border-radius: var(--radius, 10px); }
 
+/* ===== frameless desktop window (macOS traffic lights, no title bar) =====
+   The shell places the lights at x:68 y:16 — inside the sidebar's top strip,
+   left-aligned with its content. Everything in the top band drags the
+   window; interactive children opt back out. */
+.electron .rail {
+  -webkit-app-region: drag;
+  padding-top: 16px;
+}
+.electron .rail button { -webkit-app-region: no-drag; }
+.electron .sidebar { padding-top: 46px; }
+.electron .side-top { -webkit-app-region: drag; }
+.electron .side-top button { -webkit-app-region: no-drag; }
+.electron .login { padding-top: 46px; }
+.electron .topbar { -webkit-app-region: drag; }
+.electron .topbar button, .electron .topbar input { -webkit-app-region: no-drag; }
+
 /* ===== the space rail: one icon per space on this device ===== */
 .rail {
   display: flex; flex-direction: column; align-items: center; gap: 8px;

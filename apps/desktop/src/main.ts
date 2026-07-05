@@ -27,6 +27,12 @@ async function createWindow(url: string) {
     minWidth: 720,
     minHeight: 480,
     title: 'Lore',
+    // Frameless, native macOS traffic lights only — no title bar. The lights
+    // sit in the sidebar's top strip; the web app pads and adds drag regions
+    // when it detects Electron. Other platforms keep their native frame.
+    ...(process.platform === 'darwin'
+      ? { titleBarStyle: 'hidden' as const, trafficLightPosition: { x: 68, y: 16 } }
+      : {}),
   });
   // The window shows only our own local server; anything else goes to the
   // system browser.
