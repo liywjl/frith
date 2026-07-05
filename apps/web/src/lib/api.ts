@@ -1,6 +1,9 @@
 import type {
+  AddonDto,
+  AddonKind,
   AskResponse,
   ChannelDto,
+  FileDto,
   ConnectDto,
   HomeDto,
   LibrarySourceDto,
@@ -8,6 +11,7 @@ import type {
   MessageDto,
   PoliciesDto,
   ProfilePageDto,
+  SpaceListDto,
   ProfilePatch,
   ScheduledMessageDto,
   SpaceDto,
@@ -39,6 +43,18 @@ export const api = {
     request<SpaceDto>('/api/space', { method: 'POST', body: JSON.stringify({ name }) }),
   joinSpace: (invite: string) =>
     request<SpaceDto>('/api/space/join', { method: 'POST', body: JSON.stringify({ invite }) }),
+  spaces: () => request<SpaceListDto>('/api/spaces'),
+  switchSpace: (dir: string) =>
+    request<SpaceDto>('/api/spaces/switch', { method: 'POST', body: JSON.stringify({ dir }) }),
+  files: () => request<FileDto[]>('/api/files'),
+  addons: () => request<AddonDto[]>('/api/addons'),
+  createAddon: (input: { name: string; emoji: string; kind: AddonKind }) =>
+    request<AddonDto>('/api/addons', { method: 'POST', body: JSON.stringify(input) }),
+  removeAddon: (id: string) => request<{ ok: boolean }>(`/api/addons/${id}`, { method: 'DELETE' }),
+  addAddonItem: (id: string, input: { text: string; url?: string | null }) =>
+    request<AddonDto>(`/api/addons/${id}/items`, { method: 'POST', body: JSON.stringify(input) }),
+  toggleAddonItem: (id: string, itemId: string, done: boolean) =>
+    request<AddonDto>(`/api/addons/${id}/items/${itemId}`, { method: 'PUT', body: JSON.stringify({ done }) }),
   setBlocked: (userId: string, blocked: boolean) =>
     request<{ blockedUserIds: string[] }>(`/api/users/${userId}/block`, {
       method: blocked ? 'POST' : 'DELETE',

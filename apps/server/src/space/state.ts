@@ -56,6 +56,29 @@ export interface BlobId {
   byteLength: number;
 }
 
+/** A custom tab members added to the space — their own interface, synced. */
+export interface AddonRow {
+  id: string;
+  name: string;
+  emoji: string;
+  /** Template it was created from. */
+  kind: 'checklist' | 'links' | 'notes';
+  createdBy: string;
+  createdAt: string;
+}
+
+export interface AddonItemRow {
+  id: string;
+  addonId: string;
+  authorId: string;
+  text: string;
+  /** links template: the target. */
+  url: string | null;
+  /** checklist template: ticked? */
+  done: boolean;
+  createdAt: string;
+}
+
 export interface ScheduledRow {
   id: string;
   channelId: string;
@@ -80,7 +103,11 @@ export type Op =
   | { t: 'pin'; userId: string; channelId: string; on: boolean }
   | { t: 'pins'; userId: string; channelIds: string[] }
   | { t: 'sched'; scheduled: ScheduledRow }
-  | { t: 'unsched'; id: string };
+  | { t: 'unsched'; id: string }
+  | { t: 'addon'; addon: AddonRow }
+  | { t: 'addon-remove'; addonId: string }
+  | { t: 'addon-item'; item: AddonItemRow }
+  | { t: 'addon-toggle'; addonId: string; itemId: string; done: boolean };
 
 const defaultUser = (id: string): UserRow => ({
   id,
@@ -94,7 +121,7 @@ const defaultUser = (id: string): UserRow => ({
   statusExpiresAt: null,
   interests: [],
   nowPlaying: null,
-  theme: 'paper',
+  theme: 'bubbly',
 });
 
 export class LoreState {
@@ -111,6 +138,8 @@ export class LoreState {
   scheduled = new Map<string, ScheduledRow>();
   attachments = new Map<string, AttachmentRow>();
   attachmentsByMessage = new Map<string, AttachmentRow[]>();
+  addons = new Map<string, AddonRow>();
+  addonItems = new Map<string, AddonItemRow[]>(); // addonId → items in arrival order
 
   memberSet(channelId: string): Set<string> {
     let set = this.members.get(channelId);
@@ -210,6 +239,21 @@ export class LoreState {
       case 'unsched':
         this.scheduled.delete(op.id);
         break;
+      case 'addon':
+        if (!this.addons.has(op.addon.id)) this.addons.set(op.addon.id, op.addon);
+        break;
+      case 'addon-remove':
+        this.addons.delete(op.addonId);
+        this.addonItems.delete(op.addonId);
+        break;
+      case 'addon-item':
+        this.addonItems.set(op.item.addonId, [...(this.addonItems.get(op.item.addonId) ?? []), op.item]);
+        break;
+      case 'addon-toggle': {
+        const item = this.addonItems.get(op.addonId)?.find((i) => i.id === op.itemId);
+        if (item) item.done = op.done;
+        break;
+      }
     }
   }
 }

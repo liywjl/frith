@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   THEMES,
+  type AddonDto,
   type ChannelDto,
   type MeDto,
   type MessageDto,
@@ -35,11 +36,17 @@ import { Logo } from './components/Logo';
 import { PeopleView } from './views/PeopleView';
 import { TagModal } from './modals/TagModal';
 import { UserActionsContext, type UserActions } from './lib/userActions';
+import { SpaceRail } from './components/SpaceRail';
+import { FilesView } from './views/FilesView';
+import { AddonView } from './views/AddonView';
+import { AddonModal } from './modals/AddonModal';
 
 type View =
   | { kind: 'home' }
   | { kind: 'task' }
   | { kind: 'people' }
+  | { kind: 'files' }
+  | { kind: 'addon'; addonId: string }
   | { kind: 'channel' }
   | { kind: 'profile'; userId: string };
 
@@ -56,11 +63,18 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    document.documentElement.dataset.theme = me?.theme ?? 'paper';
+    document.documentElement.dataset.theme = me?.theme ?? 'bubbly';
   }, [me?.theme]);
 
   if (!checked) return null;
-  if (!me) return <Login onLogin={() => void api.me().then(setMe)} />;
+  if (!me) {
+    return (
+      <div className="app">
+        <SpaceRail />
+        <Login onLogin={() => void api.me().then(setMe)} />
+      </div>
+    );
+  }
   return <Workspace me={me} onMeChange={setMe} />;
 }
 
@@ -110,6 +124,8 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
   const [space, setSpace] = useState<SpaceDto | null>(null);
   const [openedTag, setOpenedTag] = useState<string | null>(null);
   const [scheduled, setScheduled] = useState<ScheduledMessageDto[]>([]);
+  const [addons, setAddons] = useState<AddonDto[]>([]);
+  const [addonModalOpen, setAddonModalOpen] = useState(false);
 
   // Campfires (calls)
   const [calls, setCalls] = useState<Record<string, string[]>>({});
@@ -123,6 +139,7 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
     api.space().then(setSpace).catch(console.error);
     api.calls().then(setCalls).catch(console.error);
     api.scheduled().then(setScheduled).catch(console.error);
+    api.addons().then(setAddons).catch(console.error);
   }, []);
 
   const startCall = useCallback(async (channelId: string, withVideo: boolean) => {
@@ -203,6 +220,21 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
     setView({ kind: 'people' });
   }, [closeOverlays]);
 
+  const openFiles = useCallback(() => {
+    closeOverlays();
+    setThreadRoot(null);
+    setView({ kind: 'files' });
+  }, [closeOverlays]);
+
+  const openAddon = useCallback(
+    (addonId: string) => {
+      closeOverlays();
+      setThreadRoot(null);
+      setView({ kind: 'addon', addonId });
+    },
+    [closeOverlays],
+  );
+
   const togglePin = useCallback(async (channelId: string, pinned: boolean) => {
     await api.setPinned(channelId, pinned);
     setChannels(await api.channels());
@@ -258,6 +290,14 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
         if (event.channelId === activeId) {
           setMessages((cur) => applyReaction(cur, event, me.id));
         }
+        return;
+      }
+      if (event.type === 'addons.changed') {
+        void api.addons().then((next) => {
+          setAddons(next);
+          // If the tab we're looking at was removed, fall back home.
+          setView((cur) => (cur.kind === 'addon' && !next.some((a) => a.id === cur.addonId) ? { kind: 'home' } : cur));
+        });
         return;
       }
       if (event.type === 'file.cached') {
@@ -439,6 +479,7 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
   return (
     <UserActionsContext.Provider value={userActions}>
     <div className="app">
+      <SpaceRail onNewSpace={() => setSpaceOpen(true)} />
       <Sidebar
         me={me}
         channels={channels}
@@ -448,11 +489,17 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
         homeActive={view.kind === 'home'}
         taskActive={view.kind === 'task'}
         peopleActive={view.kind === 'people'}
+        filesActive={view.kind === 'files'}
+        addons={addons}
+        activeAddonId={view.kind === 'addon' ? view.addonId : null}
         space={space}
         liveCalls={new Set(Object.keys(calls).filter((id) => (calls[id] ?? []).length > 0))}
         onHome={openHome}
         onTask={openTask}
         onPeople={openPeople}
+        onFiles={openFiles}
+        onAddon={openAddon}
+        onNewAddon={() => setAddonModalOpen(true)}
         onOpenSpace={() => setSpaceOpen(true)}
         onSelect={openChannel}
         onNewGroup={() => setGroupOpen(true)}
@@ -460,6 +507,17 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
         onTogglePin={(id, pinned) => void togglePin(id, pinned)}
         onReorderPins={(ids) => void reorderPins(ids)}
       />
+      {view.kind === 'files' && <FilesView onOpenChannel={openChannel} />}
+      {view.kind === 'addon' &&
+        (() => {
+          const addon = addons.find((a) => a.id === view.addonId);
+          return addon ? (
+            <AddonView
+              addon={addon}
+              onChanged={(next) => setAddons((cur) => cur.map((a) => (a.id === next.id ? next : a)))}
+            />
+          ) : null;
+        })()}
       {view.kind === 'people' && (
         <PeopleView
           me={me}
@@ -548,6 +606,16 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
       )}
       {storageOpen && <StorageModal onClose={() => setStorageOpen(false)} />}
       {libraryOpen && <LibraryModal onClose={() => setLibraryOpen(false)} />}
+      {addonModalOpen && (
+        <AddonModal
+          onCreated={(addon) => {
+            setAddons((cur) => [...cur.filter((a) => a.id !== addon.id), addon]);
+            setAddonModalOpen(false);
+            openAddon(addon.id);
+          }}
+          onClose={() => setAddonModalOpen(false)}
+        />
+      )}
       {openedTag && <TagModal tag={openedTag} users={users} meId={me.id} onClose={() => setOpenedTag(null)} />}
       {myCall && (
         <CallPanel

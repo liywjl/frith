@@ -22,6 +22,12 @@ interface SpaceConfig {
   inviteDiscoveryKey?: string;
 }
 
+/** Every space this instance belongs to, and which one is open. */
+interface Registry {
+  active: string; // dir of the open space
+  spaces: SpaceConfig[];
+}
+
 type OpListener = (op: Op) => void;
 
 const INVITE_PATTERN = /^lore:([^:]+):([0-9a-f]{40,})$/;
@@ -92,32 +98,61 @@ class Space {
     };
   }
 
-  private configPath() {
-    return path.join(this.dataDir, 'space.json');
+  // One instance can belong to many spaces; spaces.json is the registry
+  // (which spaces we know + which one is open). One space is open at a time —
+  // switching closes the log and opens another.
+  private registryPath() {
+    return path.join(this.dataDir, 'spaces.json');
   }
 
-  private readConfig(): SpaceConfig {
+  private readRegistry(): Registry {
     try {
-      const config = JSON.parse(fs.readFileSync(this.configPath(), 'utf8')) as SpaceConfig;
-      config.dir ??= config.key ? config.key.slice(0, 16) : 'local';
-      return config;
+      return JSON.parse(fs.readFileSync(this.registryPath(), 'utf8')) as Registry;
     } catch {
-      return { name: 'local', key: null, dir: 'local' };
+      // migrate the pre-registry single-space config, if any
+      try {
+        const legacy = JSON.parse(fs.readFileSync(path.join(this.dataDir, 'space.json'), 'utf8')) as SpaceConfig;
+        legacy.dir ??= legacy.key ? legacy.key.slice(0, 16) : 'local';
+        return { active: legacy.dir, spaces: [legacy] };
+      } catch {
+        return { active: 'local', spaces: [{ name: 'local', key: null, dir: 'local' }] };
+      }
     }
   }
 
-  private writeConfig(config: SpaceConfig) {
+  private writeRegistry(registry: Registry) {
     fs.mkdirSync(this.dataDir, { recursive: true });
-    fs.writeFileSync(this.configPath(), JSON.stringify(config));
+    fs.writeFileSync(this.registryPath(), JSON.stringify(registry, null, 2));
+  }
+
+  private activeConfig(registry: Registry): SpaceConfig {
+    return registry.spaces.find((s) => s.dir === registry.active) ?? registry.spaces[0]!;
   }
 
   invite(): string {
-    return `lore:${encodeURIComponent(this.name)}:${this.readConfig().invite ?? ''}`;
+    return `lore:${encodeURIComponent(this.name)}:${this.activeConfig(this.readRegistry()).invite ?? ''}`;
+  }
+
+  listSpaces(): { active: string; spaces: { dir: string; name: string }[] } {
+    const registry = this.readRegistry();
+    return { active: registry.active, spaces: registry.spaces.map((s) => ({ dir: s.dir, name: s.name })) };
+  }
+
+  /** Close the open space and open another one we already belong to. */
+  async switchSpace(dir: string): Promise<void> {
+    const registry = this.readRegistry();
+    if (!registry.spaces.some((s) => s.dir === dir)) throw new Error('no such space on this device');
+    if (registry.active === dir && this.isOpen) return;
+    await this.close();
+    registry.active = dir;
+    this.writeRegistry(registry);
+    await this.open(this.dataDir);
   }
 
   async open(dataDir: string): Promise<void> {
     this.dataDir = dataDir;
-    const config = this.readConfig();
+    const registry = this.readRegistry();
+    const config = this.activeConfig(registry);
     this.name = config.name;
 
     this.store = new Corestore(path.join(this.dataDir, config.dir));
@@ -137,7 +172,7 @@ class Space {
       config.invitePublicKey = b4a.toString(minted.publicKey, 'hex');
       config.inviteDiscoveryKey = b4a.toString(minted.discoveryKey, 'hex');
     }
-    this.writeConfig(config);
+    this.writeRegistry(registry); // config is an entry in it — minted keys persist
 
     // Initial materialization replays history silently (no fan-out).
     await this.base.update();
@@ -189,7 +224,11 @@ class Space {
     this.state = new LoreState();
     this.viewIndex = 0;
     this.name = name;
-    this.writeConfig({ name, key: null, dir: `space-${crypto.randomBytes(6).toString('hex')}` });
+    const registry = this.readRegistry();
+    const dir = `space-${crypto.randomBytes(6).toString('hex')}`;
+    registry.spaces.push({ name, key: null, dir });
+    registry.active = dir;
+    this.writeRegistry(registry);
     await this.open(this.dataDir);
     await this.append({ t: 'space', name });
   }
@@ -229,7 +268,11 @@ class Space {
     this.state = new LoreState();
     this.viewIndex = 0;
     this.name = name;
-    this.writeConfig({ name, key: b4a.toString(baseKey, 'hex'), dir, invite: inviteHex });
+    const registry = this.readRegistry();
+    registry.spaces = registry.spaces.filter((s) => s.dir !== dir); // re-join of a known space
+    registry.spaces.push({ name, key: b4a.toString(baseKey, 'hex'), dir, invite: inviteHex });
+    registry.active = dir;
+    this.writeRegistry(registry);
     await this.open(this.dataDir);
   }
 

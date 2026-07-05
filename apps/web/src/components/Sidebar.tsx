@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { ChannelDto, SpaceDto, UserDto } from '@app/shared';
+import type { AddonDto, ChannelDto, SpaceDto, UserDto } from '@app/shared';
 import { Avatar } from './Avatar';
 import { Logo } from './Logo';
 import { useUserActions } from '../lib/userActions';
@@ -31,11 +31,17 @@ export function Sidebar({
   homeActive,
   taskActive,
   peopleActive,
+  filesActive,
+  addons,
+  activeAddonId,
   space,
   liveCalls,
   onHome,
   onTask,
   onPeople,
+  onFiles,
+  onAddon,
+  onNewAddon,
   onOpenSpace,
   onSelect,
   onNewGroup,
@@ -51,11 +57,17 @@ export function Sidebar({
   homeActive: boolean;
   taskActive: boolean;
   peopleActive: boolean;
+  filesActive: boolean;
+  addons: AddonDto[];
+  activeAddonId: string | null;
   space: SpaceDto | null;
   liveCalls: Set<string>;
   onHome: () => void;
   onTask: () => void;
   onPeople: () => void;
+  onFiles: () => void;
+  onAddon: (addonId: string) => void;
+  onNewAddon: () => void;
   onOpenSpace: () => void;
   onSelect: (id: string) => void;
   onNewGroup: () => void;
@@ -148,10 +160,31 @@ export function Sidebar({
       <button className={`side-item home-item ${peopleActive ? 'active' : ''}`} onClick={onPeople}>
         <span className="side-label">👥 People</span>
       </button>
+      <button className={`side-item home-item ${filesActive ? 'active' : ''}`} onClick={onFiles}>
+        <span className="side-label">📁 Files</span>
+      </button>
       <button className="side-item home-item" title="Your P2P space — invite people" onClick={onOpenSpace}>
         <span className="side-label">🛰 {space ? space.name : 'Join a space'}</span>
         {space && space.connectedPeers > 0 && <span className="peer-badge">{space.connectedPeers} ⇄</span>}
       </button>
+
+      <div className="side-h side-h-action">
+        <span>Add-ons</span>
+        <button className="side-add" title="Add a custom tab" onClick={onNewAddon}>
+          +
+        </button>
+      </div>
+      {addons.map((a) => (
+        <button
+          key={a.id}
+          className={`side-item ${a.id === activeAddonId ? 'active' : ''}`}
+          onClick={() => onAddon(a.id)}
+        >
+          <span className="side-label">
+            {a.emoji} {a.name}
+          </span>
+        </button>
+      ))}
 
       {pinnedChannels.length > 0 && (
         <>

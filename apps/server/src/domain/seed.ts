@@ -18,10 +18,15 @@ interface Corpus {
   reactions: { message: string; emoji: string; users: string[] }[];
 }
 
-export async function seedCorpus() {
-  const corpus: Corpus = JSON.parse(
-    readFileSync(process.env.LORE_CORPUS ?? fileURLToPath(new URL('../../seed/corpus.json', import.meta.url)), 'utf8'),
-  );
+const CORPORA = {
+  acme: 'corpus.json', // the original: work
+  skate: 'corpus-skate.json', // friends: rollerblading crew
+  band: 'corpus-band.json', // friends: a band
+} as const;
+
+export async function seedCorpus(name: keyof typeof CORPORA = 'acme') {
+  const dir = process.env.LORE_SEED_DIR ?? fileURLToPath(new URL('../../seed', import.meta.url));
+  const corpus: Corpus = JSON.parse(readFileSync(`${dir}/${CORPORA[name]}`, 'utf8'));
   const now = Date.now();
 
   const userIds = new Map<string, string>();

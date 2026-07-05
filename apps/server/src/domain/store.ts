@@ -3,7 +3,9 @@
 // appends an op that all peers apply identically. The function surface is
 // unchanged from the Postgres era — routes and tests didn't have to care.
 import type {
+  AddonDto,
   AttachmentDto,
+  FileDto,
   ChannelDto,
   ConnectDto,
   HomeDto,
@@ -15,7 +17,7 @@ import type {
   UserDto,
 } from '@app/shared';
 import { space } from '../space/space.js';
-import type { AttachmentRow, MessageRow, UserRow } from '../space/state.js';
+import type { AddonRow, AttachmentRow, MessageRow, UserRow } from '../space/state.js';
 import { isDangerousName } from './files.js';
 
 export { parseInvite } from '../space/space.js';
@@ -245,8 +247,8 @@ function attachmentKind(mime: string): AttachmentDto['kind'] {
   return 'file';
 }
 
-function attachmentDtos(messageId: string): AttachmentDto[] {
-  return (state().attachmentsByMessage.get(messageId) ?? []).map((a) => ({
+function toAttachmentDto(a: AttachmentRow): AttachmentDto {
+  return {
     id: a.id,
     kind: attachmentKind(a.mime),
     name: a.name,
@@ -256,7 +258,11 @@ function attachmentDtos(messageId: string): AttachmentDto[] {
     // Pre-blob attachments have bytes only on the uploader's disk; report
     // them cached so they render as a plain link (a peer's GET just 404s).
     cached: a.blob ? space.blobs.isCachedSync(a.blob) : true,
-  }));
+  };
+}
+
+function attachmentDtos(messageId: string): AttachmentDto[] {
+  return (state().attachmentsByMessage.get(messageId) ?? []).map(toAttachmentDto);
 }
 
 function replyCount(messageId: string): number {
@@ -369,6 +375,103 @@ export async function getAttachment(id: string) {
   const message = state().messages.get(attachment.messageId);
   if (!message) return null;
   return { ...attachment, channelId: message.channelId, authorId: message.authorId };
+}
+
+/** Everything shared in channels the viewer can read — attachment + context. */
+export function filesVisibleTo(viewerId: string): (AttachmentRow & { message: MessageRow })[] {
+  const visible = visibleChannelSet(viewerId);
+  const blocked = state().blocks.get(viewerId);
+  return [...state().attachments.values()]
+    .map((a) => ({ ...a, message: state().messages.get(a.messageId) }))
+    .filter((a): a is AttachmentRow & { message: MessageRow } => {
+      return a.message !== undefined && visible.has(a.message.channelId) && !blocked?.has(a.message.authorId);
+    });
+}
+
+export async function listFiles(viewerId: string): Promise<FileDto[]> {
+  return filesVisibleTo(viewerId)
+    .sort((a, b) => b.message.createdAt.localeCompare(a.message.createdAt))
+    .map((a) => ({
+      ...toAttachmentDto(a),
+      messageId: a.messageId,
+      channelId: a.message.channelId,
+      channelName: state().channels.get(a.message.channelId)?.name ?? 'unknown',
+      authorName: state().users.get(a.message.authorId)?.name ?? 'Unknown',
+      createdAt: a.message.createdAt,
+    }));
+}
+
+/* ------------------------------- add-ons ------------------------------- */
+
+function toAddonDto(row: AddonRow): AddonDto {
+  const items = state().addonItems.get(row.id) ?? [];
+  return {
+    ...row,
+    createdByName: state().users.get(row.createdBy)?.name ?? 'Unknown',
+    items: items.map((i) => ({
+      id: i.id,
+      text: i.text,
+      url: i.url,
+      done: i.done,
+      authorName: state().users.get(i.authorId)?.name ?? 'Unknown',
+      createdAt: i.createdAt,
+    })),
+  };
+}
+
+export async function listAddons(): Promise<AddonDto[]> {
+  return [...state().addons.values()]
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+    .map(toAddonDto);
+}
+
+export async function createAddon(
+  creatorId: string,
+  input: { name: string; emoji: string; kind: AddonRow['kind'] },
+): Promise<AddonDto> {
+  const addon: AddonRow = {
+    id: space.newId(),
+    name: input.name,
+    emoji: input.emoji,
+    kind: input.kind,
+    createdBy: creatorId,
+    createdAt: new Date().toISOString(),
+  };
+  await space.append({ t: 'addon', addon });
+  return toAddonDto(addon);
+}
+
+export async function removeAddon(addonId: string): Promise<boolean> {
+  if (!state().addons.has(addonId)) return false;
+  await space.append({ t: 'addon-remove', addonId });
+  return true;
+}
+
+export async function addAddonItem(
+  authorId: string,
+  addonId: string,
+  input: { text: string; url?: string | null },
+): Promise<AddonDto | null> {
+  if (!state().addons.has(addonId)) return null;
+  await space.append({
+    t: 'addon-item',
+    item: {
+      id: space.newId(),
+      addonId,
+      authorId,
+      text: input.text,
+      url: input.url ?? null,
+      done: false,
+      createdAt: new Date().toISOString(),
+    },
+  });
+  return toAddonDto(state().addons.get(addonId)!);
+}
+
+export async function toggleAddonItem(addonId: string, itemId: string, done: boolean): Promise<AddonDto | null> {
+  if (!state().addons.has(addonId)) return null;
+  await space.append({ t: 'addon-toggle', addonId, itemId, done });
+  return toAddonDto(state().addons.get(addonId)!);
 }
 
 /* ------------------------- pins & scheduling -------------------------- */
@@ -596,12 +699,17 @@ export function channelName(id: string): string {
   return state().channels.get(id)?.name ?? 'unknown';
 }
 
-export function messagesVisibleTo(viewerId: string): MessageRow[] {
-  const visible = new Set(
+/** Channel ids the viewer may read: public, or private with membership. */
+function visibleChannelSet(viewerId: string): Set<string> {
+  return new Set(
     [...state().channels.values()]
       .filter((c) => c.type === 'public' || state().members.get(c.id)?.has(viewerId))
       .map((c) => c.id),
   );
+}
+
+export function messagesVisibleTo(viewerId: string): MessageRow[] {
+  const visible = visibleChannelSet(viewerId);
   const blocked = state().blocks.get(viewerId);
   return [...state().messages.values()].filter(
     (m) => visible.has(m.channelId) && !blocked?.has(m.authorId),

@@ -1,6 +1,6 @@
 export type ChannelType = 'public' | 'private' | 'dm';
 
-export const THEMES = ['paper', 'midnight', 'forest', 'sunset', 'ocean', 'mono'] as const;
+export const THEMES = ['bubbly', 'paper', 'midnight', 'forest', 'sunset', 'ocean', 'mono'] as const;
 export type Theme = (typeof THEMES)[number];
 
 export interface UserDto {
@@ -41,6 +41,44 @@ export interface SpaceDto {
   /** Shareable invite: high-entropy key, unguessable. */
   invite: string;
   connectedPeers: number;
+}
+
+/** All spaces on this device — one is open at a time. */
+export interface SpaceListDto {
+  active: string;
+  spaces: { dir: string; name: string }[];
+}
+
+/** A shared file with its chat context, for the Files view. */
+export interface FileDto extends AttachmentDto {
+  messageId: string;
+  channelId: string;
+  channelName: string;
+  authorName: string;
+  createdAt: string;
+}
+
+export type AddonKind = 'checklist' | 'links' | 'notes';
+
+export interface AddonItemDto {
+  id: string;
+  text: string;
+  url: string | null;
+  done: boolean;
+  authorName: string;
+  createdAt: string;
+}
+
+/** A custom tab members added to the space — synced P2P like everything else. */
+export interface AddonDto {
+  id: string;
+  name: string;
+  emoji: string;
+  kind: AddonKind;
+  createdBy: string;
+  createdByName: string;
+  createdAt: string;
+  items: AddonItemDto[];
 }
 
 export interface ProfilePatch {
@@ -187,11 +225,24 @@ export interface AskLocalHit {
   when: string;
 }
 
+/** A shared file that matched — by name, or by content when cached here. */
+export interface AskFileHit {
+  attachmentId: string;
+  channelId: string;
+  channelName: string;
+  name: string;
+  kind: AttachmentDto['kind'];
+  url: string;
+  snippet: string | null;
+}
+
 export interface AskResponse {
   query: string;
   people: AskPerson[];
   threads: AskThread[];
   messages: AskEvidence[];
+  /** Files shared in the space (ACL-filtered, like everything else). */
+  files: AskFileHit[];
   /** From this device's library — never shared into the space. */
   local: AskLocalHit[];
 }
@@ -303,6 +354,8 @@ export type ServerEvent =
   | { type: 'call.changed'; channelId: string; participants: string[] }
   /** A file's bytes finished downloading to this device. */
   | { type: 'file.cached'; channelId: string; messageId: string; attachmentId: string }
+  /** An add-on tab (or its items) changed — refetch the list. */
+  | { type: 'addons.changed' }
   /** WebRTC signaling relayed between two users. */
   | { type: 'rtc.signal'; from: string; payload: RtcPayload };
 

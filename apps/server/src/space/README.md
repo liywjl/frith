@@ -59,9 +59,12 @@ state isn't reversible, so `space.ts` rebuilds by replaying from scratch.
 Under `.lore-data/` (override with `$LORE_DATA`; the second dev instance uses
 `.lore-data-peer/`):
 
-- `space.json` — which space this instance has open: name, autobase key,
-  invite. The founder also keeps the pairing credentials here; only a
-  credential holder can admit new members.
+- `spaces.json` — the registry: every space this instance belongs to (name,
+  autobase key, invite) and which one is open. One space is open at a time;
+  the rail in the app switches by closing one log and opening another. The
+  founder's pairing credentials live here too; only a credential holder can
+  admit new members. (A legacy single-space `space.json` migrates on first
+  open.)
 - `<dir>/` — one Corestore directory per space this instance has created or
   joined.
 

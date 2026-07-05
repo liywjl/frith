@@ -30,7 +30,7 @@ await esbuild.build({
 });
 
 if (!dev) {
-  cpSync('../server/seed/corpus.json', 'dist/corpus.json');
+  cpSync('../server/seed', 'dist/seed', { recursive: true });
   if (!existsSync('../web/dist')) {
     console.error('missing ../web/dist — run `pnpm --filter web build` first');
     process.exit(1);

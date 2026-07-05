@@ -8,8 +8,14 @@ import websocket from '@fastify/websocket';
 import { z } from 'zod';
 import { THEMES } from '@app/shared';
 import {
+  addAddonItem,
   addAttachment,
   blockedIds,
+  createAddon,
+  listAddons,
+  listFiles,
+  removeAddon,
+  toggleAddonItem,
   canReadChannel,
   getAttachment,
   channelAudience,
@@ -128,6 +134,8 @@ export async function buildApp() {
           if (user) publish({ type: 'user.updated', user }, 'all');
         } else if (op.t === 'channel' || op.t === 'archive') {
           publish({ type: 'channels.changed' }, 'all');
+        } else if (op.t === 'addon' || op.t === 'addon-remove' || op.t === 'addon-item' || op.t === 'addon-toggle') {
+          publish({ type: 'addons.changed' }, 'all');
         }
       })();
     });
@@ -191,6 +199,19 @@ export async function buildApp() {
 
   app.get('/api/space', async () => spaceDto());
 
+  // Every space on this device; switching closes the log and opens another.
+  app.get('/api/spaces', async () => space.listSpaces());
+
+  app.post('/api/spaces/switch', async (req, reply) => {
+    const { dir } = z.object({ dir: z.string().min(1).max(120) }).parse(req.body);
+    try {
+      await space.switchSpace(dir);
+    } catch (err) {
+      return reply.code(404).send({ error: err instanceof Error ? err.message : 'no such space' });
+    }
+    return spaceDto();
+  });
+
   app.post('/api/space', async (req) => {
     const { name } = z.object({ name: z.string().trim().min(1).max(60) }).parse(req.body);
     await space.createSpace(name);
@@ -237,7 +258,12 @@ export async function buildApp() {
     return { channelId: id };
   });
 
-  app.post('/api/dev/seed', async () => seedCorpus());
+  app.post('/api/dev/seed', async (req) => {
+    const { corpus } = z
+      .object({ corpus: z.enum(['acme', 'skate', 'band']).default('acme') })
+      .parse(req.body ?? {});
+    return seedCorpus(corpus);
+  });
 
   app.get('/api/dev/debug', async () => space.debug());
 
@@ -477,6 +503,47 @@ export async function buildApp() {
       void space.blobs.enforceBudget(mb(getPolicies().storageBudgetMB));
     }
     return sendBytes(bytes);
+  });
+
+  // Everything shared in channels the viewer can read, newest first.
+  app.get('/api/files', async (req) => listFiles(req.userId));
+
+  // Add-ons: custom tabs members create for this space, synced as ops.
+  app.get('/api/addons', async () => listAddons());
+
+  app.post('/api/addons', async (req) => {
+    const input = z
+      .object({
+        name: z.string().trim().min(1).max(60),
+        emoji: z.string().trim().min(1).max(16),
+        kind: z.enum(['checklist', 'links', 'notes']),
+      })
+      .parse(req.body);
+    return createAddon(req.userId, input);
+  });
+
+  app.delete('/api/addons/:id', async (req, reply) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+    if (!(await removeAddon(id))) return reply.code(404).send({ error: 'no such add-on' });
+    return { ok: true };
+  });
+
+  app.post('/api/addons/:id/items', async (req, reply) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+    const input = z
+      .object({ text: z.string().trim().min(1).max(2000), url: z.string().trim().max(500).nullable().optional() })
+      .parse(req.body);
+    const addon = await addAddonItem(req.userId, id, input);
+    if (!addon) return reply.code(404).send({ error: 'no such add-on' });
+    return addon;
+  });
+
+  app.put('/api/addons/:id/items/:itemId', async (req, reply) => {
+    const { id, itemId } = z.object({ id: z.string().uuid(), itemId: z.string().uuid() }).parse(req.params);
+    const { done } = z.object({ done: z.boolean() }).parse(req.body);
+    const addon = await toggleAddonItem(id, itemId, done);
+    if (!addon) return reply.code(404).send({ error: 'no such add-on' });
+    return addon;
   });
 
   // Device-local storage policies: what this machine stores and downloads.

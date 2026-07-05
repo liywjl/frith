@@ -773,3 +773,93 @@ describe('ask retrieval — the ACL applies to search too', () => {
     expect(JSON.stringify(body)).not.toContain('launch is friday');
   });
 });
+
+describe('add-ons (custom tabs)', () => {
+  it('creates a tab, adds and toggles items, and removes it for everyone', async () => {
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/addons',
+      payload: { name: 'Summer jam prep', emoji: '✅', kind: 'checklist' },
+      ...as(alice),
+    });
+    expect(created.statusCode).toBe(200);
+    const addon = created.json();
+    expect(addon.createdByName).toBe('Alice Cooper');
+
+    const withItem = await app.inject({
+      method: 'POST',
+      url: `/api/addons/${addon.id}/items`,
+      payload: { text: 'Book the park' },
+      ...as(bob),
+    });
+    const item = withItem.json().items[0];
+    expect(item.text).toBe('Book the park');
+    expect(item.done).toBe(false);
+
+    const toggled = await app.inject({
+      method: 'PUT',
+      url: `/api/addons/${addon.id}/items/${item.id}`,
+      payload: { done: true },
+      ...as(alice),
+    });
+    expect(toggled.json().items[0].done).toBe(true);
+
+    const removed = await app.inject({ method: 'DELETE', url: `/api/addons/${addon.id}`, ...as(bob) });
+    expect(removed.json().ok).toBe(true);
+    const list = await app.inject({ method: 'GET', url: '/api/addons', ...as(alice) });
+    expect(list.json().some((a: { id: string }) => a.id === addon.id)).toBe(false);
+  });
+});
+
+describe('files view', () => {
+  it('lists only files the viewer may see', async () => {
+    // The attachments suite uploaded diagram.png into the private channel.
+    const mine = await app.inject({ method: 'GET', url: '/api/files', ...as(alice) });
+    expect(mine.json().some((f: { name: string }) => f.name === 'diagram.png')).toBe(true);
+
+    const theirs = await app.inject({ method: 'GET', url: '/api/files', ...as(bob) });
+    expect(theirs.json().some((f: { name: string }) => f.name === 'diagram.png')).toBe(false);
+    // …but public uploads are visible to everyone.
+    expect(theirs.json().some((f: { name: string }) => f.name === 'setup.sh')).toBe(true);
+  });
+
+  it('surfaces shared files in ask, ACL-filtered', async () => {
+    const mine = await app.inject({ method: 'GET', url: '/api/ask?q=diagram', ...as(alice) });
+    expect(mine.json().files.some((f: { name: string }) => f.name === 'diagram.png')).toBe(true);
+    const theirs = await app.inject({ method: 'GET', url: '/api/ask?q=diagram', ...as(bob) });
+    expect(theirs.json().files).toEqual([]);
+  });
+});
+
+// LAST: switching spaces swaps the whole world; the fixtures above live in
+// the original space.
+describe('multi-space', () => {
+  it('creates a second space, seeds it, and switches back — fully isolated', async () => {
+    const before = (await app.inject({ method: 'GET', url: '/api/spaces' })).json();
+    const homeDir = before.active as string;
+
+    await app.inject({ method: 'POST', url: '/api/space', payload: { name: 'Blade Crew' } });
+    const seeded = await app.inject({ method: 'POST', url: '/api/dev/seed', payload: { corpus: 'skate' } });
+    expect(seeded.json().users).toBe(6);
+
+    const crew = (await app.inject({ method: 'GET', url: '/api/users' })).json();
+    expect(crew.some((u: { handle: string }) => u.handle === 'mika')).toBe(true);
+    expect(crew.some((u: { handle: string }) => u.handle === 'alice')).toBe(false); // other world
+
+    const list = (await app.inject({ method: 'GET', url: '/api/spaces' })).json();
+    expect(list.spaces.length).toBe(2);
+    expect(list.active).not.toBe(homeDir);
+
+    // The old cookie means nothing here — auth is per-space.
+    const denied = await app.inject({ method: 'GET', url: '/api/channels', ...as(alice) });
+    expect(denied.statusCode).toBe(401);
+
+    const switched = await app.inject({ method: 'POST', url: '/api/spaces/switch', payload: { dir: homeDir } });
+    expect(switched.statusCode).toBe(200);
+    const back = (await app.inject({ method: 'GET', url: '/api/users' })).json();
+    expect(back.some((u: { handle: string }) => u.handle === 'alice')).toBe(true);
+
+    const bogus = await app.inject({ method: 'POST', url: '/api/spaces/switch', payload: { dir: 'nope' } });
+    expect(bogus.statusCode).toBe(404);
+  });
+});

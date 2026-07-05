@@ -69,6 +69,7 @@ export function HomeView({
         {home.unread.length > 0 && (
           <section>
             <div className="home-h">While you were away</div>
+            <div className="home-grid">
             {home.unread.map((u) => (
               <button key={u.channelId} className="home-card" onClick={() => onOpenChannel(u.channelId)}>
                 <span className="home-card-top">
@@ -81,12 +82,14 @@ export function HomeView({
                 <span className="home-when">{timeFormat.format(new Date(u.latestAt))}</span>
               </button>
             ))}
+            </div>
           </section>
         )}
 
         {home.popular.length > 0 && (
           <section>
             <div className="home-h">Popular threads</div>
+            <div className="home-grid">
             {home.popular.map((p) => (
               <button key={p.rootId} className="home-card" onClick={() => onOpenThread(p.rootId, p.channelId)}>
                 <span className="home-card-top">
@@ -101,12 +104,14 @@ export function HomeView({
                 </span>
               </button>
             ))}
+            </div>
           </section>
         )}
 
         {home.threads.length > 0 && (
           <section>
             <div className="home-h">Threads you're in</div>
+            <div className="home-grid">
             {home.threads.map((t) => (
               <ThreadCard
                 key={t.rootId}
@@ -122,6 +127,7 @@ export function HomeView({
                 </span>
               </ThreadCard>
             ))}
+            </div>
           </section>
         )}
 

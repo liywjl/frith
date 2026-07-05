@@ -13,8 +13,10 @@ peer-to-peer Autobase log under `.lore-data/`.
 
 ```sh
 pnpm install
-pnpm dev          # opens the DESKTOP app (server :3001 + vite :5173 under it)
-pnpm seed         # load the fictional Acme corpus (server must be running)
+pnpm dev                  # opens the DESKTOP app (server :3001 + vite :5173 under it)
+./scripts/demo-spaces.sh  # seed THREE demo spaces: Acme (work), a
+                          # rollerblading crew, and a band — hop between them
+                          # with the rail on the far left
 ```
 
 The desktop app is the product; `pnpm dev` opens its Electron window over a

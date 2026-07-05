@@ -98,6 +98,22 @@ export function AskPanel({
                 </button>
               ))}
               {result.messages.length === 0 && <div className="ask-none">No messages matched.</div>}
+
+              <div className="ask-h">Files in this space</div>
+              {result.files.map((f) => (
+                <button key={f.attachmentId} className="ask-message" onClick={() => onOpenChannel(f.channelId)}>
+                  <span className="ask-ref">
+                    {f.kind === 'image' ? '🖼️' : f.kind === 'video' ? '🎬' : f.kind === 'audio' ? '🎵' : '📄'}{' '}
+                    {f.name} · #{f.channelName}
+                  </span>
+                  {f.snippet && (
+                    <span className="ask-snippet">
+                      <Snippet text={f.snippet} />
+                    </span>
+                  )}
+                </button>
+              ))}
+              {result.files.length === 0 && <div className="ask-none">No shared files matched.</div>}
             </div>
 
             <div className="ask-col">

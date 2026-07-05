@@ -1,6 +1,7 @@
-import type { AskEvidence, AskLocalHit, AskPerson, AskResponse, AskThread, TaskScopeDto, UserDto } from '@app/shared';
-import { channelName, messagesVisibleTo, userDtoById } from './store.js';
+import type { AskEvidence, AskFileHit, AskLocalHit, AskPerson, AskResponse, AskThread, TaskScopeDto, UserDto } from '@app/shared';
+import { channelName, filesVisibleTo, messagesVisibleTo, userDtoById } from './store.js';
 import type { MessageRow } from '../space/state.js';
+import { space } from '../space/space.js';
 import { extractArtifacts } from './artifacts.js';
 import { library } from './library.js';
 
@@ -167,12 +168,53 @@ function searchLibrary(query: string): AskLocalHit[] {
     }));
 }
 
+/**
+ * Shared files, searched like messages: always by name; by content too for
+ * text files whose bytes are on this device (own uploads or cached fetches —
+ * search never pulls bytes from peers behind your back).
+ */
+async function searchFiles(userId: string, query: string): Promise<AskFileHit[]> {
+  const tokens = tokenize(query);
+  if (tokens.length === 0) return [];
+  const textual = (mime: string) => mime.startsWith('text/') || mime === 'application/json';
+  const scored: { hit: AskFileHit; score: number }[] = [];
+  for (const a of filesVisibleTo(userId)) {
+    const nameHits = tokens.map((t) => occurrences(a.name.toLowerCase(), t)).reduce((x, y) => x + y, 0);
+    let content: string | null = null;
+    if (textual(a.mime) && a.size <= 256 * 1024 && a.blob && space.blobs.isCachedSync(a.blob)) {
+      const bytes = await space.blobs.get(a.blob, { expectedHash: a.hash }).catch(() => null);
+      if (bytes) content = bytes.toString('utf8');
+    }
+    const contentHits = content
+      ? tokens.map((t) => occurrences(content.toLowerCase(), t)).reduce((x, y) => x + y, 0)
+      : 0;
+    if (nameHits + contentHits === 0) continue;
+    scored.push({
+      score: nameHits * 5 + contentHits,
+      hit: {
+        attachmentId: a.id,
+        channelId: a.message.channelId,
+        channelName: channelName(a.message.channelId),
+        name: a.name,
+        kind: a.mime.startsWith('image/') ? 'image' : a.mime.startsWith('video/') ? 'video' : a.mime.startsWith('audio/') ? 'audio' : 'file',
+        url: `/api/files/${a.id}`,
+        snippet: content && contentHits > 0 ? makeSnippet(content, tokens) : null,
+      },
+    });
+  }
+  return scored
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5)
+    .map((s) => s.hit);
+}
+
 export async function ask(userId: string, query: string): Promise<AskResponse> {
   const { hits, people, threads } = retrieve(userId, query);
   return {
     query,
     people,
     threads,
+    files: await searchFiles(userId, query),
     messages: hits.slice(0, 8).map((h) => ({
       messageId: h.row.id,
       channelId: h.row.channelId,

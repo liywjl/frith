@@ -1,17 +1,38 @@
+/* Default theme: 'bubbly' — fun on purpose. Candy tints, soft round
+   corners. The old default lives on as 'paper' below. */
 :root {
-  --paper: #fafaf8;
+  --paper: #fdf7fb;
   --card: #ffffff;
-  --hover: #f3f2ee;
-  --line: #d5d3cc;
-  --line-soft: #e7e5df;
-  --ink: #3a3833;
-  --ink-soft: #8a867c;
-  --block: #edebe5;
-  --ai: #0e7568;
-  --ai-soft: #e3f0ed;
-  --ai-hover: #d4e8e3;
-  --unread: #c24a2c;
+  --hover: #f7ecf5;
+  --line: #ecd7e6;
+  --line-soft: #f4e5f0;
+  --ink: #3b2b46;
+  --ink-soft: #9a86a6;
+  --block: #f6e8f2;
+  --ai: #8a3ffc;
+  --ai-soft: #f0e7ff;
+  --ai-hover: #e4d4ff;
+  --unread: #ff5d8f;
+  --side: #f9edf6;
+  --radius: 16px;
   --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+}
+
+[data-theme='paper'] {
+  --paper: #f8f9f7;
+  --card: #ffffff;
+  --hover: #eef1ec;
+  --line: #d7dbd3;
+  --line-soft: #e6e9e3;
+  --ink: #20242a;
+  --ink-soft: #79828c;
+  --block: #e8ebe5;
+  --ai: #0b6b5d;
+  --ai-soft: #dcefe9;
+  --ai-hover: #c9e6dd;
+  --unread: #d34f2a;
+  --side: #eef1ea;
+  --radius: 10px;
 }
 
 [data-theme='midnight'] {
@@ -763,19 +784,78 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
 .people-name b, .people-name small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 900px) { .people-tags { display: none; } }
 
-/* ===== refreshed default theme + tinted sidebar ===== */
-:root {
-  --paper: #f8f9f7; --card: #ffffff; --hover: #eef1ec;
-  --line: #d7dbd3; --line-soft: #e6e9e3;
-  --ink: #20242a; --ink-soft: #79828c; --block: #e8ebe5;
-  --ai: #0b6b5d; --ai-soft: #dcefe9; --ai-hover: #c9e6dd;
-  --unread: #d34f2a; --side: #eef1ea;
+/* ===== tinted sidebar (per-theme --side lives with each palette) ===== */
+[data-theme='midnight'] { --side: #101114; --radius: 10px; }
+[data-theme='forest'] { --side: #e7efe1; --radius: 10px; }
+[data-theme='sunset'] { --side: #f8ecdc; --radius: 10px; }
+[data-theme='ocean'] { --side: #e5eef3; --radius: 10px; }
+[data-theme='mono'] { --side: #f2f2f2; --radius: 10px; }
+.home-card, .modal, .file-tile, .ask-panel, .btn, .side-item, .att-file { border-radius: var(--radius, 10px); }
+
+/* ===== the space rail: one icon per space on this device ===== */
+.rail {
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  padding: 14px 10px; background: var(--ink); flex: none; overflow-y: auto;
 }
-[data-theme='midnight'] { --side: #101114; }
-[data-theme='forest'] { --side: #e7efe1; }
-[data-theme='sunset'] { --side: #f8ecdc; }
-[data-theme='ocean'] { --side: #e5eef3; }
-[data-theme='mono'] { --side: #f2f2f2; }
+.rail-space {
+  width: 42px; height: 42px; border-radius: 14px; border: none; cursor: pointer;
+  background: color-mix(in srgb, var(--card) 14%, transparent);
+  color: var(--card); font-size: 17px; font-weight: 700;
+  transition: border-radius 0.15s, background 0.15s;
+}
+.rail-space:hover { border-radius: 20px; background: color-mix(in srgb, var(--card) 26%, transparent); }
+.rail-space.active { background: var(--ai); border-radius: 20px; }
+.rail-new { font-size: 22px; font-weight: 400; opacity: 0.7; }
+.rail-new:hover { opacity: 1; }
+
+/* ===== home as tiles ===== */
+.home-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 10px; margin-bottom: 6px;
+}
+.home-grid .home-card, .home-grid .thread-card { width: auto; margin: 0; height: 100%; }
+
+/* ===== files view ===== */
+.files-view { flex: 1; overflow-y: auto; padding: 26px 32px; }
+.view-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; margin-bottom: 18px; flex-wrap: wrap; }
+.view-head h2 { margin: 0 0 4px; }
+.view-head p { margin: 0; color: var(--ink-soft); font-size: 13.5px; }
+.files-filter { min-width: 220px; }
+.file-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+.file-tile { border: 1px solid var(--line-soft); background: var(--card); overflow: hidden; display: flex; flex-direction: column; }
+.file-tile.danger { border-color: var(--unread); }
+.file-thumb { display: block; height: 110px; background: var(--block); }
+.file-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.file-icon { display: flex; align-items: center; justify-content: center; font-size: 34px; }
+.file-meta { padding: 9px 11px; display: flex; flex-direction: column; gap: 3px; font-size: 13px; min-width: 0; }
+.file-meta small { color: var(--ink-soft); }
+.file-name { color: var(--ink); text-decoration: none; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
+.file-fetch { background: none; border: none; padding: 0; cursor: pointer; color: var(--ai); font-size: 13px; }
+.file-channel { background: none; border: none; padding: 0; cursor: pointer; color: var(--ink-soft); text-decoration: underline; font-size: inherit; }
+.files-empty { color: var(--ink-soft); margin-top: 20px; }
+
+/* ===== add-ons ===== */
+.addon-view { flex: 1; overflow-y: auto; padding: 26px 32px; display: flex; flex-direction: column; }
+.addon-items { flex: 1; max-width: 720px; }
+.addon-check { display: flex; align-items: center; gap: 10px; padding: 9px 4px; border-bottom: 1px solid var(--line-soft); cursor: pointer; }
+.addon-check.done span { text-decoration: line-through; color: var(--ink-soft); }
+.addon-check small, .addon-link small, .addon-note small { color: var(--ink-soft); margin-left: auto; flex: none; }
+.addon-link { display: flex; align-items: baseline; gap: 10px; padding: 9px 4px; border-bottom: 1px solid var(--line-soft); }
+.addon-link a { color: var(--ai); font-weight: 600; }
+.addon-note { padding: 12px 14px; margin-bottom: 10px; background: var(--card); border: 1px solid var(--line-soft); border-radius: var(--radius, 10px); }
+.addon-note p { margin: 0 0 6px; white-space: pre-wrap; }
+.addon-empty { color: var(--ink-soft); }
+.addon-composer { display: flex; gap: 8px; max-width: 720px; margin-top: 14px; }
+.addon-composer input { flex: 1; }
+.addon-templates { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+.addon-template {
+  display: flex; flex-direction: column; gap: 4px; align-items: flex-start; text-align: left;
+  padding: 12px; border: 1.5px solid var(--line); border-radius: var(--radius, 10px);
+  background: var(--card); cursor: pointer;
+}
+.addon-template.active { border-color: var(--ai); background: var(--ai-soft); }
+.addon-template-emoji { font-size: 22px; }
+.addon-template small { color: var(--ink-soft); }
 .sidebar { background: var(--side); border-right: none; }
 .home-card, .panel-card, .profile-stats > div, .connect-person, .task-person {
   box-shadow: 0 1px 2px rgba(16, 24, 16, 0.045);

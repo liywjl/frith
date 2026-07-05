@@ -17,7 +17,7 @@ function configureEnv() {
   process.env.LORE_FILES ??= path.join(home, 'uploads');
   // Bundled next to main.js by build.mjs.
   process.env.LORE_WEB_DIST ??= path.join(import.meta.dirname, 'web');
-  process.env.LORE_CORPUS ??= path.join(import.meta.dirname, 'corpus.json');
+  process.env.LORE_SEED_DIR ??= path.join(import.meta.dirname, 'seed');
 }
 
 async function createWindow(url: string) {
