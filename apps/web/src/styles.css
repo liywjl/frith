@@ -14,6 +14,9 @@
   --ai-hover: #e4d4ff;
   --unread: #ff5d8f;
   --side: #f9edf6;
+  /* The rail is a neutral dark slate on every theme — deliberately NOT a
+     purple: the dark-aubergine sidebar is another chat app's signature. */
+  --rail: #262b3d;
   --radius: 16px;
   --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 }
@@ -839,15 +842,15 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
 /* ===== the space rail: one icon per space on this device ===== */
 .rail {
   display: flex; flex-direction: column; align-items: center; gap: 8px;
-  width: 56px; padding: 12px 0; background: var(--ink); flex: none; overflow-y: auto;
+  width: 56px; padding: 12px 0; background: var(--rail, #262b3d); flex: none; overflow-y: auto;
 }
 .rail-space {
   width: 38px; height: 38px; border-radius: 13px; border: none; cursor: pointer;
-  background: color-mix(in srgb, var(--card) 14%, transparent);
-  color: var(--card); font-size: 16px; font-weight: 700; flex: none;
+  background: rgba(255, 255, 255, 0.13);
+  color: #fff; font-size: 16px; font-weight: 700; flex: none;
   transition: border-radius 0.15s, background 0.15s;
 }
-.rail-space:hover { border-radius: 19px; background: color-mix(in srgb, var(--card) 26%, transparent); }
+.rail-space:hover { border-radius: 19px; background: rgba(255, 255, 255, 0.24); }
 .rail-space.active { background: var(--ai); border-radius: 19px; }
 .rail-new { font-size: 20px; font-weight: 400; opacity: 0.7; }
 .rail-new:hover { opacity: 1; }

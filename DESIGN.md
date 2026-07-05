@@ -474,3 +474,28 @@ pretend about:
   explicit, per-workspace, clearly-labeled opt-in (§6 tiers unchanged).
 - **Supply chain.** Dependency review on the P2P stack, lockfiles pinned,
   and (once on Pear) app distribution is itself key-verified.
+
+## IP posture (vs. Slack and other incumbents)
+
+Reviewed 2026-07-05 against Slack's Brand Terms of Service and general
+trademark/trade-dress/copyright principles. Not legal advice; get counsel
+before commercial distribution. The standing rules:
+
+- **Never use "Slack" in the product name, domains, app-store listings, or
+  advertising** (incl. search keywords). Their brand terms prohibit it, and
+  it's the one bright line. The public repo, product name ("Lore"), logo
+  (campfire), and landing page are Slack-free — keep them that way.
+- **Truthful comparisons in prose are fine** (nominative fair use — the
+  Mattermost/Rocket.Chat pattern). This document's comparative references
+  stay; marketing copy should sell the P2P story, not the resemblance.
+- **Concepts are not protectable**: channels, threads, DMs, workspaces are
+  unprotected methods of operation (Lotus v. Borland line of cases) with
+  decades of prior art (IRC, HipChat). No exposure there.
+- **Trade dress is the only real watch item**: Slack's signature is the
+  dark-aubergine sidebar (hue ~299°). Ours: light-pink channel sidebar,
+  neutral slate rail (`--rail`, hue ~230°, deliberately not purple), tile
+  home, campfire brand. Keep future themes' dark chrome off the
+  magenta-purple family.
+- **We use no Slack APIs or services**, so their ToS/AUP/API terms don't
+  bind us. If an import-from-Slack feature ever lands (currently out of
+  scope), it must go through their export formats + API terms review.
