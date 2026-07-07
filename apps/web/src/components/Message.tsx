@@ -1,7 +1,10 @@
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import type { AttachmentDto, MessageDto } from '@app/shared';
 import { api } from '../lib/api';
+import { previewKind } from '../lib/preview';
+import { FilePreviewModal } from '../modals/FilePreviewModal';
 import { Avatar } from './Avatar';
+import { Icon } from './Icon';
 import { UserHover } from './UserHover';
 import { useUserActions } from '../lib/userActions';
 
@@ -15,11 +18,13 @@ const fmtSize = (n: number) =>
  */
 function Attachment({ a }: { a: AttachmentDto }) {
   const [state, setState] = useState<'idle' | 'fetching' | 'failed'>('idle');
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const preview = previewKind(a);
 
   if (a.dangerous) {
     return (
       <a className="att-file att-danger" href={a.url} download title="This file type can run code. Only open it if you trust the sender.">
-        ⚠️ {a.name} · {fmtSize(a.size)}
+        <Icon name="warning" /> {a.name} · {fmtSize(a.size)}
       </a>
     );
   }
@@ -33,22 +38,46 @@ function Attachment({ a }: { a: AttachmentDto }) {
     };
     return (
       <button className="att-file att-fetch" onClick={fetchNow} disabled={state === 'fetching'}>
-        {state === 'fetching' ? '⏳ fetching from peers…' : state === 'failed' ? '📡 no peer online has this — retry?' : `⬇️ ${a.name} · ${fmtSize(a.size)}`}
+        {state === 'fetching' ? (
+          <><Icon name="clock" /> fetching from peers…</>
+        ) : state === 'failed' ? (
+          <><Icon name="signal" /> no peer online has this — retry?</>
+        ) : (
+          <><Icon name="download" /> {a.name} · {fmtSize(a.size)}</>
+        )}
       </button>
     );
   }
+  const modal = previewOpen && preview && (
+    <FilePreviewModal attachment={a} kind={preview} onClose={() => setPreviewOpen(false)} />
+  );
   if (a.kind === 'image') {
     return (
-      <a href={a.url} target="_blank" rel="noreferrer">
-        <img className="att-img" src={a.url} alt={a.name} />
-      </a>
+      <>
+        <button className="att-img-btn" title="Click to preview" onClick={() => setPreviewOpen(true)}>
+          <img className="att-img" src={a.url} alt={a.name} loading="lazy" />
+        </button>
+        {modal}
+      </>
     );
   }
   if (a.kind === 'video') return <video className="att-video" src={a.url} controls />;
   if (a.kind === 'audio') return <audio className="att-audio" src={a.url} controls />;
+  // Common, inert formats (pdf, text) preview in place; anything obscure
+  // stays a download — the safe default.
+  if (preview) {
+    return (
+      <>
+        <button className="att-file" title="Click to preview" onClick={() => setPreviewOpen(true)}>
+          <Icon name="paperclip" /> {a.name} · {fmtSize(a.size)}
+        </button>
+        {modal}
+      </>
+    );
+  }
   return (
-    <a className="att-file" href={a.url} target="_blank" rel="noreferrer">
-      📎 {a.name} · {fmtSize(a.size)}
+    <a className="att-file" href={a.url} download={a.name}>
+      <Icon name="paperclip" /> {a.name} · {fmtSize(a.size)}
     </a>
   );
 }
@@ -63,14 +92,19 @@ const ALL_EMOJIS = [
 
 const timeFormat = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' });
 
-export function Message({
+// Memoized: a thousand-message feed re-renders one bubble on a reaction, not
+// a thousand. Message DTOs are replaced (not mutated) on change upstream.
+export const Message = memo(function Message({
   message,
   compact,
+  own,
   onOpenThread,
 }: {
   message: MessageDto;
   /** Consecutive message from the same author — hide the avatar/header. */
   compact?: boolean;
+  /** Mine: right-aligned, no avatar/name — the room's other voices sit left. */
+  own?: boolean;
   onOpenThread?: (root: MessageDto) => void;
 }) {
   const { openProfile } = useUserActions();
@@ -81,8 +115,8 @@ export function Message({
     void api.react(message.id, emoji);
   }
   return (
-    <div className={`msg ${compact ? 'compact' : ''}`}>
-      {compact ? (
+    <div className={`msg ${compact ? 'compact' : ''} ${own ? 'own' : ''}`}>
+      {own ? null : compact ? (
         <div className="msg-gutter">{timeFormat.format(new Date(message.createdAt))}</div>
       ) : (
         <UserHover userId={message.authorId} name={message.authorName}>
@@ -91,16 +125,24 @@ export function Message({
       )}
       <div className="msg-main">
         {!compact && (
-          <div>
-            <UserHover userId={message.authorId} name={message.authorName}>
-              <button className="who who-link" onClick={() => openProfile(message.authorId)}>
-                {message.authorName}
-              </button>
-            </UserHover>
+          <div className="msg-head">
+            {!own && (
+              <UserHover userId={message.authorId} name={message.authorName}>
+                <button className="who who-link" onClick={() => openProfile(message.authorId)}>
+                  {message.authorName}
+                </button>
+              </UserHover>
+            )}
             <span className="when">{timeFormat.format(new Date(message.createdAt))}</span>
           </div>
         )}
-        {message.body && <div className="body">{message.body}</div>}
+        {message.locked ? (
+          <div className="body bubble locked">
+            <Icon name="lock" /> {message.body}
+          </div>
+        ) : (
+          message.body && <div className="body bubble">{message.body}</div>
+        )}
         {message.attachments.map((a) => (
           <Attachment key={a.id} a={a} />
         ))}
@@ -142,4 +184,4 @@ export function Message({
       </div>
     </div>
   );
-}
+});

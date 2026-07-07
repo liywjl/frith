@@ -1,16 +1,21 @@
 import { useEffect, useState } from 'react';
 import type { FileDto } from '@app/shared';
 import { api } from '../lib/api';
+import { previewKind } from '../lib/preview';
+import { FilePreviewModal } from '../modals/FilePreviewModal';
+import { Icon, type IconName } from '../components/Icon';
 
 const fmtSize = (n: number) =>
   n >= 1024 * 1024 ? `${(n / (1024 * 1024)).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`;
 const dateFormat = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' });
 
-const KIND_ICON = { image: '🖼️', video: '🎬', audio: '🎵', file: '📄' } as const;
+const KIND_ICON = { image: 'image', video: 'film', audio: 'music', file: 'doc' } as const satisfies Record<string, IconName>;
 
 function FileTile({ file, onOpenChannel }: { file: FileDto; onOpenChannel: (channelId: string) => void }) {
   const [state, setState] = useState<'idle' | 'fetching' | 'failed'>('idle');
   const [cached, setCached] = useState(file.cached);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const preview = previewKind({ ...file, cached });
 
   function fetchNow() {
     setState('fetching');
@@ -23,15 +28,21 @@ function FileTile({ file, onOpenChannel }: { file: FileDto; onOpenChannel: (chan
   return (
     <div className={`file-tile ${file.dangerous ? 'danger' : ''}`}>
       {cached && file.kind === 'image' && !file.dangerous ? (
-        <a className="file-thumb" href={file.url} target="_blank" rel="noreferrer">
+        <button className="file-thumb" title="Click to preview" onClick={() => setPreviewOpen(true)}>
           <img src={file.url} alt={file.name} loading="lazy" />
-        </a>
+        </button>
       ) : (
-        <div className="file-thumb file-icon">{file.dangerous ? '⚠️' : KIND_ICON[file.kind]}</div>
+        <div className="file-thumb file-icon">
+          <Icon name={file.dangerous ? 'warning' : KIND_ICON[file.kind]} size={22} />
+        </div>
       )}
       <div className="file-meta">
-        {cached && !file.dangerous ? (
-          <a className="file-name" href={file.url} target="_blank" rel="noreferrer">
+        {cached && preview ? (
+          <button className="file-name" title="Click to preview" onClick={() => setPreviewOpen(true)}>
+            {file.name}
+          </button>
+        ) : cached && !file.dangerous ? (
+          <a className="file-name" href={file.url} download={file.name}>
             {file.name}
           </a>
         ) : cached ? (
@@ -40,7 +51,7 @@ function FileTile({ file, onOpenChannel }: { file: FileDto; onOpenChannel: (chan
           </a>
         ) : (
           <button className="file-name file-fetch" onClick={fetchNow} disabled={state === 'fetching'}>
-            {state === 'fetching' ? 'fetching…' : state === 'failed' ? 'no peer online — retry?' : `⬇ ${file.name}`}
+            {state === 'fetching' ? 'fetching…' : state === 'failed' ? 'no peer online — retry?' : <><Icon name="download" /> {file.name}</>}
           </button>
         )}
         <small>
@@ -51,6 +62,9 @@ function FileTile({ file, onOpenChannel }: { file: FileDto; onOpenChannel: (chan
           · {dateFormat.format(new Date(file.createdAt))}
         </small>
       </div>
+      {previewOpen && preview && (
+        <FilePreviewModal attachment={file} kind={preview} onClose={() => setPreviewOpen(false)} />
+      )}
     </div>
   );
 }

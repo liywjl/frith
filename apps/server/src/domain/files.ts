@@ -15,15 +15,22 @@ const MAGIC: { mime: string; test(b: Buffer): boolean }[] = [
 ];
 
 /**
- * The mime we act on. When the declared type claims to be renderable media
- * (image/video/audio), the bytes must actually look like that family —
- * otherwise the file is demoted to a generic download, never rendered.
+ * The mime we act on. When the declared type claims to be renderable
+ * (image/video/audio, or a PDF — the client previews those), the bytes must
+ * actually look like that — otherwise the file is demoted to a generic
+ * download, never rendered.
  */
 export function effectiveMime(bytes: Buffer, declaredMime: string): string {
   const sniffed = MAGIC.find((m) => m.test(bytes))?.mime;
   const family = (m: string) => m.split('/')[0];
+  if (declaredMime === 'application/pdf') {
+    return sniffed === 'application/pdf' ? sniffed : 'application/octet-stream';
+  }
   const declaredRenders = ['image', 'video', 'audio'].includes(family(declaredMime) ?? '');
   if (!declaredRenders) return declaredMime; // plain files: declared is fine, we never render them
+  // WebM is one container for both: audio-only recordings sniff as video/webm,
+  // so the declared side of the family split is the honest one.
+  if (sniffed === 'video/webm' && family(declaredMime) === 'audio') return 'audio/webm';
   if (!sniffed || family(sniffed) !== family(declaredMime)) return 'application/octet-stream';
   return sniffed;
 }
