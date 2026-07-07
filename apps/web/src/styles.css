@@ -802,6 +802,12 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
   font-family: var(--mono); font-size: 10px; font-weight: 650; letter-spacing: 0.02em;
 }
 .space-logo-lg { width: 56px; height: 56px; border-radius: 13px; font-size: 19px; vertical-align: middle; }
+/* In the sidebar's space button the logo rides the text line like the other
+ * row icons: 1em-ish box, baseline-tucked, same gap as .icon. */
+.side-label .space-logo {
+  width: 16px; height: 16px; border-radius: 4px; font-size: 7px;
+  vertical-align: -0.2em; margin-right: 2px;
+}
 .modal-head .space-logo { width: 40px; height: 40px; border-radius: 11px; font-size: 15px; }
 
 /* Manager-only panel in the share modal. */
