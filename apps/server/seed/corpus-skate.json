@@ -45,5 +45,28 @@
     { "message": "soul-grind", "emoji": "🎉", "users": ["mika", "ravi", "lena", "oscar", "june"] },
     { "message": "wheel-review", "emoji": "🙏", "users": ["oscar", "lena"] },
     { "message": "welcome-oscar", "emoji": "❤️", "users": ["oscar", "mika"] }
+  ],
+  "docs": [
+    {
+      "title": "Sunday session checklist",
+      "author": "mika",
+      "daysAgo": 3,
+      "body": [
+        "Meet 10:00 at the harbour ramp. This list exists because *someone* (Oscar) keeps forgetting bearings.",
+        "",
+        "## Everyone brings",
+        "- [ ] Skates (yes, this line is earned)",
+        "- [ ] Helmet — no helmet, no clips for the reel",
+        "- [ ] Water, it's July",
+        "",
+        "## Rotating duties",
+        "- [x] Cones + wax — Dee",
+        "- [x] First-aid kit — June",
+        "- [ ] Camera + gimbal — Ravi",
+        "- [ ] Post-session pastries — Oscar (redemption arc)",
+        "",
+        "> Rain check: if the ramp is wet by 09:00 we move to the parking garage on Kirkegata. Lena posts the call in #events."
+      ]
+    }
   ]
 }

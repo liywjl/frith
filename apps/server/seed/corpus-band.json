@@ -38,5 +38,32 @@
     { "message": "setlist-v2", "emoji": "✅", "users": ["eli", "sam", "ida"] },
     { "message": "amp-debate", "emoji": "😂", "users": ["ida", "sam", "nora"] },
     { "message": "band-name", "emoji": "🫡", "users": ["nora", "eli", "sam", "ida"] }
+  ],
+  "docs": [
+    {
+      "title": "Gig day runbook",
+      "author": "nora",
+      "daysAgo": 5,
+      "body": [
+        "Everything we swore we'd remember after the Bergen show. Update it the moment something goes wrong again.",
+        "",
+        "## Load-in (van packing order matters)",
+        "- [x] Drum shells first, hardware bag on top",
+        "- [x] Amps standing, never flat",
+        "- [ ] Merch box LAST so it comes out first",
+        "- [ ] Spare strings, 9V batteries, gaffer tape — the holy trinity",
+        "",
+        "## Soundcheck",
+        "1. Drums alone, then bass, then guitars, vocals last",
+        "2. Ida's synth DI goes to channel 7 — label it, every venue asks",
+        "3. Full song, not eight bars — the chorus is where it clips",
+        "",
+        "## After",
+        "- [ ] Settle with the venue *before* the celebratory round, not after",
+        "- [ ] Theo counts merch cash, Sam recounts, nobody argues",
+        "",
+        "> The Bergen rule: nobody leaves the venue until the trailer is locked. We learned this the expensive way."
+      ]
+    }
   ]
 }

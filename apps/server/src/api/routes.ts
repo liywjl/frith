@@ -779,7 +779,7 @@ export async function buildApp() {
   });
 
   // The doc as the .md file it is — bodies are markdown, so this is a plain
-  // read with a download filename, no conversion.
+  // read with a download filename; the page title becomes the file's h1.
   app.get('/api/docs/:id/file', async (req, reply) => {
     const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
     const doc = await getDoc(id);
@@ -788,7 +788,7 @@ export async function buildApp() {
     return reply
       .header('content-type', 'text/markdown; charset=utf-8')
       .header('content-disposition', `attachment; filename*=UTF-8''${encodeURIComponent(name)}`)
-      .send(doc.body);
+      .send(`# ${doc.title}\n\n${doc.body}`);
   });
 
   app.put('/api/docs/:id', async (req, reply) => {

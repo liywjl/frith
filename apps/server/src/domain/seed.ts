@@ -16,6 +16,8 @@ interface Corpus {
   }[];
   messages: { id?: string; channel: string; author: string; daysAgo: number; replyTo?: string; body: string }[];
   reactions: { message: string; emoji: string; users: string[] }[];
+  /** Shared docs (markdown; one array entry per line). */
+  docs?: { title: string; author: string; daysAgo: number; body: string[] }[];
 }
 
 const CORPORA = {
@@ -90,6 +92,25 @@ export async function seedCorpus(name: keyof typeof CORPORA = 'acme') {
     }
   }
 
+  // Shared docs: the space's living pages — checklists, runbooks, reference.
+  // Sealed under the space key exactly like store.createDoc.
+  for (const d of corpus.docs ?? []) {
+    if ([...space.state.docs.values()].some((row) => space.decryptBody(row.title) === d.title)) continue;
+    const authorId = userIds.get(d.author)!;
+    await space.ensureDomainKey('space', authorId);
+    await space.append({
+      t: 'doc',
+      doc: {
+        id: space.newId(),
+        title: space.encryptBody('space', d.title),
+        body: space.encryptBody('space', d.body.join('\n')),
+        createdBy: authorId,
+        updatedBy: authorId,
+        updatedAt: new Date(now - d.daysAgo * 86_400_000).toISOString(),
+      },
+    });
+  }
+
   // Read markers: everyone caught up except Tomas, who has fresh unreads.
   const tomasUnread = new Set(['incident-4021', 'design', 'group-lunch']);
   for (const c of corpus.channels) {
@@ -105,5 +126,10 @@ export async function seedCorpus(name: keyof typeof CORPORA = 'acme') {
     }
   }
 
-  return { users: corpus.users.length, channels: corpus.channels.length, messages: corpus.messages.length };
+  return {
+    users: corpus.users.length,
+    channels: corpus.channels.length,
+    messages: corpus.messages.length,
+    docs: corpus.docs?.length ?? 0,
+  };
 }
