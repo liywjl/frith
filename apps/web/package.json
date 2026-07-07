@@ -5,10 +5,12 @@
   "scripts": {
     "dev": "vite",
     "typecheck": "tsc",
-    "build": "vite build"
+    "build": "vite build",
+    "check:contrast": "node scripts/contrast-audit.mjs"
   },
   "dependencies": {
     "@app/shared": "workspace:*",
+    "@huggingface/transformers": "^4.2.0",
     "qrcode": "^1.5.4",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
