@@ -3,7 +3,6 @@ import type { ConnectDto, HomeDto, UserDto } from '@app/shared';
 import { api } from '../lib/api';
 import { Avatar } from '../components/Avatar';
 import { ThreadCard } from '../components/ThreadCard';
-import { UserHover } from '../components/UserHover';
 import { useUserActions } from '../lib/userActions';
 
 const timeFormat = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -152,12 +151,10 @@ export function HomeView({
                 </span>
                 <span className="connect-members">
                   {g.members.map((m) => (
-                    <UserHover key={m.id} userId={m.id} name={m.name}>
-                      <button className="connect-member" onClick={() => openDm(m.id)}>
-                        <Avatar name={m.name} emoji={m.avatarEmoji} />
-                        {m.name.split(' ')[0]}
-                      </button>
-                    </UserHover>
+                    <button key={m.id} className="connect-member" onClick={() => openDm(m.id)}>
+                      <Avatar name={m.name} emoji={m.avatarEmoji} />
+                      {m.name.split(' ')[0]}
+                    </button>
                   ))}
                 </span>
               </div>
@@ -165,15 +162,13 @@ export function HomeView({
             {connect.people.length > 0 && (
               <div className="connect-people">
                 {connect.people.map((p) => (
-                  <UserHover key={p.user.id} userId={p.user.id} name={p.user.name}>
-                    <button className="connect-person" onClick={() => openDm(p.user.id)}>
-                      <Avatar name={p.user.name} emoji={p.user.avatarEmoji} />
-                      <span>
-                        <b>{p.user.name}</b>
-                        <small>also into {p.sharedInterests.join(', ')}</small>
-                      </span>
-                    </button>
-                  </UserHover>
+                  <button key={p.user.id} className="connect-person" onClick={() => openDm(p.user.id)}>
+                    <Avatar name={p.user.name} emoji={p.user.avatarEmoji} />
+                    <span>
+                      <b>{p.user.name}</b>
+                      <small>also into {p.sharedInterests.join(', ')}</small>
+                    </span>
+                  </button>
                 ))}
               </div>
             )}

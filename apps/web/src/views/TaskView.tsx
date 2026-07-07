@@ -2,7 +2,6 @@ import { useState } from 'react';
 import type { TaskScopeDto } from '@app/shared';
 import { api } from '../lib/api';
 import { Avatar } from '../components/Avatar';
-import { UserHover } from '../components/UserHover';
 import { useUserActions } from '../lib/userActions';
 import { Snippet } from '../components/Snippet';
 import { ArtifactChips } from '../components/ArtifactChips';
@@ -20,7 +19,7 @@ export function TaskView({
   onOpenChannel: (channelId: string) => void;
   onOpenThread: (rootId: string, channelId: string) => void;
 }) {
-  const { openDm } = useUserActions();
+  const { openDm, openProfile } = useUserActions();
   const [requirements, setRequirements] = useState('');
   const [result, setResult] = useState<TaskScopeDto | null>(null);
   const [loading, setLoading] = useState(false);
@@ -79,9 +78,13 @@ export function TaskView({
                 <div className="home-h">People to talk to</div>
                 {result.people.map((p) => (
                   <div key={p.user.id} className="task-person">
-                    <UserHover userId={p.user.id} name={p.user.name}>
+                    <button
+                      className="avatar-link"
+                      title={`${p.user.name}'s profile`}
+                      onClick={() => openProfile(p.user.id)}
+                    >
                       <Avatar name={p.user.name} emoji={p.user.avatarEmoji} />
-                    </UserHover>
+                    </button>
                     <div className="task-person-body">
                       <b>{p.user.name}</b>
                       <span className="ask-person-title">{[p.user.title, p.user.team].filter(Boolean).join(' · ')}</span>

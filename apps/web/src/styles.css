@@ -682,21 +682,8 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
 .profile-recent { display: flex; flex-direction: column; }
 .profile-privacy { color: var(--ink-soft); font-size: 12px; margin-top: 10px; }
 
-/* hover cards */
-.uh-wrap { display: inline-block; }
-.sidebar .uh-wrap { display: block; width: 100%; }
-.hovercard {
-  position: fixed; z-index: 30; width: 260px;
-  background: var(--paper); border: 1px solid var(--line); border-radius: 12px;
-  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.18); padding: 12px;
-  display: flex; flex-direction: column; gap: 10px;
-}
-.hovercard-top { display: flex; gap: 10px; align-items: center; }
-.hovercard-id { display: flex; flex-direction: column; min-width: 0; font-size: 13px; }
-.hovercard-id b { font-size: 14px; }
-.hovercard-id span { color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hovercard-actions { display: flex; gap: 8px; }
-.hovercard-actions .btn { flex: 1; padding: 6px 10px; font-size: 13.5px; }
+/* Clickable identity: an avatar that navigates to the person's profile. */
+.avatar-link { background: none; border: none; padding: 0; cursor: pointer; flex: none; }
 
 /* org chart */
 .org-chart { display: flex; gap: 10px; flex-wrap: wrap; }
@@ -740,10 +727,6 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
   border-radius: 99px; padding: 4px 13px; font-size: 13px;
 }
 .interest-chip small { color: var(--ink-soft); font-size: 11px; }
-.hovercard-now {
-  color: var(--ink-soft); font-size: 12.5px; overflow: hidden;
-  text-overflow: ellipsis; white-space: nowrap;
-}
 .connect-card { gap: 10px; }
 .connect-card .btn { padding: 5px 13px; font-size: 13px; }
 .connect-members { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -755,7 +738,6 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
 .connect-member .avatar { width: 22px; height: 22px; border-radius: 6px; font-size: 12px; }
 /* minmax(0, …) lets tracks shrink below content width in narrow panes. */
 .connect-people { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.connect-people .uh-wrap { min-width: 0; display: block; }
 .connect-person {
   display: flex; align-items: center; gap: 10px; text-align: left; width: 100%;
   border: 1px solid var(--line); border-radius: 10px; background: var(--card); padding: 9px 11px;

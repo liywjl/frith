@@ -5,7 +5,6 @@ import { previewKind } from '../lib/preview';
 import { FilePreviewModal } from '../modals/FilePreviewModal';
 import { Avatar } from './Avatar';
 import { Icon } from './Icon';
-import { UserHover } from './UserHover';
 import { useUserActions } from '../lib/userActions';
 
 const fmtSize = (n: number) =>
@@ -119,19 +118,21 @@ export const Message = memo(function Message({
       {own ? null : compact ? (
         <div className="msg-gutter">{timeFormat.format(new Date(message.createdAt))}</div>
       ) : (
-        <UserHover userId={message.authorId} name={message.authorName}>
+        <button
+          className="avatar-link"
+          title={`${message.authorName}'s profile`}
+          onClick={() => openProfile(message.authorId)}
+        >
           <Avatar name={message.authorName} emoji={message.authorAvatarEmoji} />
-        </UserHover>
+        </button>
       )}
       <div className="msg-main">
         {!compact && (
           <div className="msg-head">
             {!own && (
-              <UserHover userId={message.authorId} name={message.authorName}>
-                <button className="who who-link" onClick={() => openProfile(message.authorId)}>
-                  {message.authorName}
-                </button>
-              </UserHover>
+              <button className="who who-link" onClick={() => openProfile(message.authorId)}>
+                {message.authorName}
+              </button>
             )}
             <span className="when">{timeFormat.format(new Date(message.createdAt))}</span>
           </div>
