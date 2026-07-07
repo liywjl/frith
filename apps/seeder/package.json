@@ -1,0 +1,14 @@
+{
+  "name": "seeder",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "join": "tsx src/main.ts join",
+    "serve": "tsx src/main.ts run",
+    "typecheck": "tsc"
+  },
+  "// dependencies": "imports the server workspace's space/ layer by relative path, like apps/desktop does",
+  "devDependencies": {
+    "tsx": "^4.22.5"
+  }
+}
