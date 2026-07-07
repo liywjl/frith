@@ -1,7 +1,7 @@
 # AI-Native Team Communication Platform — Design Document
 
-Status: draft v0.3 (2026-07-03) — v0.3 adds §14 (P2P pivot) and §15 (social layer)
-Working name: Lore
+Status: draft v0.4 (2026-07-05) — v0.4 adds §17 (identity & key custody, shipped) and the chat+files refocus; v0.3 added §14 (P2P pivot) and §15 (social layer)
+Working name: Frith
 
 ## 1. The core idea
 
@@ -373,7 +373,7 @@ worse" a test failure instead of a vibe.
 
 ## 14. Direction change: peer-to-peer on the Pears stack
 
-Decision (2026-07-03): Lore's desktop future is **peer-to-peer**, built on the
+Decision (2026-07-03): Frith's desktop future is **peer-to-peer**, built on the
 Pears stack (Hyperswarm for discovery + e2e-encrypted transport; Hypercore/
 Autobase for append-only, multi-writer logs). This is the sovereignty
 principle taken to its logical end: there is no server to trust because there
@@ -448,16 +448,18 @@ pretend about:
    derive the DHT topic and join. Real rooms need high-entropy invite keys
    (unguessable topic) plus a membership list signed by the room creator:
    peers drop connections from keys without a valid membership proof.
-2. **Channel-level keys.** A private channel is its own topic + symmetric
-   content key, wrapped per-member. The ACL becomes physical: non-members
-   never receive the ciphertext, let alone the plaintext.
-3. **Encryption at rest.** The local log and identity seed encrypted with a
-   key from the OS keychain (Keychain/DPAPI/libsecret), so a stolen laptop
-   with a locked account doesn't leak history.
-4. **Identity beyond one device.** Multi-device users need either key sync
-   (encrypted seed transfer) or a per-user signing key that certifies
-   device keys. Verification UX: compare short key fingerprints — already
-   surfaced in the spike's message tooltips.
+2. **Content keys & real revocation — SHIPPED (2026-07-06, §18).** Message
+   content, attachment names, and attachment bytes are encrypted under
+   rotating per-domain content keys, sealed per-member-device. Evicting a
+   member rotates every key they could read; removing someone from a private
+   channel rotates just that channel's. The invite rotates through the log so
+   every admitting device drops the old QR.
+3. **Encryption at rest — SHIPPED (2026-07-05, §17).** The log, blob cores,
+   and registry (pairing credentials, identity seeds) are encrypted; key
+   custody via Electron safeStorage / `FRITH_MASTER_KEY` / a 0600 key file.
+4. **Identity beyond one device — SHIPPED (2026-07-05, §17).** Per-user root
+   key certifies device keys; seed handoff links a second device; signed
+   revocation ejects a stolen one. Fingerprint-verification UX still to do.
 5. **Deletion honesty.** Tombstones propagate deletes, and honest peers
    honor them — but P2P cannot *force* a malicious peer to forget, same as
    a screenshot today. We say this plainly rather than promising GDPR
@@ -475,6 +477,172 @@ pretend about:
 - **Supply chain.** Dependency review on the P2P stack, lockfiles pinned,
   and (once on Pear) app distribution is itself key-verified.
 
+## 17. Identity & key custody (shipped 2026-07-05)
+
+The security foundation slice, in three layers. Dev iteration is untouched:
+the pick-a-user cookie login stays in dev builds; everything below is how
+**production** builds behave (`FRITH_MODE=production`, set by the packaged
+desktop app).
+
+### Keys
+
+```
+Device master key (32 B, never leaves the machine)
+├─ custody: Electron safeStorage → FRITH_MASTER_KEY env → 0600 key file
+└─ HKDF → file key (AES-256-GCM) → encrypts spaces.json
+      (which now holds: pairing credentials, space log keys, identity seeds)
+
+Space log key (32 B, shared by members)
+├─ minted by the founder at createSpace()
+├─ handed to joiners INSIDE the blind-pairing handshake (invite = capability)
+└─ encrypts every hypercore block — writer cores, views, blob cores —
+   at rest AND on the wire (hypercore encrypts blocks, not connections)
+
+User root key (ed25519, seed generated at profile creation)
+├─ certifies device keys: the Autobase writer key IS the device key
+│    ops: identity (first-write-wins) / device / device-revoke (sticky)
+├─ moves between YOUR devices as a handoff code (raw seed, out of band,
+│    never in the log; /devices in the app)
+└─ revokes a stolen device: signed op; honest peers drop the binding
+```
+
+The reducer tracks `deviceOwners` (writer key → user) and stamps every
+message `verified` when the appending device provably belongs to the claimed
+author. Spoofed authorship is **flagged, not blocked** — enforcement needs
+the roles model (next slice, with org-wide ban + channel keys).
+
+### What we say plainly
+
+- **Encryption applies to spaces created from this version.** Hypercore's
+  merkle tree is built over ciphertext, so an old plaintext space cannot be
+  encrypted in place; migration = create a new space (log replay tool
+  later). Old spaces still open.
+- **Eviction now rotates content keys (§18).** A removed member keeps the
+  history already on their disk and the block key, but new message content is
+  encrypted under a fresh content key they are not sealed into — so they can't
+  read anything new. The residual leak is *metadata*: because the Hypercore
+  block key can't be rotated, a device that keeps replicating still sees that
+  ops exist (author, channel, timestamp, ciphertext length). Content is hidden;
+  activity is not.
+- **Root seed loss = identity loss.** No recovery in this slice.
+- **Loopback is the prod auth boundary.** The server runs in-process and
+  binds 127.0.0.1; requests act as the device's bound user. A cookie adds
+  nothing an attacker with local access couldn't already take.
+
+### Seeder & mobile direction
+
+The **seeder** (`apps/seeder`) is a headless always-on peer: full log +
+all blob bytes, no user, no API. Self-host it on a VPS/NAS/Pi for 24/7
+sync; a hosted per-org/per-profile seeder is the monetization candidate.
+Honest note: a seeder holds the space key (it's a member), so its host is
+trusted like a member device — blind seeding needs per-core serve control.
+
+**Mobile** is a native app on the Pears stack later — Keet.io proves the
+runtime works on phones. The shape: phone = light peer that syncs from a
+seeder on open, woken by a push relay that carries only an encrypted
+"activity" ping (no plaintext through the relay). Not in scope yet.
+
+## 18. Cryptographic revocation (shipped 2026-07-06)
+
+Removing someone is now real, not cosmetic. The mechanism is a second
+encryption layer *above* the space block key, distributed entirely through the
+log — no changes to the pairing handshake.
+
+### Content keys & domains
+
+- A **content key** (32 B, AES-256-GCM) encrypts message bodies (sent and
+  scheduled), attachment names, and attachment bytes. A key is named
+  `keyId = hash(key)`, which makes every wrap self-verifying: a recipient only
+  accepts an unwrapped key whose hash matches.
+- A **domain** is a set of devices sharing a keychain. `space` covers all
+  members (public channels); every private channel and DM is its own
+  `channel:<id>` domain — so removal locks exactly the right scope, and a DM
+  with someone in *this* space says nothing about your channels elsewhere.
+- Each device publishes an **X25519 encryption key**, folded into its
+  root-signed device binding so it can't be spoofed. Content keys are sealed to
+  those keys with libsodium `crypto_box_seal`.
+
+### Three ops carry keys (see `state.ts` / `space.ts`)
+
+```
+epoch         — signed rotation: a new current key for a domain, sealed to its
+                member devices. Managers rotate anything; a private channel's
+                members rotate their own channel. The signature binds the wraps
+                (wrapsHash), so a copied op with altered wraps is discarded.
+grant         — unsigned but self-verifying: seals an existing key to one more
+                device (newcomer onboarding). Safe without a signature because
+                a false key can't hash to the advertised keyId. Refused for
+                devices outside the domain; never overwrites an existing wrap.
+invite-rotate — signed: new blind-pairing credentials for every admitting
+                device, the invite secret sealed per member device. All honest
+                peers rebind, so the old QR dies everywhere — not just on the
+                device that evicted.
+```
+
+Authorization is **root-signature-based, not writer-based**, for `evict` and
+`epoch`: the op names its actor and the actor's root signs it. This is
+replay-safe because eviction is sticky and epochs are idempotent by keyId /
+monotone by seq. (`role` and `setting` stay writer-coupled: they toggle, so a
+replayed old op must not re-apply.)
+
+Determinism under Autobase reorder: keys are chosen by `(seq, keyId)` total
+order, never wall-clock; concurrent rotations converge and every past key stays
+decryptable (keyId lookup). Unwrapped keys live in the encrypted registry,
+re-derived from the log on rebuild → idempotent.
+
+### Reconcile: the healing loop
+
+After every drain, each device runs a bounded reconcile pass: (1) if a domain's
+current key is still sealed to a device that left the domain, any local
+identity allowed to rotate mints a fresh key — this is why removal works no
+matter WHICH peer performed it; (2) keys this device holds are sealed to member
+devices missing them, respecting `historyVisibility` (`full` hands newcomers
+the whole keychain, `join-forward` only the current key).
+
+### Roles & eviction
+
+Owner = author of the first `identity` op. The owner grants `admin` (signed
+`role` op); owner/admins may `evict`. Eviction: revoke the user's devices, drop
+their memberships, rotate the space key AND every private-channel key they held,
+and rotate the invite. Removing someone from one private channel rotates just
+that channel's key. The privileged API surface (evict, admins, settings, logo)
+requires an authenticated user; the pre-login exemption is an enumerated list
+(see routes.ts preHandler), not a prefix match.
+
+### The honest limitations
+
+- The block key can't rotate, so eviction hides **content**, not **metadata**:
+  a removed device that keeps replicating still sees that messages exist and
+  their envelope (author, channel, time, size). Total invisibility would
+  require every member to re-pair into a fresh log.
+- A malicious *current* member can leak keys or plaintext outright — collusion
+  is unpreventable, same as screenshots. Grants are first-write-wins per
+  device, so an insider can grief a newcomer's onboarding wrap (self-heals for
+  epoch wraps, which the signature binds).
+- Invite rotation reaches honest peers; a malicious member could keep admitting
+  on old credentials it saved. Admission ≠ access: newcomers still only get
+  keys via grants, which exclude the evicted.
+
+## 19. Recording & transcription consent (shipped 2026-07-06)
+
+Campfires can be recorded, and the posture is consent-forward:
+
+- **Recording is an in-call act.** Only a current participant can flag
+  recording (server-enforced, 409 otherwise), and stopping/leaving clears the
+  flag — a stale REC can never haunt a room.
+- **Everyone always knows.** The recorder confirms an explicit consent prompt;
+  every participant sees a pulsing "Recording · name" banner; the channel's
+  Join button carries a REC dot so nobody walks into a recorded call blind.
+- **The file stays in the room.** Recording happens on the recorder's device
+  (mixed call audio; plus the shared screen when one is on stage) and is
+  posted to the channel as a normal sealed attachment — same encryption,
+  same ACL as any file. Nothing streams to any service.
+- **Transcription is local or it doesn't happen.** The live-transcript add-on
+  runs Whisper in the browser via `@huggingface/transformers` (lazy-loaded;
+  model cached after first download). Call audio never leaves the device —
+  the only posture consistent with content that's sealed end-to-end.
+  Transcripts are posted to the channel only by explicit click.
+
 ## IP posture (vs. Slack and other incumbents)
 
 Reviewed 2026-07-05 against Slack's Brand Terms of Service and general
@@ -483,7 +651,7 @@ before commercial distribution. The standing rules:
 
 - **Never use "Slack" in the product name, domains, app-store listings, or
   advertising** (incl. search keywords). Their brand terms prohibit it, and
-  it's the one bright line. The public repo, product name ("Lore"), logo
+  it's the one bright line. The public repo, product name ("Frith"), logo
   (campfire), and landing page are Slack-free — keep them that way.
 - **Truthful comparisons in prose are fine** (nominative fair use — the
   Mattermost/Rocket.Chat pattern). This document's comparative references
@@ -492,9 +660,9 @@ before commercial distribution. The standing rules:
   unprotected methods of operation (Lotus v. Borland line of cases) with
   decades of prior art (IRC, HipChat). No exposure there.
 - **Trade dress is the only real watch item**: Slack's signature is the
-  dark-aubergine sidebar (hue ~299°). Ours: light-pink channel sidebar,
-  neutral slate rail (`--rail`, hue ~230°, deliberately not purple), tile
-  home, campfire brand. Keep future themes' dark chrome off the
+  dark-aubergine sidebar (hue ~299°). Ours (default 'ocean'): light blue-grey
+  channel sidebar, deep slate rail (`--rail`, hue ~207°, deliberately not
+  purple), tile home, campfire brand. Keep future themes' dark chrome off the
   magenta-purple family.
 - **We use no Slack APIs or services**, so their ToS/AUP/API terms don't
   bind us. If an import-from-Slack feature ever lands (currently out of
