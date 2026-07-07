@@ -76,10 +76,10 @@ export const Composer = forwardRef<
   const [notice, setNotice] = useState<string | null>(null);
   const ref = useRef<HTMLTextAreaElement>(null);
 
-  // Click a channel or person → just start typing.
+  // Click a channel, person, or thread → just start typing.
   useEffect(() => {
     ref.current?.focus();
-  }, [channelId]);
+  }, [channelId, parentMessageId]);
 
   // Switching channels drops whatever was staged for the old one.
   useEffect(() => {
