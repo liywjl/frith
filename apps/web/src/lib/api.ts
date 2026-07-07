@@ -15,7 +15,6 @@ import type {
   ScheduledMessageDto,
   SpaceDto,
   StorageDto,
-  TaskScopeDto,
   UserDto,
 } from '@app/shared';
 
@@ -146,8 +145,6 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ on }),
     }),
-  taskScope: (requirements: string) =>
-    request<TaskScopeDto>('/api/task-scope', { method: 'POST', body: JSON.stringify({ requirements }) }),
   /** Pull a file's bytes from whichever peer holds them (explicit click). */
   fetchFile: async (id: string) => {
     const res = await fetch(`/api/files/${id}?wait=1`);

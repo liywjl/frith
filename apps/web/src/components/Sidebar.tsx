@@ -32,7 +32,6 @@ export function Sidebar({
   online,
   activeId,
   homeActive,
-  taskActive,
   peopleActive,
   filesActive,
   docs,
@@ -40,7 +39,6 @@ export function Sidebar({
   space,
   liveCalls,
   onHome,
-  onTask,
   onPeople,
   onFiles,
   onDoc,
@@ -59,7 +57,6 @@ export function Sidebar({
   online: Set<string>;
   activeId: string | null;
   homeActive: boolean;
-  taskActive: boolean;
   peopleActive: boolean;
   filesActive: boolean;
   docs: DocDto[];
@@ -67,7 +64,6 @@ export function Sidebar({
   space: SpaceDto | null;
   liveCalls: Set<string>;
   onHome: () => void;
-  onTask: () => void;
   onPeople: () => void;
   onFiles: () => void;
   onDoc: (docId: string) => void;
@@ -185,9 +181,6 @@ export function Sidebar({
 
         <button className={`side-item home-item ${homeActive ? 'active' : ''}`} onClick={onHome}>
           <span className="side-label"><Icon name="home" /> Home</span>
-        </button>
-        <button className={`side-item home-item ${taskActive ? 'active' : ''}`} onClick={onTask}>
-          <span className="side-label"><Icon name="target" /> Start a task</span>
         </button>
         <button className={`side-item home-item ${peopleActive ? 'active' : ''}`} onClick={onPeople}>
           <span className="side-label"><Icon name="people" /> People</span>

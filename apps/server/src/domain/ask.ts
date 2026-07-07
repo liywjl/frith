@@ -1,8 +1,7 @@
-import type { AskEvidence, AskFileHit, AskPerson, AskResponse, AskThread, TaskScopeDto, UserDto } from '@app/shared';
+import type { AskEvidence, AskFileHit, AskPerson, AskResponse, AskThread, UserDto } from '@app/shared';
 import { channelName, clearBody, filesVisibleTo, messagesVisibleTo, userDtoById } from './store.js';
 import type { MessageRow } from '../space/state.js';
 import { space } from '../space/space.js';
-import { extractArtifacts } from './artifacts.js';
 
 const STOPWORDS = new Set([
   'the', 'a', 'an', 'to', 'of', 'in', 'on', 'for', 'and', 'or', 'is', 'are', 'was', 'be',
@@ -196,15 +195,3 @@ export async function ask(userId: string, query: string): Promise<AskResponse> {
   };
 }
 
-export async function taskScope(userId: string, requirements: string): Promise<TaskScopeDto> {
-  const { hits, people, threads } = retrieve(userId, requirements);
-  return {
-    query: requirements,
-    matchCount: hits.length,
-    people,
-    threads,
-    artifacts: extractArtifacts(
-      hits.map((h) => ({ body: clearBody(h.row), channelId: h.row.channelId, channelName: channelName(h.row.channelId) })),
-    ),
-  };
-}

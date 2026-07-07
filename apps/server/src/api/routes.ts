@@ -52,7 +52,7 @@ import {
   userDtoById,
   visibleChannels,
 } from '../domain/store.js';
-import { ask, taskScope } from '../domain/ask.js';
+import { ask } from '../domain/ask.js';
 import { onlineUserIds, publish, register, sendToUser, setOnUserOffline } from './realtime.js';
 import { activeCalls, joinCall, leaveAllCalls, leaveCall, setRecording } from '../domain/calls.js';
 import { getPolicies, setPolicies, mb } from '../domain/policies.js';
@@ -673,11 +673,6 @@ export async function buildApp() {
   app.get('/api/ask', async (req) => {
     const { q } = z.object({ q: z.string().max(500) }).parse(req.query);
     return ask(req.userId, q);
-  });
-
-  app.post('/api/task-scope', async (req) => {
-    const { requirements } = z.object({ requirements: z.string().trim().min(3).max(2000) }).parse(req.body);
-    return taskScope(req.userId, requirements);
   });
 
   // Attach a file (image/video/audio/anything) as a new message in a channel.

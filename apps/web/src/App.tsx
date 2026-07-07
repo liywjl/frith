@@ -24,7 +24,6 @@ import { GroupModal } from './modals/GroupModal';
 import { CreateChannelModal } from './modals/CreateChannelModal';
 import { HomeView } from './views/HomeView';
 import { ProfileView } from './views/ProfileView';
-import { TaskView } from './views/TaskView';
 import { SpaceModal } from './modals/SpaceModal';
 import { StorageModal } from './modals/StorageModal';
 import { DevicesModal } from './modals/DevicesModal';
@@ -46,7 +45,6 @@ import { DocView } from './views/DocView';
 
 type View =
   | { kind: 'home' }
-  | { kind: 'task' }
   | { kind: 'people' }
   | { kind: 'files' }
   | { kind: 'doc'; docId: string }
@@ -441,12 +439,6 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
     setView({ kind: 'home' });
   }, [closeOverlays]);
 
-  const openTask = useCallback(() => {
-    closeOverlays();
-    setThreadRoot(null);
-    setView({ kind: 'task' });
-  }, [closeOverlays]);
-
   const openPeople = useCallback(() => {
     closeOverlays();
     setThreadRoot(null);
@@ -698,7 +690,6 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
         }
       },
     },
-    { name: 'task', hint: 'Scope a task', run: () => openTask() },
     { name: 'home', hint: 'Back to your digest', run: () => openHome() },
     { name: 'storage', hint: 'What this device stores & auto-downloads', run: () => setStorageOpen(true) },
     { name: 'devices', hint: 'Link another device to your identity', run: () => setDevicesOpen(true) },
@@ -730,7 +721,6 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
         online={online}
         activeId={view.kind === 'channel' ? activeId : null}
         homeActive={view.kind === 'home'}
-        taskActive={view.kind === 'task'}
         peopleActive={view.kind === 'people'}
         filesActive={view.kind === 'files'}
         docs={docs}
@@ -738,7 +728,6 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
         space={space}
         liveCalls={new Set(Object.keys(calls).filter((id) => (calls[id] ?? []).length > 0))}
         onHome={openHome}
-        onTask={openTask}
         onPeople={openPeople}
         onFiles={openFiles}
         onDoc={openDoc}
@@ -777,7 +766,6 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
           onInvite={() => setSpaceOpen('share')}
         />
       )}
-      {view.kind === 'task' && <TaskView onOpenChannel={openChannel} onOpenThread={openThread} />}
       {view.kind === 'home' && (
         <HomeView
           me={me}

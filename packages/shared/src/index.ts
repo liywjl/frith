@@ -255,14 +255,6 @@ export interface ArtifactRef {
 }
 
 /** Task scoping: feed in requirements, get who/what/where to start from. */
-export interface TaskScopeDto {
-  query: string;
-  matchCount: number;
-  people: AskPerson[];
-  threads: AskThread[];
-  artifacts: ArtifactRef[];
-}
-
 /**
  * A user's productivity profile page. Everything is filtered to what the
  * *viewer* may read, and DM content never appears regardless of viewer.

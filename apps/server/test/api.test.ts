@@ -766,45 +766,6 @@ describe('connect suggestions', () => {
   });
 });
 
-describe('task scoping', () => {
-  it('scopes requirements into people, discussions, and artifacts', async () => {
-    await app.inject({
-      method: 'POST',
-      url: `/api/channels/${publicChannel}/messages`,
-      payload: {
-        body: 'The zeppelin reconciliation logic lives in reconcile/report.ts — runbook at https://acme.example/runbook',
-      },
-      ...as(alice),
-    });
-    const res = await app.inject({
-      method: 'POST',
-      url: '/api/task-scope',
-      payload: { requirements: 'I need to fix the zeppelin reconciliation checks' },
-      ...as(bob),
-    });
-    expect(res.statusCode).toBe(200);
-    const body = res.json();
-    expect(body.matchCount).toBeGreaterThan(0);
-    expect(body.people[0].user.name).toBe('Alice Cooper');
-    const refs = body.artifacts.map((a: { ref: string }) => a.ref);
-    expect(refs).toContain('reconcile/report.ts');
-    expect(refs).toContain('https://acme.example/runbook');
-  });
-
-  it('applies the ACL to task scoping too', async () => {
-    // 'friday' appears only in the private channel bob cannot read.
-    const res = await app.inject({
-      method: 'POST',
-      url: '/api/task-scope',
-      payload: { requirements: 'friday scheduling plans' },
-      ...as(bob),
-    });
-    const body = res.json();
-    expect(body.people).toEqual([]);
-    expect(JSON.stringify(body)).not.toContain('launch is friday');
-  });
-});
-
 describe('ask retrieval — the ACL applies to search too', () => {
   it('finds public messages and ranks their authors with evidence', async () => {
     const res = await app.inject({ method: 'GET', url: '/api/ask?q=hello', ...as(bob) });
