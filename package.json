@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "./scripts/dev.sh",
+    "dev:seeded": "./scripts/dev.sh --seeded",
     "seed": "pnpm --filter server seed",
     "typecheck": "pnpm -r typecheck",
     "lint": "eslint .",

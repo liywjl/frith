@@ -5,6 +5,16 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+# --seeded: boot on a throwaway data dir, wiped and re-seeded with the three
+# demo spaces every run — an instant disposable instance for testing.
+SEEDED=0
+if [[ "${1:-}" == "--seeded" ]]; then
+  SEEDED=1
+  export FRITH_DATA=.frith-data-seeded
+  export FRITH_FILES=.data/uploads-seeded
+  rm -rf apps/server/.frith-data-seeded apps/server/.data/uploads-seeded
+fi
+
 # Default ports, sliding upward when something else (another project's dev
 # server, a second Frith instance) already holds them.
 pick_port() {
@@ -21,6 +31,11 @@ trap 'kill 0' EXIT
 
 # vite may bind only ::1, so probe via localhost (resolves both families)
 until curl -sf -o /dev/null "http://localhost:$WEB_PORT"; do sleep 0.3; done
+
+if [[ $SEEDED == 1 ]]; then
+  until curl -sf -o /dev/null "http://127.0.0.1:$API_PORT/api/spaces"; do sleep 0.3; done
+  PORT=$API_PORT ./scripts/demo-spaces.sh
+fi
 cd apps/desktop
 node build.mjs --dev
 FRITH_DEV_URL="http://localhost:$WEB_PORT" pnpm exec electron .

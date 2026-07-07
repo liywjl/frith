@@ -14,9 +14,12 @@ peer-to-peer Autobase log under `.frith-data/`.
 ```sh
 pnpm install
 pnpm dev                  # opens the DESKTOP app (server :3001 + vite :5173 under it)
-./scripts/demo-spaces.sh  # seed THREE demo spaces: Acme (work), a
-                          # rollerblading crew, and a band — hop between them
-                          # with the rail on the far left
+pnpm dev:seeded           # same, but on a throwaway data dir that is wiped and
+                          # re-seeded with the three demo spaces every run —
+                          # an instant disposable instance for testing
+./scripts/demo-spaces.sh  # seed the demo spaces into YOUR instance instead:
+                          # Acme (work), a rollerblading crew, and a band —
+                          # hop between them with the rail on the far left
 ```
 
 The desktop app is the product; `pnpm dev` opens its Electron window over a

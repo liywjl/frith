@@ -6,6 +6,7 @@ dist/
 .frith-p2p*/
 .data/
 .frith-data*/
+.lore-data*/
 apps/desktop/.deploy/
 apps/desktop/release/
 
