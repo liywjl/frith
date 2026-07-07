@@ -267,11 +267,21 @@ function Login({ onLogin }: { onLogin: () => void }) {
 }
 
 function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => void }) {
-  const [view, setView] = useState<View>({ kind: 'home' });
+  // Refresh keeps your place: the view survives reload in sessionStorage
+  // (per-tab, so a stale channel from another space dies with the tab).
+  const [view, setView] = useState<View>(() => {
+    try {
+      const raw = sessionStorage.getItem('frith:view');
+      if (raw) return JSON.parse(raw) as View;
+    } catch {
+      /* corrupted state → home */
+    }
+    return { kind: 'home' };
+  });
   const [channels, setChannels] = useState<ChannelDto[]>([]);
   const [users, setUsers] = useState<UserDto[]>([]);
   const [online, setOnline] = useState<Set<string>>(new Set());
-  const [activeId, setActiveId] = useState<string | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(() => sessionStorage.getItem('frith:activeChannel'));
   const [messages, setMessages] = useState<MessageDto[]>([]);
   const [threadRoot, setThreadRoot] = useState<MessageDto | null>(null);
   const [homeTick, setHomeTick] = useState(0);
@@ -398,7 +408,10 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
     api.channels().then((cs) => {
       if (cancelled) return;
       setChannels(cs);
-      setActiveId((cur) => cur ?? cs.find((c) => c.type === 'public')?.id ?? cs[0]?.id ?? null);
+      // A restored id that no longer exists (deleted, other space) falls back.
+      setActiveId((cur) =>
+        cur && cs.some((c) => c.id === cur) ? cur : (cs.find((c) => c.type === 'public')?.id ?? cs[0]?.id ?? null),
+      );
     });
     api.users().then((us) => {
       if (!cancelled) setUsers(us);
@@ -407,6 +420,12 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
       cancelled = true;
     };
   }, []);
+
+  // Refresh keeps your place (the other half lives in the view initializer).
+  useEffect(() => {
+    sessionStorage.setItem('frith:view', JSON.stringify(view));
+    if (activeId) sessionStorage.setItem('frith:activeChannel', activeId);
+  }, [view, activeId]);
 
   useEffect(() => {
     if (!activeId) return;
