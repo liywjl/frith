@@ -1,4 +1,4 @@
-# design-sync notes — Lore (web components)
+# design-sync notes — Frith (web components)
 
 ## Shape & entry
 - **Package shape, no dist.** The DS is the app's own React components in `apps/web/src/components/` (not a published library). There is no build that emits a component-library `dist/`, so we bundle a **hand-written barrel entry**: `apps/web/.ds-entry.tsx` (gitignored build artifact). It re-exports the 9 components + `UserActionsContext`.

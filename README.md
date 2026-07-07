@@ -1,7 +1,7 @@
-# Lore
+# Frith
 
 A team chat platform where the accumulated knowledge is the product — the
-institutional lore that today lives in people's heads and dies in scrollback.
+institutional memory that today lives in people's heads and dies in scrollback.
 See
 [DESIGN.md](DESIGN.md) for the full concept and [wireframes.html](wireframes.html)
 for the target UI.
@@ -9,7 +9,7 @@ for the target UI.
 ## Quickstart
 
 Requires Node ≥ 22 and pnpm. No database, no Docker — the datastore is a
-peer-to-peer Autobase log under `.lore-data/`.
+peer-to-peer Autobase log under `.frith-data/`.
 
 ```sh
 pnpm install
@@ -57,7 +57,7 @@ turning invites into writers. Run it twice on one machine:
 # terminal 1 — instance A on :5173
 pnpm dev
 
-# terminal 2 — instance B on :5174 (own space data under .lore-data-peer/)
+# terminal 2 — instance B on :5174 (own space data under .frith-data-peer/)
 pnpm dev:peer
 ```
 

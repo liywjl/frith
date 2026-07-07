@@ -5,7 +5,7 @@ in-process — the same Autobase log, Hyperswarm sync, and HTTP API as dev —
 and opens a window on the web client, served from the same origin. No code
 changes in either; the shell only decides *where things live*:
 
-- data → the OS per-user dir (`~/Library/Application Support/Lore` on macOS):
+- data → the OS per-user dir (`~/Library/Application Support/Frith` on macOS):
   `space/` for the Autobase log, `uploads/` for attachment bytes
 - web client → the built `web/dist`, bundled next to `main.js`
 
@@ -20,10 +20,10 @@ pnpm --filter desktop build   # self-contained: builds web, bundles main.js
 pnpm --filter desktop start   # …and opens it (exactly what ships)
 ```
 
-In dev the window loads the vite URL (`LORE_DEV_URL`) and the server runs
+In dev the window loads the vite URL (`FRITH_DEV_URL`) and the server runs
 under tsx watch outside Electron — every code change lands live. The
 build+start pair runs the same self-contained thing the packaged app ships.
-Set `LORE_HOME=/some/dir` to relocate all data (handy for a second instance).
+Set `FRITH_HOME=/some/dir` to relocate all data (handy for a second instance).
 
 ## Ship it
 

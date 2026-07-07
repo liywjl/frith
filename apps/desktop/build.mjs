@@ -5,7 +5,7 @@ import { cpSync, existsSync } from 'node:fs';
 import esbuild from 'esbuild';
 
 // --dev: bundle only the main process. The client comes from vite (HMR) and
-// the window loads LORE_DEV_URL, so no web dist or corpus is copied in.
+// the window loads FRITH_DEV_URL, so no web dist or corpus is copied in.
 const dev = process.argv.includes('--dev');
 
 await esbuild.build({
@@ -14,7 +14,7 @@ await esbuild.build({
   platform: 'node',
   format: 'esm',
   outfile: 'dist/main.js',
-  external: ['electron', 'autobase', 'corestore', 'hyperblobs', 'hyperswarm', 'blind-pairing'],
+  external: ['electron', 'autobase', 'corestore', 'hyperblobs', 'hyperswarm', 'blind-pairing', 'hypercore-crypto'],
   banner: {
     // esbuild's ESM output loses Node's require/__filename/__dirname; some
     // bundled CJS deps (pino, fastify plugins) still reference them.

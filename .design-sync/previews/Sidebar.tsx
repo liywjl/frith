@@ -45,7 +45,7 @@ export const Default = () =>
         homeActive={false}
         taskActive={false}
         peopleActive={false}
-        space={{ name: 'Lore HQ', invite: 'x', connectedPeers: 4 }}
+        space={{ name: 'Frith HQ', invite: 'x', connectedPeers: 4 }}
         liveCalls={new Set(['c1'])}
       />
     </div>,

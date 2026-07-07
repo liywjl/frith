@@ -32,7 +32,7 @@ const base = {
 
 // A colored placeholder rendered inline (no network) for the image variant.
 const themeShot =
-  "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='420' height='200'><rect width='420' height='200' rx='10' fill='%230e7568'/><text x='24' y='110' fill='white' font-size='26' font-family='monospace'>Lore · theme refresh</text></svg>";
+  "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='420' height='200'><rect width='420' height='200' rx='10' fill='%230e7568'/><text x='24' y='110' fill='white' font-size='26' font-family='monospace'>Frith · theme refresh</text></svg>";
 
 export const Default = () =>
   withActions(

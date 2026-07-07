@@ -1,5 +1,5 @@
-appId: chat.lore.desktop
-productName: Lore
+appId: chat.frith.desktop
+productName: Frith
 directories:
   app: .deploy
   output: release

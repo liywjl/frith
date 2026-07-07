@@ -24,15 +24,12 @@ space/    P2P storage core               (Autobase log — see space/README.md)
   materialized state, writes by appending ops. The only file that talks to
   `space/` for data.
 - [src/domain/ask.ts](src/domain/ask.ts) — the Ask surface: keyword retrieval
-  over messages visible to the asker, shaped into cited answers — plus hits
-  from this device's library.
+  over messages visible to the asker, shaped into cited answers.
 - [src/domain/policies.ts](src/domain/policies.ts) — device-local storage
   policies (upload cap, auto-download size/recency, cache budget). Never in
   the log: what you store is your call, not the space's.
 - [src/domain/files.ts](src/domain/files.ts) — file safety: magic-byte
   sniffing (bytes over declared mime) and dangerous-type flagging.
-- [src/domain/library.ts](src/domain/library.ts) — local folders/repos
-  indexed into Ask (files + git commits). Device-local, never shared.
 - [src/domain/artifacts.ts](src/domain/artifacts.ts) — extracts links/paths
   ("artifacts") from message bodies.
 - [src/domain/calls.ts](src/domain/calls.ts) — campfire membership +

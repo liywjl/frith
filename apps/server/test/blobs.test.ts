@@ -4,7 +4,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import Corestore from 'corestore';
 import { BlobStore } from '../src/space/blobs.js';
 
-const scratch = path.join(os.tmpdir(), `lore-blobs-${process.pid}`);
+const scratch = path.join(os.tmpdir(), `frith-blobs-${process.pid}`);
 
 // Two instances wired the way Hyperswarm wires them in production: their
 // corestores replicate over a duplex pipe, and blobs move sparsely on demand.

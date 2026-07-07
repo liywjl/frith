@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Boot a SECOND full Lore instance (own space data, own files) to test P2P.
+# Boot a SECOND full Frith instance (own space data, own files) to test P2P.
 #
 #   terminal 1:  pnpm dev            # instance A → :5173
 #   terminal 2:  pnpm dev:peer       # instance B → :5174
@@ -9,9 +9,9 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 export PORT=3002
-export LORE_API_PORT=3002
-export LORE_DATA=.lore-data-peer
-export LORE_FILES=.data/uploads-peer
+export FRITH_API_PORT=3002
+export FRITH_DATA=.frith-data-peer
+export FRITH_FILES=.data/uploads-peer
 
 trap 'kill 0' EXIT
 (cd apps/server && pnpm exec tsx watch src/index.ts) &

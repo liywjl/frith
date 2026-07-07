@@ -25,7 +25,7 @@ const CORPORA = {
 } as const;
 
 export async function seedCorpus(name: keyof typeof CORPORA = 'acme') {
-  const dir = process.env.LORE_SEED_DIR ?? fileURLToPath(new URL('../../seed', import.meta.url));
+  const dir = process.env.FRITH_SEED_DIR ?? fileURLToPath(new URL('../../seed', import.meta.url));
   const corpus: Corpus = JSON.parse(readFileSync(`${dir}/${CORPORA[name]}`, 'utf8'));
   const now = Date.now();
 

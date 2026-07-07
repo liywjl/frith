@@ -59,13 +59,14 @@ export function HomeView({
           </h1>
           <p>Here's what needs you — in one place.</p>
           <button className="askbtn home-ask" onClick={onOpenAsk}>
-            <span className="askbtn-hint">Ask Lore — people, threads, decisions…</span>
+            <span className="askbtn-hint">Ask Frith — people, threads, decisions…</span>
             <kbd>⌘J</kbd>
           </button>
         </header>
 
         {caughtUp && <div className="home-empty">You're all caught up ✨</div>}
 
+        <div className="home-columns">
         {home.unread.length > 0 && (
           <section>
             <div className="home-h">While you were away</div>
@@ -179,6 +180,7 @@ export function HomeView({
             <p className="profile-privacy">Suggestions come from the interests people chose to share on their profiles.</p>
           </section>
         )}
+        </div>
       </div>
     </main>
   );

@@ -3,9 +3,9 @@ dist/
 .env
 *.log
 .DS_Store
-.lore-p2p*/
+.frith-p2p*/
 .data/
-.lore-data*/
+.frith-data*/
 apps/desktop/.deploy/
 apps/desktop/release/
 

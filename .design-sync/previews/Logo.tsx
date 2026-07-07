@@ -13,6 +13,6 @@ export const Sizes = () => (
 
 export const WithWordmark = () => (
   <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 18, fontWeight: 600 }}>
-    <Logo size={26} /> Lore
+    <Logo size={26} /> Frith
   </div>
 );

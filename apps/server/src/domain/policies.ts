@@ -19,7 +19,7 @@ const DEFAULT_POLICIES: PoliciesDto = {
 let current: PoliciesDto | null = null;
 
 function policiesFile(): string {
-  return path.join(process.env.LORE_DATA ?? '.lore-data', 'policies.json');
+  return path.join(process.env.FRITH_DATA ?? '.frith-data', 'policies.json');
 }
 
 export function getPolicies(): PoliciesDto {

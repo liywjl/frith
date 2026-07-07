@@ -1,7 +1,7 @@
 {
   "shape": "package",
   "pkg": "web",
-  "globalName": "Lore",
+  "globalName": "Frith",
   "entry": "./apps/web/.ds-entry.tsx",
   "srcDir": "src/components",
   "tsconfig": "tsconfig.json",
