@@ -48,10 +48,15 @@ const as = (userId: string) => ({ cookies: { uid: userId } });
 describe('space settings over HTTP', () => {
   it('owns the space (bind on profile create) and starts with no description/logo', async () => {
     expect(space.state.ownerUserId).toBe(owner);
-    const dto = (await app.inject({ method: 'GET', url: '/api/space' })).json();
+    const dto = (await app.inject({ method: 'GET', url: '/api/space', ...as(owner) })).json();
     expect(dto.description).toBeNull();
     expect(dto.logoUrl).toBeNull();
     expect(dto.canManage).toBe(true);
+    // Anonymous requests never inherit the device's bound user: no manager
+    // flags, no invite — the pre-login surface only shows the space's face.
+    const anon = (await app.inject({ method: 'GET', url: '/api/space' })).json();
+    expect(anon.canManage).toBe(false);
+    expect(anon.invite).toBeNull();
   });
 
   it('requires auth for the manager surface (PATCH, logo, evict, admins)', async () => {

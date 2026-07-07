@@ -195,7 +195,11 @@ export function Sidebar({
         <button className={`side-item home-item ${filesActive ? 'active' : ''}`} onClick={onFiles}>
           <span className="side-label"><Icon name="folder" /> Files</span>
         </button>
-        <button className="side-item home-item" title="Your P2P space — invite people" onClick={onOpenSpace}>
+        <button
+          className="side-item home-item"
+          title={space ? `About “${space.name}”${space.canManage ? ' — settings & invites' : ''}` : 'Join a space'}
+          onClick={onOpenSpace}
+        >
           <span className="side-label">
             {space ? <SpaceLogo space={space} /> : <Icon name="globe" />} {space ? space.name : 'Join a space'}
           </span>

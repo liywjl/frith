@@ -74,9 +74,11 @@ export function PeopleView({
               Everyone here joined with this space's invite — devices connect directly, no server in between.
             </p>
           </div>
-          <button className="btn primary" onClick={onInvite}>
-            <Icon name="mail" /> Invite someone
-          </button>
+          {space?.canManage && (
+            <button className="btn primary" onClick={onInvite}>
+              <Icon name="mail" /> Invite someone
+            </button>
+          )}
         </header>
         <section>
           {everyone.map((u) => (

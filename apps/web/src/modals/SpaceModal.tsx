@@ -34,7 +34,8 @@ export function SpaceModal({
   const [people, setPeople] = useState<UserDto[]>([]);
 
   useEffect(() => {
-    if (space) QRCode.toDataURL(space.invite, { margin: 1, width: 220 }).then(setQr);
+    if (space?.invite) QRCode.toDataURL(space.invite, { margin: 1, width: 220 }).then(setQr);
+    else setQr(null);
   }, [space]);
 
   useEffect(() => {
@@ -93,7 +94,7 @@ export function SpaceModal({
 
   if (space && mode === 'share') {
     const mailto = `mailto:?subject=${encodeURIComponent(`Join "${space.name}" on Frith`)}&body=${encodeURIComponent(
-      `Join my Frith space "${space.name}" — paste this invite into Frith:\n\n${space.invite}\n\nFrith is peer-to-peer: your copy of the workspace lives on your machine.`,
+      `Join my Frith space "${space.name}" — paste this invite into Frith:\n\n${space.invite ?? ''}\n\nFrith is peer-to-peer: your copy of the workspace lives on your machine.`,
     )}`;
     const dirty = mName.trim() !== space.name || mDesc.trim() !== (space.description ?? '');
     return (
@@ -106,30 +107,40 @@ export function SpaceModal({
         headExtra={<SpaceLogo space={space} />}
         onClose={onClose}
       >
-        <div className="space-share">
-          {qr && <img className="space-qr" src={qr} alt="Invite QR code" />}
-          <div className="space-share-right">
-            <p className="space-hint">
-              Anyone with this invite can join — it's the key, so share it like a password.
-            </p>
-            <input className="space-invite" readOnly value={space.invite} onFocus={(e) => e.target.select()} />
-            <div className="space-actions">
-              <button
-                className="btn primary"
-                onClick={() => {
-                  void navigator.clipboard.writeText(space.invite);
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 1500);
-                }}
-              >
-                {copied ? 'Copied ✓' : 'Copy invite'}
-              </button>
-              <a className="btn" href={mailto}>
-                Email it
-              </a>
+        {space.invite ? (
+          <>
+            <div className="space-manage-h">Invite people</div>
+            <div className="space-share">
+              {qr && <img className="space-qr" src={qr} alt="Invite QR code — scan to join this space" />}
+              <div className="space-share-right">
+                <p className="space-hint">
+                  Anyone with this invite (or the QR code) can join — it's the key to the space, so share it like a
+                  password.
+                </p>
+                <input className="space-invite" readOnly value={space.invite} onFocus={(e) => e.target.select()} />
+                <div className="space-actions">
+                  <button
+                    className="btn primary"
+                    onClick={() => {
+                      void navigator.clipboard.writeText(space.invite!);
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 1500);
+                    }}
+                  >
+                    {copied ? 'Copied ✓' : 'Copy invite'}
+                  </button>
+                  <a className="btn" href={mailto}>
+                    Email it
+                  </a>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
+          </>
+        ) : (
+          <p className="space-hint">
+            Adding people is up to the space's owner and admins — ask one of them for an invite.
+          </p>
+        )}
 
         {space.canManage && (
           <div className="space-manage">

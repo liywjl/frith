@@ -662,10 +662,18 @@ describe('campfires (calls)', () => {
 });
 
 describe('spaces', () => {
-  it('exposes the current space with a capability invite', async () => {
-    const read = await app.inject({ method: 'GET', url: '/api/space', ...as(bob) });
+  it('exposes the capability invite to managers only', async () => {
+    // Bind a real owner (first identity author) — dev users carry no identity.
+    const owner = (
+      await app.inject({ method: 'POST', url: '/api/profiles', payload: { name: 'Erik Owner', handle: 'erik' } })
+    ).json().id as string;
+    // The invite IS the key to the space: the owner sees it…
+    const read = await app.inject({ method: 'GET', url: '/api/space', ...as(owner) });
     expect(read.json().invite).toMatch(/^frith:[^:]+:[0-9a-f]{40,}$/);
     expect(read.json().connectedPeers).toBe(0);
+    // …a plain member does not.
+    const member = await app.inject({ method: 'GET', url: '/api/space', ...as(bob) });
+    expect(member.json().invite).toBeNull();
   });
 
   it('rejects garbage invites', async () => {

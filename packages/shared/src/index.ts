@@ -42,8 +42,9 @@ export interface SpaceDto {
   description: string | null;
   /** URL for the space logo image, or null. Carries a cache-busting version. */
   logoUrl: string | null;
-  /** Shareable invite: high-entropy key, unguessable. */
-  invite: string;
+  /** Shareable invite: high-entropy key, unguessable. It's the key to the
+   *  space, so only managers (owner + admins) receive it; null otherwise. */
+  invite: string | null;
   connectedPeers: number;
   /** userId of the space owner (author of the first identity), if known. */
   ownerUserId: string | null;

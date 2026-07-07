@@ -223,7 +223,7 @@ export async function buildApp() {
     const path = req.url.split('?')[0]!;
     // Pre-login surface: pick/create a profile, link a device, see/join/create
     // a space. Everything else under /api/space* falls through to auth.
-    if (
+    const publicSurface =
       (!PROD() && req.url.startsWith('/api/dev/')) ||
       path === '/api/users' ||
       path === '/api/profiles' ||
@@ -233,17 +233,21 @@ export async function buildApp() {
       (path === '/api/space' && req.method !== 'PATCH') ||
       path === '/api/space/logo' && req.method === 'GET' ||
       path === '/api/space/join' ||
-      path === '/api/spaces/switch'
-    )
-      return;
+      path === '/api/spaces/switch';
     // Production: this device IS the credential — requests act as its bound
     // user. Dev: whoever the cookie says.
     const uid = PROD() ? space.boundUserId() : req.cookies[AUTH_COOKIE];
     const user = uid ? await getUserById(uid) : null;
-    if (!user) return reply.code(401).send({ error: 'not logged in' });
     // An evicted user's row survives (their messages keep an author), but
     // their credential must not: a stale cookie is not a way back in.
-    if (space.state.evicted.has(user.id)) return reply.code(401).send({ error: 'not logged in' });
+    const valid = user && !space.state.evicted.has(user.id);
+    // The pre-login surface never 401s, but a signed-in viewer still counts —
+    // GET /api/space must answer with THAT user's flags, not a stranger's.
+    if (publicSurface) {
+      if (valid) req.userId = user.id;
+      return;
+    }
+    if (!valid) return reply.code(401).send({ error: 'not logged in' });
     req.userId = user.id;
   });
 
@@ -304,14 +308,18 @@ export async function buildApp() {
     name: space.state.spaceName ?? space.name,
     description: space.state.spaceDescription,
     logoUrl: space.state.spaceLogo ? `/api/space/logo?v=${space.state.spaceLogo.hash.slice(0, 12)}` : null,
-    invite: space.invite(),
+    // The invite IS the key to the space — only people allowed to add
+    // members (owner + admins) get to see or share it. `?? null` matters:
+    // canManage(undefined) would fall back to the device's bound user, which
+    // must not lend an anonymous request the owner's powers.
+    invite: space.canManage(viewerId ?? null) ? space.invite() : null,
     connectedPeers: space.connectedPeers(),
     ownerUserId: space.state.ownerUserId,
     adminUserIds: [...space.state.admins],
     // Authorization follows the ACTING user (the request), not the device's
     // bound profile — in dev they can differ.
-    canManage: space.canManage(viewerId),
-    isOwner: space.isOwner(viewerId),
+    canManage: space.canManage(viewerId ?? null),
+    isOwner: space.isOwner(viewerId ?? null),
     historyVisibility: space.state.historyVisibility,
   });
 
