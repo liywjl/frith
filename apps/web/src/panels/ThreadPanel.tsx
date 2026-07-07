@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ChannelDto, MeDto, MessageDto, ServerEvent } from '@app/shared';
 import { api } from '../lib/api';
 import { useRealtime } from '../lib/useRealtime';
 import { applyReaction } from '../lib/updates';
 import { Composer } from '../components/Composer';
 import { Message } from '../components/Message';
+import { useWindowedFeed } from '../lib/useWindowedFeed';
 
 export function ThreadPanel({
   me,
@@ -18,6 +19,8 @@ export function ThreadPanel({
   onClose: () => void;
 }) {
   const [messages, setMessages] = useState<MessageDto[]>([]);
+  const feedRef = useRef<HTMLDivElement>(null);
+  const { visible, hiddenCount, onScroll } = useWindowedFeed(feedRef, messages, root.id);
 
   useEffect(() => {
     api.thread(root.id).then(setMessages).catch(console.error);
@@ -47,9 +50,10 @@ export function ThreadPanel({
           ✕
         </button>
       </header>
-      <div className="feed">
-        {messages.map((m) => (
-          <Message key={m.id} message={m} />
+      <div className="feed" ref={feedRef} onScroll={onScroll}>
+        {hiddenCount > 0 && <div className="feed-more">↑ {hiddenCount} earlier replies</div>}
+        {visible.map((m) => (
+          <Message key={m.id} message={m} own={m.authorId === me.id} />
         ))}
       </div>
       <Composer channelId={channel.id} parentMessageId={root.id} placeholder="Reply…" />

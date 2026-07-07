@@ -1,5 +1,6 @@
 import type { ChannelDto } from '@app/shared';
 import { Avatar } from '../components/Avatar';
+import { Icon } from '../components/Icon';
 import { useProfile } from '../lib/useProfile';
 import { useUserActions } from '../lib/userActions';
 
@@ -52,7 +53,7 @@ export function ProfilePanel({
       {(user.nowPlaying || user.interests.length > 0) && (
         <div className="panel-card">
           <div className="panel-h">Off the clock</div>
-          {user.nowPlaying && <div className="now-playing">🎧 {user.nowPlaying}</div>}
+          {user.nowPlaying && <div className="now-playing"><Icon name="headphones" /> {user.nowPlaying}</div>}
           {user.interests.length > 0 && (
             <div className="panel-tags">
               {user.interests.map((i) => (
@@ -100,7 +101,7 @@ export function ProfilePanel({
                 title={`Mentioned in #${a.channelName}`}
                 onClick={() => onOpenChannel(a.channelId)}
               >
-                {a.kind === 'link' ? '🔗' : '📄'} {a.ref}
+                <Icon name={a.kind === 'link' ? 'link' : 'doc'} /> {a.ref}
               </button>
             ))}
           </div>

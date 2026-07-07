@@ -1,5 +1,6 @@
 import type { MeDto, SpaceDto, UserDto } from '@app/shared';
 import { Avatar } from '../components/Avatar';
+import { Icon } from '../components/Icon';
 import { useUserActions } from '../lib/userActions';
 
 /** Your network: everyone in the workspace, who's online, who's blocked. */
@@ -74,7 +75,7 @@ export function PeopleView({
             </p>
           </div>
           <button className="btn primary" onClick={onInvite}>
-            ✉️ Invite someone
+            <Icon name="mail" /> Invite someone
           </button>
         </header>
         <section>

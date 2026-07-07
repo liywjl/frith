@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 
 /** Shared overlay + card shell for the app's dialogs. */
 export function Modal({
@@ -15,6 +15,18 @@ export function Modal({
   onClose: () => void;
   children: ReactNode;
 }) {
+  // Esc closes the dialog. Capture + stopPropagation so the app-level key
+  // handler (thread panel, switcher) doesn't also act on the same press.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.stopPropagation();
+      onClose();
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [onClose]);
+
   return (
     <div className="overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
@@ -24,6 +36,9 @@ export function Modal({
             <div className="modal-title">{title}</div>
             {subtitle && <div className="modal-sub">{subtitle}</div>}
           </div>
+          <button className="modal-x" onClick={onClose} aria-label="Close" title="Close">
+            ✕
+          </button>
         </div>
         {children}
       </div>

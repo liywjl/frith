@@ -1,7 +1,11 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
+import { applyPalette } from './lib/palette';
 import './styles.css';
+
+// Clear any leftover palette-lab override so the saved [data-theme] wins.
+applyPalette(null);
 
 // Inside the desktop shell the window is frameless (macOS traffic lights
 // only) — the stylesheet pads the top strip and adds drag regions.

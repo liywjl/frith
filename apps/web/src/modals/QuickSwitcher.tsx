@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { ChannelDto, UserDto } from '@app/shared';
+import { Icon } from '../components/Icon';
 
 type Item =
   | { kind: 'channel'; channel: ChannelDto; label: string }
@@ -93,13 +94,11 @@ export function QuickSwitcher({
               onClick={() => choose(item)}
             >
               <span className="switcher-icon">
-                {item.kind === 'channel'
-                  ? item.channel.type === 'public'
-                    ? '#'
-                    : item.channel.type === 'private'
-                      ? '🔒'
-                      : '@'
-                  : '@'}
+                {item.kind === 'channel' ? (
+                  item.channel.type === 'public' ? '#' : item.channel.type === 'private' ? <Icon name="lock" /> : '@'
+                ) : (
+                  '@'
+                )}
               </span>
               <span className="side-label">{item.label}</span>
               {item.kind === 'user' && (

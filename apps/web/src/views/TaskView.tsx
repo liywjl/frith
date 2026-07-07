@@ -42,7 +42,7 @@ export function TaskView({
       <div className="home-scroll">
         <header className="home-head">
           <h1>Start a task</h1>
-          <p>Describe what you need to do — Lore scopes out who to talk to, what's been discussed, and where the code and docs live.</p>
+          <p>Describe what you need to do — Frith scopes out who to talk to, what's been discussed, and where the code and docs live.</p>
         </header>
 
         <div className="task-input">

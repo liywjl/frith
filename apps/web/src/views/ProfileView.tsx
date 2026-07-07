@@ -1,6 +1,7 @@
 import type { MeDto } from '@app/shared';
 import { api } from '../lib/api';
 import { Avatar } from '../components/Avatar';
+import { Icon } from '../components/Icon';
 import { useProfile } from '../lib/useProfile';
 import { useUserActions } from '../lib/userActions';
 import { ArtifactChips } from '../components/ArtifactChips';
@@ -89,9 +90,10 @@ export function ProfileView({
           </p>
         )}
 
+        <div className="home-columns">
         {(isMe || user.nowPlaying || user.interests.length > 0) && (
           <section className="beyond-work">
-            {user.nowPlaying && <div className="now-playing">🎧 {user.nowPlaying}</div>}
+            {user.nowPlaying && <div className="now-playing"><Icon name="headphones" /> {user.nowPlaying}</div>}
             <div className="profile-chips">
               {(isMe ? me.interests : user.interests).map((i) => (
                 <button key={i} className="interest-chip" title={`See who else is into ${i}`} onClick={() => openTag(i)}>
@@ -215,6 +217,7 @@ export function ProfileView({
           </div>
           <p className="profile-privacy">Profiles only show activity from channels you can read — never direct messages.</p>
         </section>
+        </div>
       </div>
     </main>
   );

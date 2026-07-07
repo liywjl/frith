@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   THEMES,
-  type AddonDto,
+  type DocDto,
   type ChannelDto,
   type MeDto,
   type MessageDto,
@@ -27,26 +27,30 @@ import { ProfileView } from './views/ProfileView';
 import { TaskView } from './views/TaskView';
 import { SpaceModal } from './modals/SpaceModal';
 import { StorageModal } from './modals/StorageModal';
-import { LibraryModal } from './modals/LibraryModal';
+import { DevicesModal } from './modals/DevicesModal';
+import { PaletteModal } from './modals/PaletteModal';
 import { ProfilePanel } from './panels/ProfilePanel';
 import { CallPanel } from './panels/CallPanel';
 import { CallManager } from './lib/call';
+import { CallRecorder } from './lib/record';
 import type { SlashCommand } from './components/Composer';
+import { Avatar } from './components/Avatar';
+import { Icon } from './components/Icon';
 import { Logo } from './components/Logo';
 import { PeopleView } from './views/PeopleView';
 import { TagModal } from './modals/TagModal';
 import { UserActionsContext, type UserActions } from './lib/userActions';
 import { SpaceRail } from './components/SpaceRail';
 import { FilesView } from './views/FilesView';
-import { AddonView } from './views/AddonView';
-import { AddonModal } from './modals/AddonModal';
+import { DocView } from './views/DocView';
+import { DocModal } from './modals/DocModal';
 
 type View =
   | { kind: 'home' }
   | { kind: 'task' }
   | { kind: 'people' }
   | { kind: 'files' }
-  | { kind: 'addon'; addonId: string }
+  | { kind: 'doc'; docId: string }
   | { kind: 'channel' }
   | { kind: 'profile'; userId: string };
 
@@ -63,7 +67,10 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    document.documentElement.dataset.theme = me?.theme ?? 'ember';
+    // Profiles saved before a theme was retired fall back to the default.
+    const theme = me?.theme;
+    document.documentElement.dataset.theme =
+      theme && (THEMES as readonly string[]).includes(theme) ? theme : 'ocean';
   }, [me?.theme]);
 
   if (!checked) return null;
@@ -78,8 +85,6 @@ export function App() {
   return <Workspace me={me} onMeChange={setMe} />;
 }
 
-const WELCOME_EMOJIS = ['🛼', '🎸', '🦉', '🌊', '🔥', '🌸', '🧭', '☕', '🐙', '🌵', '🎨', '⚡'];
-
 function Login({ onLogin }: { onLogin: () => void }) {
   const [users, setUsers] = useState<UserDto[]>([]);
   const [space, setSpace] = useState<SpaceDto | null>(null);
@@ -87,9 +92,20 @@ function Login({ onLogin }: { onLogin: () => void }) {
   const [name, setName] = useState('');
   const [handle, setHandle] = useState('');
   const [handleTouched, setHandleTouched] = useState(false);
-  const [emoji, setEmoji] = useState(WELCOME_EMOJIS[Math.floor(Math.random() * WELCOME_EMOJIS.length)]!);
   const [error, setError] = useState<string | null>(null);
   const [spaceOpen, setSpaceOpen] = useState(false);
+  const [linking, setLinking] = useState(false);
+  const [linkCode, setLinkCode] = useState('');
+
+  async function link() {
+    setError(null);
+    try {
+      await api.importIdentity(linkCode.trim());
+      onLogin();
+    } catch {
+      setError('That code did not match anyone in this space.');
+    }
+  }
 
   useEffect(() => {
     api.users().then(setUsers).catch(console.error);
@@ -108,7 +124,7 @@ function Login({ onLogin }: { onLogin: () => void }) {
     if (!name.trim()) return;
     setError(null);
     try {
-      await api.createProfile({ name, handle: handle || suggestedHandle(name), avatarEmoji: emoji });
+      await api.createProfile({ name, handle: handle || suggestedHandle(name) });
       onLogin();
     } catch (err) {
       setError(err instanceof Error && err.message.includes('409') ? 'That handle is taken here.' : 'Could not create the profile.');
@@ -117,89 +133,130 @@ function Login({ onLogin }: { onLogin: () => void }) {
 
   const firstEver = users.length === 0;
 
+  // The left column is fixed (brand + whatever action is in flight); only
+  // the account list on the right scrolls.
   return (
     <div className="login">
-      <h1 className="login-brand">
-        <Logo size={40} /> Lore
-      </h1>
-      <p>
-        {space ? <b>{space.name}</b> : 'This space'} lives on this device — nothing goes to a server, and only
-        people with the invite can connect.
-      </p>
+      <aside className="login-side">
+        <h1 className="login-brand">
+          <Logo size={40} /> Frith
+        </h1>
+        <p>
+          {space ? <b>{space.name}</b> : 'This space'} lives on this device — nothing goes to a server, and only
+          people with the invite can connect.
+        </p>
 
-      {(creating || firstEver) && (
-        <div className="login-create">
-          {firstEver && <p className="login-first">You're the first one here. Make yourself a profile to get started.</p>}
-          <div className="login-emoji-row">
-            {WELCOME_EMOJIS.map((e) => (
-              <button key={e} className={`login-emoji-pick ${emoji === e ? 'active' : ''}`} onClick={() => setEmoji(e)}>
-                {e}
+        {(creating || (firstEver && !linking)) && (
+          <div className="login-create">
+            {firstEver && <p className="login-first">You're the first one here. Make yourself a profile to get started.</p>}
+            <label className="field">
+              <span>Your name</span>
+              <input
+                autoFocus
+                value={name}
+                placeholder="e.g. Mika Sørensen"
+                onChange={(e) => {
+                  setName(e.target.value);
+                  if (!handleTouched) setHandle(suggestedHandle(e.target.value));
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') void create();
+                }}
+              />
+            </label>
+            <label className="field">
+              <span>Handle</span>
+              <input
+                value={handle}
+                placeholder="mika"
+                onChange={(e) => {
+                  setHandleTouched(true);
+                  setHandle(e.target.value);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') void create();
+                }}
+              />
+            </label>
+            {error && <div className="form-error">{error}</div>}
+            <div className="login-create-actions">
+              {!firstEver && (
+                <button className="btn" onClick={() => setCreating(false)}>
+                  Back
+                </button>
+              )}
+              <button className="btn primary" disabled={!name.trim()} onClick={() => void create()}>
+                Join as {name.trim() ? `@${handle || suggestedHandle(name)}` : '…'}
               </button>
-            ))}
+            </div>
           </div>
-          <label className="field">
-            <span>Your name</span>
-            <input
-              autoFocus
-              value={name}
-              placeholder="e.g. Mika Sørensen"
-              onChange={(e) => {
-                setName(e.target.value);
-                if (!handleTouched) setHandle(suggestedHandle(e.target.value));
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') void create();
-              }}
-            />
-          </label>
-          <label className="field">
-            <span>Handle</span>
-            <input
-              value={handle}
-              placeholder="mika"
-              onChange={(e) => {
-                setHandleTouched(true);
-                setHandle(e.target.value);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') void create();
-              }}
-            />
-          </label>
-          {error && <div className="form-error">{error}</div>}
-          <div className="login-create-actions">
-            {!firstEver && (
-              <button className="btn" onClick={() => setCreating(false)}>
+        )}
+
+        {linking && (
+          <div className="login-create">
+            <label className="field">
+              <span>Identity code from your other device</span>
+              <input
+                autoFocus
+                value={linkCode}
+                placeholder="frith-id:…"
+                onChange={(e) => setLinkCode(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') void link();
+                }}
+              />
+            </label>
+            {error && <div className="form-error">{error}</div>}
+            <div className="login-create-actions">
+              <button className="btn" onClick={() => setLinking(false)}>
                 Back
               </button>
-            )}
-            <button className="btn primary" disabled={!name.trim()} onClick={() => void create()}>
-              {emoji} Join as {name.trim() ? `@${handle || suggestedHandle(name)}` : '…'}
+              <button className="btn primary" disabled={!linkCode.trim()} onClick={() => void link()}>
+                Link this device
+              </button>
+            </div>
+          </div>
+        )}
+
+        {!creating && !firstEver && !linking && (
+          <div className="login-actions">
+            <button className="btn primary login-new" onClick={() => setCreating(true)}>
+              <Icon name="sparkle" /> I'm new — create my profile
+            </button>
+            <button className="login-space-link" onClick={() => setLinking(true)}>
+              Already use Frith on another device? Link this one →
+            </button>
+            <button className="login-space-link" onClick={() => setSpaceOpen(true)}>
+              {space ? 'Create or join a different space →' : 'Create or join a space →'}
             </button>
           </div>
-        </div>
-      )}
+        )}
+        {firstEver && !linking && (
+          <div className="login-actions">
+            <button className="login-space-link" onClick={() => setLinking(true)}>
+              Already use Frith on another device? Link this one →
+            </button>
+            <button className="login-space-link" onClick={() => setSpaceOpen(true)}>
+              {space ? 'Create or join a different space →' : 'Create or join a space →'}
+            </button>
+          </div>
+        )}
+      </aside>
 
-      {!creating && !firstEver && (
-        <>
+      {!firstEver && (
+        <div className="login-content">
+          <div className="login-list-h">Sign in as (dev)</div>
           <div className="login-list">
             {users.map((u) => (
               <button key={u.id} onClick={() => api.login(u.handle).then(onLogin)}>
-                <span className="login-emoji">{u.avatarEmoji ?? '·'}</span>
+                <Avatar name={u.name} />
                 {u.name} <span className="handle">@{u.handle}</span>
                 <span className="login-title">{[u.title, u.team].filter(Boolean).join(' · ')}</span>
               </button>
             ))}
           </div>
-          <button className="btn primary login-new" onClick={() => setCreating(true)}>
-            ✨ I'm new — create my profile
-          </button>
-        </>
+        </div>
       )}
-
-      <button className="login-space-link" onClick={() => setSpaceOpen(true)}>
-        {space ? 'Create or join a different space →' : 'Create or join a space →'}
-      </button>
       {spaceOpen && (
         <SpaceModal
           mode="new"
@@ -224,7 +281,8 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [askOpen, setAskOpen] = useState(false);
   const [storageOpen, setStorageOpen] = useState(false);
-  const [libraryOpen, setLibraryOpen] = useState(false);
+  const [devicesOpen, setDevicesOpen] = useState(false);
+  const [palettesOpen, setPalettesOpen] = useState(false);
   const [profileEditOpen, setProfileEditOpen] = useState(false);
   const [groupOpen, setGroupOpen] = useState(false);
   const [createChannelOpen, setCreateChannelOpen] = useState(false);
@@ -232,43 +290,112 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
   const [space, setSpace] = useState<SpaceDto | null>(null);
   const [openedTag, setOpenedTag] = useState<string | null>(null);
   const [scheduled, setScheduled] = useState<ScheduledMessageDto[]>([]);
-  const [addons, setAddons] = useState<AddonDto[]>([]);
-  const [addonModalOpen, setAddonModalOpen] = useState(false);
+  const [docs, setDocs] = useState<DocDto[]>([]);
+  const [docModalOpen, setDocModalOpen] = useState(false);
 
   // Campfires (calls)
   const [calls, setCalls] = useState<Record<string, string[]>>({});
+  const [callRecorders, setCallRecorders] = useState<Record<string, string[]>>({});
   const [myCall, setMyCall] = useState<{ channelId: string; withVideo: boolean } | null>(null);
   const [callStreams, setCallStreams] = useState<Map<string, MediaStream>>(new Map());
+  const [callScreens, setCallScreens] = useState<Map<string, MediaStream>>(new Map());
   const [muted, setMuted] = useState(false);
   const [videoOn, setVideoOn] = useState(true);
+  const [sharing, setSharing] = useState(false);
+  const [recording, setRecording] = useState(false);
   const callManager = useRef<CallManager | null>(null);
+  const callRecorder = useRef<CallRecorder | null>(null);
 
   useEffect(() => {
     api.space().then(setSpace).catch(console.error);
-    api.calls().then(setCalls).catch(console.error);
+    api
+      .calls()
+      .then(({ calls, recorders }) => {
+        setCalls(calls);
+        setCallRecorders(recorders);
+      })
+      .catch(console.error);
     api.scheduled().then(setScheduled).catch(console.error);
-    api.addons().then(setAddons).catch(console.error);
+    api.docs().then(setDocs).catch(console.error);
   }, []);
 
   const startCall = useCallback(async (channelId: string, withVideo: boolean) => {
     if (callManager.current) return; // one campfire at a time
     const { participants } = await api.joinCall(channelId);
-    const manager = new CallManager(setCallStreams);
+    const manager = new CallManager((streams, screens) => {
+      setCallStreams(streams);
+      setCallScreens(screens);
+      // Anyone arriving mid-recording gets mixed into the file too.
+      for (const stream of streams.values()) callRecorder.current?.addAudio(stream);
+    });
+    manager.onShareEnd = () => setSharing(false);
     callManager.current = manager;
     setMuted(false);
     setVideoOn(withVideo);
+    setSharing(false);
+    setRecording(false);
     setMyCall({ channelId, withVideo });
     await manager.join(channelId, withVideo, participants);
+    // The local stream exists only now — nudge a render so the self tile paints.
+    setMyCall((cur) => (cur ? { ...cur } : cur));
   }, []);
+
+  /** Stop the recorder and post the file to the channel it recorded. */
+  const finishRecording = useCallback(async (channelId: string) => {
+    const recorder = callRecorder.current;
+    callRecorder.current = null;
+    setRecording(false);
+    void api.setCallRecording(channelId, false).catch(() => undefined);
+    const blob = await recorder?.stop();
+    if (!blob) return;
+    const stamp = new Date().toISOString().slice(0, 16).replace('T', ' ').replace(':', '.');
+    const ext = blob.type.startsWith('video/') ? 'webm' : 'weba';
+    const file = new File([blob], `campfire ${stamp}.${ext}`, { type: blob.type });
+    try {
+      await api.attach(channelId, file, 'Campfire recording');
+    } catch {
+      // The channel may be archived or the upload over budget — keep the
+      // recording alive as a download instead of dropping it silently.
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = file.name;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  }, []);
+
+  const toggleRecord = useCallback(async () => {
+    if (!myCall) return;
+    if (recording) {
+      await finishRecording(myCall.channelId);
+      return;
+    }
+    const consent = window.confirm(
+      'Record this campfire?\n\nEveryone in the call (and anyone joining) will see that you are recording. When you stop, the recording is posted to the channel.',
+    );
+    if (!consent) return;
+    const manager = callManager.current;
+    const recorder = new CallRecorder();
+    const stage = manager?.screen ?? [...callScreens.values()][0] ?? null;
+    if (!recorder.start([manager?.local ?? null, ...callStreams.values()], stage)) return;
+    callRecorder.current = recorder;
+    setRecording(true);
+    void api.setCallRecording(myCall.channelId, true).catch(() => undefined);
+  }, [myCall, recording, callStreams, callScreens, finishRecording]);
 
   const leaveCall = useCallback(() => {
     if (!myCall) return;
+    // A recording in flight is finished and posted, never dropped.
+    if (callRecorder.current) void finishRecording(myCall.channelId);
     void api.leaveCall(myCall.channelId);
     callManager.current?.leave();
     callManager.current = null;
     setMyCall(null);
     setCallStreams(new Map());
-  }, [myCall]);
+    setCallScreens(new Map());
+    setSharing(false);
+  }, [myCall, finishRecording]);
 
   useEffect(() => {
     let cancelled = false;
@@ -334,11 +461,11 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
     setView({ kind: 'files' });
   }, [closeOverlays]);
 
-  const openAddon = useCallback(
-    (addonId: string) => {
+  const openDoc = useCallback(
+    (docId: string) => {
       closeOverlays();
       setThreadRoot(null);
-      setView({ kind: 'addon', addonId });
+      setView({ kind: 'doc', docId });
     },
     [closeOverlays],
   );
@@ -394,17 +521,27 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
         void callManager.current?.handleSignal(event.from, event.payload);
         return;
       }
+      if (event.type === 'call.recording') {
+        setCallRecorders((cur) => {
+          const next = { ...cur };
+          if (event.recorders.length > 0) next[event.channelId] = event.recorders;
+          else delete next[event.channelId];
+          return next;
+        });
+        return;
+      }
+      if (event.type === 'call.draw') return; // the screen stage renders ink on its own socket
       if (event.type === 'reaction.changed') {
         if (event.channelId === activeId) {
           setMessages((cur) => applyReaction(cur, event, me.id));
         }
         return;
       }
-      if (event.type === 'addons.changed') {
-        void api.addons().then((next) => {
-          setAddons(next);
-          // If the tab we're looking at was removed, fall back home.
-          setView((cur) => (cur.kind === 'addon' && !next.some((a) => a.id === cur.addonId) ? { kind: 'home' } : cur));
+      if (event.type === 'docs.changed') {
+        void api.docs().then((next) => {
+          setDocs(next);
+          // If the doc we're looking at was removed, fall back home.
+          setView((cur) => (cur.kind === 'doc' && !next.some((d) => d.id === cur.docId) ? { kind: 'home' } : cur));
         });
         return;
       }
@@ -511,11 +648,9 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
         setSwitcherOpen(false);
         setAskOpen((v) => !v);
       } else if (e.key === 'Escape') {
+        // Modal-based dialogs close themselves (Modal.tsx, capture phase).
         if (switcherOpen) setSwitcherOpen(false);
         else if (askOpen) setAskOpen(false);
-        else if (profileEditOpen) setProfileEditOpen(false);
-        else if (groupOpen) setGroupOpen(false);
-        else if (createChannelOpen) setCreateChannelOpen(false);
         else setThreadRoot(null);
       } else if (e.altKey && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
         e.preventDefault();
@@ -528,7 +663,7 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [channels, activeId, openChannel, switcherOpen, askOpen, profileEditOpen, groupOpen, createChannelOpen]);
+  }, [channels, activeId, openChannel, switcherOpen, askOpen]);
 
   const active = channels.find((c) => c.id === activeId) ?? null;
 
@@ -568,7 +703,9 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
     { name: 'task', hint: 'Scope a task', run: () => openTask() },
     { name: 'home', hint: 'Back to your digest', run: () => openHome() },
     { name: 'storage', hint: 'What this device stores & auto-downloads', run: () => setStorageOpen(true) },
-    { name: 'library', hint: 'Local folders & repos Ask can cite', run: () => setLibraryOpen(true) },
+    { name: 'devices', hint: 'Link another device to your identity', run: () => setDevicesOpen(true) },
+    { name: 'palettes', hint: 'Try on colour combos, live', run: () => setPalettesOpen(true) },
+    { name: 'logout', hint: 'Back to the profile picker', run: () => void api.logout().then(() => window.location.reload()) },
     {
       name: 'archive',
       hint: 'Archive this channel (stays searchable)',
@@ -598,34 +735,33 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
         taskActive={view.kind === 'task'}
         peopleActive={view.kind === 'people'}
         filesActive={view.kind === 'files'}
-        addons={addons}
-        activeAddonId={view.kind === 'addon' ? view.addonId : null}
+        docs={docs}
+        activeDocId={view.kind === 'doc' ? view.docId : null}
         space={space}
         liveCalls={new Set(Object.keys(calls).filter((id) => (calls[id] ?? []).length > 0))}
         onHome={openHome}
         onTask={openTask}
         onPeople={openPeople}
         onFiles={openFiles}
-        onAddon={openAddon}
-        onNewAddon={() => setAddonModalOpen(true)}
+        onDoc={openDoc}
+        onNewDoc={() => setDocModalOpen(true)}
         onOpenSpace={() => setSpaceOpen('share')}
         onSelect={openChannel}
         onNewGroup={() => setGroupOpen(true)}
         onNewChannel={() => setCreateChannelOpen(true)}
         onTogglePin={(id, pinned) => void togglePin(id, pinned)}
         onReorderPins={(ids) => void reorderPins(ids)}
+        onMeChange={onMeChange}
       />
       {view.kind === 'files' && <FilesView onOpenChannel={openChannel} />}
-      {view.kind === 'addon' &&
-        (() => {
-          const addon = addons.find((a) => a.id === view.addonId);
-          return addon ? (
-            <AddonView
-              addon={addon}
-              onChanged={(next) => setAddons((cur) => cur.map((a) => (a.id === next.id ? next : a)))}
-            />
-          ) : null;
-        })()}
+      {view.kind === 'doc' && (
+        <DocView
+          docId={view.docId}
+          canManage={space?.canManage ?? false}
+          meId={me.id}
+          onRemoved={() => setView({ kind: 'home' })}
+        />
+      )}
       {view.kind === 'people' && (
         <PeopleView
           me={me}
@@ -664,6 +800,7 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
           channel={active}
           messages={messages}
           callParticipants={calls[active.id] ?? []}
+          callRecording={(callRecorders[active.id] ?? []).length > 0}
           inCall={myCall?.channelId === active.id}
           onStartCall={(withVideo) => void startCall(active.id, withVideo)}
           commands={slashCommands}
@@ -728,20 +865,22 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
         />
       )}
       {storageOpen && <StorageModal onClose={() => setStorageOpen(false)} />}
-      {libraryOpen && <LibraryModal onClose={() => setLibraryOpen(false)} />}
-      {addonModalOpen && (
-        <AddonModal
-          onCreated={(addon) => {
-            setAddons((cur) => [...cur.filter((a) => a.id !== addon.id), addon]);
-            setAddonModalOpen(false);
-            openAddon(addon.id);
+      {devicesOpen && <DevicesModal onClose={() => setDevicesOpen(false)} />}
+      {palettesOpen && <PaletteModal onClose={() => setPalettesOpen(false)} />}
+      {docModalOpen && (
+        <DocModal
+          onCreated={(doc) => {
+            setDocs((cur) => [doc, ...cur.filter((d) => d.id !== doc.id)]);
+            setDocModalOpen(false);
+            openDoc(doc.id);
           }}
-          onClose={() => setAddonModalOpen(false)}
+          onClose={() => setDocModalOpen(false)}
         />
       )}
       {openedTag && <TagModal tag={openedTag} users={users} meId={me.id} onClose={() => setOpenedTag(null)} />}
       {myCall && (
         <CallPanel
+          channelId={myCall.channelId}
           channelLabel={(() => {
             const c = channels.find((ch) => ch.id === myCall.channelId);
             return c ? (c.type === 'dm' ? (c.dmPartnerNames ?? []).join(', ') : `# ${c.name}`) : 'campfire';
@@ -751,9 +890,25 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
           meEmoji={me.avatarEmoji}
           participants={calls[myCall.channelId] ?? [me.id]}
           streams={callStreams}
+          screens={callScreens}
           localStream={callManager.current?.local ?? null}
+          localScreen={callManager.current?.screen ?? null}
           muted={muted}
           videoOn={videoOn}
+          sharing={sharing}
+          recorderIds={callRecorders[myCall.channelId] ?? []}
+          recording={recording}
+          onToggleRecord={() => void toggleRecord()}
+          onPostTranscript={(text) => void api.send(myCall.channelId, `Transcript (local, experimental):\n${text}`)}
+          onToggleShare={() => {
+            const manager = callManager.current;
+            if (!manager) return;
+            if (sharing) {
+              void manager.stopShare().then(() => setSharing(false));
+            } else {
+              void manager.shareScreen().then((ok) => ok && setSharing(true));
+            }
+          }}
           onToggleMute={() => {
             callManager.current?.setMuted(!muted);
             setMuted(!muted);

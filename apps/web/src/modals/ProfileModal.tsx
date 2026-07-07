@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { THEMES, type MeDto, type ProfilePatch, type Theme } from '@app/shared';
 import { api } from '../lib/api';
+import { applyPalette } from '../lib/palette';
 import { Avatar } from '../components/Avatar';
 import { Modal } from './Modal';
-
-const AVATAR_SUGGESTIONS = ['🦊', '🐙', '🌵', '🚀', '🍕', '🎸', '🧠', '🐝'];
 
 const STATUS_DURATIONS = [
   { label: "Don't clear", minutes: null },
@@ -15,13 +14,12 @@ const STATUS_DURATIONS = [
 ] as const;
 
 const THEME_LABELS: Record<Theme, string> = {
-  ember: 'Ember',
+  ocean: 'Ocean',
   bubbly: 'Bubbly',
   paper: 'Paper',
   midnight: 'Midnight',
   forest: 'Forest',
   sunset: 'Sunset',
-  ocean: 'Ocean',
   mono: 'Mono',
 };
 
@@ -139,23 +137,6 @@ export function ProfileModal({
           </label>
         </div>
 
-        <label className="field">
-          <span>Avatar emoji</span>
-          <div className="emoji-row">
-            <input
-              className="emoji-input"
-              value={form.avatarEmoji}
-              placeholder="🙂"
-              onChange={(e) => set('avatarEmoji')(e.target.value)}
-            />
-            {AVATAR_SUGGESTIONS.map((e) => (
-              <button key={e} className="emoji-pick" onClick={() => set('avatarEmoji')(e)}>
-                {e}
-              </button>
-            ))}
-          </div>
-        </label>
-
         <div className="field-row">
           <label className="field emoji-field">
             <span>Status</span>
@@ -211,24 +192,38 @@ export function ProfileModal({
 
         <div className="field">
           <span>Theme — applies as you click</span>
-          <div className="theme-row">
+          <div className="theme-list">
             {THEMES.map((t) => (
               <button
                 key={t}
-                className={`theme-swatch theme-${t} ${form.theme === t ? 'selected' : ''}`}
+                className={`theme-option ${form.theme === t ? 'selected' : ''}`}
                 onClick={() => {
+                  applyPalette(null); // drop any leftover palette override so the theme actually shows
                   document.documentElement.dataset.theme = t;
                   setForm((f) => ({ ...f, theme: t }));
                 }}
               >
-                <span className="theme-dot" />
-                {THEME_LABELS[t]}
+                <span className="theme-option-name">{THEME_LABELS[t]}</span>
+                {/* Live strip: data-theme re-scopes the CSS vars to this theme. */}
+                <span className="theme-strip" data-theme={t}>
+                  <span style={{ background: 'var(--rail)' }} />
+                  <span style={{ background: 'var(--side)' }} />
+                  <span style={{ background: 'var(--paper)' }} />
+                  <span style={{ background: 'var(--ai)' }} />
+                  <span style={{ background: 'var(--ink)' }} />
+                </span>
               </button>
             ))}
           </div>
         </div>
 
         <div className="modal-actions">
+          <button
+            className="btn logout-btn"
+            onClick={() => void api.logout().then(() => window.location.reload())}
+          >
+            Log out
+          </button>
           <button className="btn" onClick={cancel}>
             Cancel &amp; revert
           </button>

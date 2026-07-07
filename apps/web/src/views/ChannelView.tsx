@@ -1,11 +1,13 @@
-import { Fragment, useEffect, useRef, useState } from 'react';
+import { Fragment, useRef, useState } from 'react';
 import type { ChannelDto, MessageDto, ScheduledMessageDto } from '@app/shared';
 import { api } from '../lib/api';
 import { Avatar } from '../components/Avatar';
-import { Composer, type SlashCommand } from '../components/Composer';
+import { Composer, type ComposerHandle, type SlashCommand } from '../components/Composer';
+import { Icon } from '../components/Icon';
 import { Message } from '../components/Message';
 import { MembersModal } from '../modals/MembersModal';
 import { useUserActions } from '../lib/userActions';
+import { useWindowedFeed } from '../lib/useWindowedFeed';
 
 const dayFormat = new Intl.DateTimeFormat(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
 
@@ -25,6 +27,7 @@ export function ChannelView({
   channel,
   messages,
   callParticipants,
+  callRecording,
   inCall,
   onStartCall,
   commands,
@@ -38,6 +41,8 @@ export function ChannelView({
   channel: ChannelDto;
   messages: MessageDto[];
   callParticipants: string[];
+  /** Someone in the live campfire is recording — say so before people join. */
+  callRecording: boolean;
   inCall: boolean;
   onStartCall: (withVideo: boolean) => void;
   commands: SlashCommand[];
@@ -51,11 +56,17 @@ export function ChannelView({
 }) {
   const { getUser } = useUserActions();
   const feedRef = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<ComposerHandle>(null);
+  const dragDepth = useRef(0);
   const [membersOpen, setMembersOpen] = useState(false);
+  const [dragging, setDragging] = useState(false);
 
-  useEffect(() => {
-    feedRef.current?.scrollTo({ top: feedRef.current.scrollHeight });
-  }, [messages, channel.id]);
+  // Dropping a file anywhere in the channel stages it on the composer. We only
+  // engage for actual files so text/link drags fall through untouched.
+  const canDrop = !channel.archivedAt;
+  const hasFiles = (e: React.DragEvent) => e.dataTransfer.types.includes('Files');
+
+  const { visible, hiddenCount, onScroll } = useWindowedFeed(feedRef, messages, channel.id);
 
   const label = channel.type === 'dm' ? channel.dmPartnerNames?.join(', ') : `# ${channel.name}`;
   const soloPartner =
@@ -64,35 +75,71 @@ export function ChannelView({
       : undefined;
 
   return (
-    <main className="main">
+    <main
+      className="main"
+      onDragEnter={(e) => {
+        if (!canDrop || !hasFiles(e)) return;
+        e.preventDefault();
+        dragDepth.current += 1;
+        setDragging(true);
+      }}
+      onDragOver={(e) => {
+        if (canDrop && hasFiles(e)) e.preventDefault();
+      }}
+      onDragLeave={() => {
+        if (!dragging) return;
+        dragDepth.current -= 1;
+        if (dragDepth.current <= 0) {
+          dragDepth.current = 0;
+          setDragging(false);
+        }
+      }}
+      onDrop={(e) => {
+        if (!canDrop || !hasFiles(e)) return;
+        e.preventDefault();
+        dragDepth.current = 0;
+        setDragging(false);
+        composerRef.current?.addFiles(e.dataTransfer.files);
+      }}
+    >
+      {dragging && (
+        <div className="drop-overlay">
+          <Icon name="paperclip" size={26} /> Drop to attach
+        </div>
+      )}
       <header className="topbar">
         {soloPartner && <Avatar name={soloPartner.name} emoji={soloPartner.avatarEmoji} />}
         <span className="chan">{label}</span>
         {channel.archivedAt && <span className="archived-chip">archived</span>}
         {channel.type !== 'public' && (
           <button className="members-btn" title="Who's here — add or remove people" onClick={() => setMembersOpen(true)}>
-            👥
+            <Icon name="people" />
           </button>
         )}
         {channel.topic && <span className="topic">{channel.topic}</span>}
         {!channel.archivedAt && !inCall && (
           callParticipants.length > 0 ? (
-            <button className="campfire-btn live" onClick={() => onStartCall(false)}>
-              🔥 Join · {callParticipants.length}
+            <button
+              className="campfire-btn live"
+              onClick={() => onStartCall(false)}
+              title={callRecording ? 'This call is being recorded' : undefined}
+            >
+              <Icon name="flame" /> Join · {callParticipants.length}
+              {callRecording && <span className="rec-dot" title="This call is being recorded" />}
             </button>
           ) : (
             <span className="campfire-start">
               <button className="campfire-btn" title="Start a voice campfire" onClick={() => onStartCall(false)}>
-                🔥 🎙
+                <Icon name="phone" />
               </button>
               <button className="campfire-btn" title="Start a video campfire" onClick={() => onStartCall(true)}>
-                🎥
+                <Icon name="video" />
               </button>
             </span>
           )
         )}
         <button className="askbtn" onClick={onOpenAsk}>
-          <span className="askbtn-hint">Ask Lore — people, threads, decisions…</span>
+          <span className="askbtn-hint">Ask Frith — people, threads, decisions…</span>
           <kbd>⌘J</kbd>
         </button>
         {channel.type !== 'dm' && !channel.archivedAt && (
@@ -101,13 +148,14 @@ export function ChannelView({
             title="Archive this channel — it becomes read-only but stays searchable"
             onClick={() => void api.setArchived(channel.id, true)}
           >
-            🗄
+            <Icon name="archive" />
           </button>
         )}
       </header>
-      <div className="feed" ref={feedRef}>
-        {messages.map((m, i) => {
-          const prev = messages[i - 1];
+      <div className="feed" ref={feedRef} onScroll={onScroll}>
+        {hiddenCount > 0 && <div className="feed-more">↑ {hiddenCount} earlier messages</div>}
+        {visible.map((m, i) => {
+          const prev = i === 0 ? messages[messages.length - visible.length - 1] : visible[i - 1];
           const newDay = isNewDay(prev, m);
           return (
             <Fragment key={m.id}>
@@ -119,6 +167,7 @@ export function ChannelView({
               <Message
                 message={m}
                 compact={!newDay && isCompact(prev, m)}
+                own={m.authorId === meId}
                 onOpenThread={onOpenThread}
               />
             </Fragment>
@@ -141,7 +190,7 @@ export function ChannelView({
             <div className="scheduled-strip">
               {scheduled.map((s) => (
                 <span key={s.id} className="scheduled-chip">
-                  ⏱ “{s.body.length > 40 ? `${s.body.slice(0, 40)}…` : s.body}” sends{' '}
+                  <Icon name="clock" /> “{s.body.length > 40 ? `${s.body.slice(0, 40)}…` : s.body}” sends{' '}
                   {new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' }).format(new Date(s.sendAt))}
                   <button title="Cancel" onClick={() => onCancelScheduled(s.id)}>
                     ✕
@@ -150,7 +199,7 @@ export function ChannelView({
               ))}
             </div>
           )}
-          <Composer channelId={channel.id} placeholder={`Message ${label}`} commands={commands} />
+          <Composer ref={composerRef} channelId={channel.id} placeholder={`Message ${label}`} commands={commands} />
         </>
       )}
       {membersOpen && (

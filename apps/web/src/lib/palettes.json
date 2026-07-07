@@ -1,0 +1,82 @@
+[
+ {
+  "name": "Stormy morning",
+  "cat": "Monochromatic",
+  "colors": [
+   "#6A89A7",
+   "#BDDDFC",
+   "#88BDF2",
+   "#384959"
+  ]
+ },
+ {
+  "name": "Mossy hollow",
+  "cat": "Monochromatic",
+  "colors": [
+   "#636B2F",
+   "#BAC095",
+   "#D4DE95",
+   "#3D4127"
+  ]
+ },
+ {
+  "name": "Blue eclipse",
+  "cat": "Monochromatic",
+  "colors": [
+   "#272757",
+   "#8686AC",
+   "#505081",
+   "#0F0E47"
+  ]
+ },
+ {
+  "name": "Lush forest",
+  "cat": "Monochromatic",
+  "colors": [
+   "#2E6F40",
+   "#CFFFDC",
+   "#68BA7F",
+   "#253D2C"
+  ]
+ },
+ {
+  "name": "Green juice",
+  "cat": "Monochromatic",
+  "colors": [
+   "#4CBB17",
+   "#48872B",
+   "#39542C",
+   "#293325"
+  ]
+ },
+ {
+  "name": "Chili spice",
+  "cat": "Monochromatic",
+  "colors": [
+   "#CD1C18",
+   "#FFA896",
+   "#9B1313",
+   "#38000A"
+  ]
+ },
+ {
+  "name": "Chocolate truffle",
+  "cat": "Monochromatic",
+  "colors": [
+   "#713600",
+   "#C05800",
+   "#FDFBD4",
+   "#38240D"
+  ]
+ },
+ {
+  "name": "Ink wash",
+  "cat": "Monochromatic",
+  "colors": [
+   "#4A4A4A",
+   "#CBCBCB",
+   "#FFFFE3",
+   "#6D8196"
+  ]
+ }
+]
