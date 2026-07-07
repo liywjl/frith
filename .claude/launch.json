@@ -20,6 +20,24 @@
       "port": 5174
     },
     {
+      "name": "api-preview",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "cd apps/server && FRITH_DATA=.frith-data-preview FRITH_FILES=.data/uploads-preview PORT=3210 exec pnpm exec tsx watch src/index.ts"
+      ],
+      "port": 3210
+    },
+    {
+      "name": "web-preview",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "cd apps/web && FRITH_API_PORT=3210 exec pnpm exec vite --port 5273 --strictPort"
+      ],
+      "port": 5273
+    },
+    {
       "name": "site",
       "runtimeExecutable": "python3",
       "runtimeArgs": ["-m", "http.server", "4173", "-d", "site"],
