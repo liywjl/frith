@@ -95,7 +95,7 @@ export function Sidebar({
 
   // Derived lists change only when the rosters do — not on every hover,
   // popover, or drag re-render of the sidebar.
-  const { byId, pinnedChannels, rooms, archived, dms, others } = useMemo(() => {
+  const { byId, pinnedChannels, rooms, archived, dmEntries } = useMemo(() => {
     const byId = new Map(users.map((u) => [u.id, u]));
     const pinnedChannels = channels
       .filter((c) => c.pinned !== null && !c.archivedAt)
@@ -117,7 +117,13 @@ export function Sidebar({
         .flatMap((c) => c.dmPartnerIds ?? []),
     );
     const others = users.filter((u) => u.id !== me.id && !soloPartnerIds.has(u.id));
-    return { byId, pinnedChannels, rooms, archived, dms, others };
+    // One alphabetical list, existing conversations and not-yet-messaged
+    // people interleaved — so opening a DM never teleports the row.
+    const dmEntries = [
+      ...dms.map((c) => ({ label: c.dmPartnerNames?.join(', ') ?? c.name, channel: c as ChannelDto, user: null })),
+      ...others.map((u) => ({ label: u.name, channel: null, user: u })),
+    ].sort((a, b) => a.label.localeCompare(b.label));
+    return { byId, pinnedChannels, rooms, archived, dmEntries };
   }, [channels, users, me.id]);
 
   function ChannelRow({ c, draggable }: { c: ChannelDto; draggable?: boolean }) {
@@ -278,25 +284,23 @@ export function Sidebar({
               <Icon name="plus" />
             </button>
           </div>
-          {!collapsed.has('dms') && (
-            <>
-              {dms.map((c) => (
-                <ChannelRow key={c.id} c={c} />
-              ))}
-              {others.map((u) => (
+          {!collapsed.has('dms') &&
+            dmEntries.map((entry) =>
+              entry.channel ? (
+                <ChannelRow key={entry.channel.id} c={entry.channel} />
+              ) : (
                 <button
-                  key={u.id}
+                  key={entry.user.id}
                   className="side-item muted"
-                  title={`Message ${u.name}`}
-                  onClick={() => openDm(u.id)}
+                  title={`Message ${entry.user.name}`}
+                  onClick={() => openDm(entry.user.id)}
                 >
-                  <Presence online={online.has(u.id)} />
-                  <span className="side-label">{u.name}</span>
-                  <Status user={u} />
+                  <Presence online={online.has(entry.user.id)} />
+                  <span className="side-label">{entry.user.name}</span>
+                  <Status user={entry.user} />
                 </button>
-              ))}
-            </>
-          )}
+              ),
+            )}
         </div>
       </div>
 
