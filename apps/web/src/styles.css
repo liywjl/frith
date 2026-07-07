@@ -204,12 +204,14 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
   display: flex; align-items: center; gap: 12px;
   padding: 10px 18px; border-bottom: 1px solid var(--line-soft); flex: none;
 }
+/* Name above, description below — each one line, hover for the full text. */
+.topbar-id { display: flex; flex-direction: column; min-width: 0; flex: 0 1 auto; }
 .topbar .chan {
   font-weight: 650; white-space: nowrap;
   min-width: 0; overflow: hidden; text-overflow: ellipsis;
 }
 .topbar .topic {
-  color: var(--ink-soft); font-size: 13px; min-width: 0;
+  color: var(--ink-soft); font-size: 12.5px; min-width: 0;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .topbar .close { color: var(--ink-soft); margin-left: auto; }

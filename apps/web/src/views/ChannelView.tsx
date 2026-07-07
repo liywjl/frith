@@ -109,14 +109,22 @@ export function ChannelView({
       )}
       <header className="topbar">
         {soloPartner && <Avatar name={soloPartner.name} emoji={soloPartner.avatarEmoji} />}
-        <span className="chan">{label}</span>
+        <span className="topbar-id">
+          <span className="chan" title={label}>
+            {label}
+          </span>
+          {channel.topic && (
+            <span className="topic" title={channel.topic}>
+              {channel.topic}
+            </span>
+          )}
+        </span>
         {channel.archivedAt && <span className="archived-chip">archived</span>}
         {channel.type !== 'public' && (
           <button className="members-btn" title="Who's here — add or remove people" onClick={() => setMembersOpen(true)}>
             <Icon name="people" />
           </button>
         )}
-        {channel.topic && <span className="topic">{channel.topic}</span>}
         {!channel.archivedAt && !inCall && (
           callParticipants.length > 0 ? (
             <button
