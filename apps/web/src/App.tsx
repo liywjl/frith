@@ -54,6 +54,8 @@ type View =
 export function App() {
   const [me, setMe] = useState<MeDto | null>(null);
   const [checked, setChecked] = useState(false);
+  // Creating a space needs no account — anyone can start their own.
+  const [newSpaceOpen, setNewSpaceOpen] = useState(false);
 
   useEffect(() => {
     api
@@ -74,8 +76,16 @@ export function App() {
   if (!me) {
     return (
       <div className="app">
-        <SpaceRail />
+        <SpaceRail onNewSpace={() => setNewSpaceOpen(true)} />
         <Login onLogin={() => void api.me().then(setMe)} />
+        {newSpaceOpen && (
+          <SpaceModal
+            mode="new"
+            space={null}
+            onSpaceChange={() => window.location.reload()}
+            onClose={() => setNewSpaceOpen(false)}
+          />
+        )}
       </div>
     );
   }
