@@ -43,7 +43,6 @@ import { UserActionsContext, type UserActions } from './lib/userActions';
 import { SpaceRail } from './components/SpaceRail';
 import { FilesView } from './views/FilesView';
 import { DocView } from './views/DocView';
-import { DocModal } from './modals/DocModal';
 
 type View =
   | { kind: 'home' }
@@ -291,7 +290,6 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
   const [openedTag, setOpenedTag] = useState<string | null>(null);
   const [scheduled, setScheduled] = useState<ScheduledMessageDto[]>([]);
   const [docs, setDocs] = useState<DocDto[]>([]);
-  const [docModalOpen, setDocModalOpen] = useState(false);
 
   // Campfires (calls)
   const [calls, setCalls] = useState<Record<string, string[]>>({});
@@ -744,7 +742,14 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
         onPeople={openPeople}
         onFiles={openFiles}
         onDoc={openDoc}
-        onNewDoc={() => setDocModalOpen(true)}
+        onNewDoc={() => {
+          // Notion-style: no naming dialog — a fresh Untitled page, cursor in
+          // the title, rename in place.
+          void api.createDoc('Untitled').then((doc) => {
+            setDocs((cur) => [doc, ...cur.filter((d) => d.id !== doc.id)]);
+            openDoc(doc.id);
+          });
+        }}
         onOpenSpace={() => setSpaceOpen('share')}
         onSelect={openChannel}
         onNewGroup={() => setGroupOpen(true)}
@@ -867,16 +872,6 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
       {storageOpen && <StorageModal onClose={() => setStorageOpen(false)} />}
       {devicesOpen && <DevicesModal onClose={() => setDevicesOpen(false)} />}
       {palettesOpen && <PaletteModal onClose={() => setPalettesOpen(false)} />}
-      {docModalOpen && (
-        <DocModal
-          onCreated={(doc) => {
-            setDocs((cur) => [doc, ...cur.filter((d) => d.id !== doc.id)]);
-            setDocModalOpen(false);
-            openDoc(doc.id);
-          }}
-          onClose={() => setDocModalOpen(false)}
-        />
-      )}
       {openedTag && <TagModal tag={openedTag} users={users} meId={me.id} onClose={() => setOpenedTag(null)} />}
       {myCall && (
         <CallPanel

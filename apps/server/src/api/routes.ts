@@ -778,6 +778,19 @@ export async function buildApp() {
     return doc;
   });
 
+  // The doc as the .md file it is — bodies are markdown, so this is a plain
+  // read with a download filename, no conversion.
+  app.get('/api/docs/:id/file', async (req, reply) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+    const doc = await getDoc(id);
+    if (!doc) return reply.code(404).send({ error: 'no such doc' });
+    const name = `${doc.title.replace(/[\\/:*?"<>|]/g, '').trim() || 'Untitled'}.md`;
+    return reply
+      .header('content-type', 'text/markdown; charset=utf-8')
+      .header('content-disposition', `attachment; filename*=UTF-8''${encodeURIComponent(name)}`)
+      .send(doc.body);
+  });
+
   app.put('/api/docs/:id', async (req, reply) => {
     const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
     const patch = z
