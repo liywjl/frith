@@ -1,11 +1,9 @@
 import { useEffect, useState } from 'react';
 import type { AttachmentDto } from '@app/shared';
+import { fmtSize } from '../lib/format';
 import { Icon } from '../components/Icon';
 import { Modal } from './Modal';
 import type { PreviewKind } from '../lib/preview';
-
-const fmtSize = (n: number) =>
-  n >= 1024 * 1024 ? `${(n / (1024 * 1024)).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`;
 
 /** Text bigger than this reads better in a real editor — offer the download. */
 const TEXT_PREVIEW_MAX = 2 * 1024 * 1024;

@@ -15,10 +15,6 @@ export class CallRecorder {
     return this.recorder?.state === 'recording';
   }
 
-  get withVideo(): boolean {
-    return this.recorder?.mimeType.startsWith('video/') ?? false;
-  }
-
   start(audioStreams: (MediaStream | null)[], stageVideo: MediaStream | null): boolean {
     if (this.running) return true;
     this.ctx = new AudioContext();

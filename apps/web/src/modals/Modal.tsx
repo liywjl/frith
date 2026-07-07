@@ -1,5 +1,19 @@
 import { useEffect, type ReactNode } from 'react';
 
+/** Esc closes the surface. Capture + stopPropagation so the app-level key
+ *  handler (thread panel, switcher) doesn't also act on the same press. */
+export function useEscape(onClose: () => void) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.stopPropagation();
+      onClose();
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [onClose]);
+}
+
 /** Shared overlay + card shell for the app's dialogs. */
 export function Modal({
   title,
@@ -15,17 +29,7 @@ export function Modal({
   onClose: () => void;
   children: ReactNode;
 }) {
-  // Esc closes the dialog. Capture + stopPropagation so the app-level key
-  // handler (thread panel, switcher) doesn't also act on the same press.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
-      e.stopPropagation();
-      onClose();
-    };
-    window.addEventListener('keydown', onKey, true);
-    return () => window.removeEventListener('keydown', onKey, true);
-  }, [onClose]);
+  useEscape(onClose);
 
   return (
     <div className="overlay" onClick={onClose}>

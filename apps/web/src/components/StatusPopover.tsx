@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { MeDto } from '@app/shared';
 import { api } from '../lib/api';
+import { useEscape } from '../modals/Modal';
 
 /** One-click status presets + a custom field. Opens straight from the
  *  bottom-left identity button so setting a status isn't a trip to the profile. */
@@ -39,15 +40,7 @@ export function StatusPopover({
   const [minutes, setMinutes] = useState<number | null>(60);
   const hasStatus = !!(me.statusEmoji || me.statusText);
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
-      e.stopPropagation();
-      onClose();
-    };
-    window.addEventListener('keydown', onKey, true);
-    return () => window.removeEventListener('keydown', onKey, true);
-  }, [onClose]);
+  useEscape(onClose);
 
   function apply(e: string | null, t: string | null, mins: number | null) {
     void api

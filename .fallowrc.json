@@ -12,7 +12,8 @@
     "leave",
     "prune",
     "setMuted",
-    "setVideoEnabled"
+    "setVideoEnabled",
+    "stop"
   ],
   "ignoreDependencies": [
     "autobase",

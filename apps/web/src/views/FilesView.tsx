@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
 import type { FileDto } from '@app/shared';
 import { api } from '../lib/api';
+import { fmtSize } from '../lib/format';
 import { previewKind } from '../lib/preview';
 import { FilePreviewModal } from '../modals/FilePreviewModal';
 import { Icon, type IconName } from '../components/Icon';
 
-const fmtSize = (n: number) =>
-  n >= 1024 * 1024 ? `${(n / (1024 * 1024)).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`;
 const dateFormat = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' });
 
 const KIND_ICON = { image: 'image', video: 'film', audio: 'music', file: 'doc' } as const satisfies Record<string, IconName>;
