@@ -27,6 +27,7 @@ import {
   createChannel,
   createMessage,
   getChannel,
+  getMe,
   getMessage,
   getHome,
   getOrCreateGroup,
@@ -53,6 +54,7 @@ import {
   visibleChannels,
 } from '../domain/store.js';
 import { ask } from '../domain/ask.js';
+import { autoFetchAttachments, fetchAttachmentBytes } from '../domain/attachments.js';
 import { onlineUserIds, publish, register, sendToUser, setOnUserOffline } from './realtime.js';
 import { activeCalls, joinCall, leaveAllCalls, leaveCall, setRecording } from '../domain/calls.js';
 import { getPolicies, setPolicies, mb } from '../domain/policies.js';
@@ -87,26 +89,13 @@ async function requireChannelAccess(
   return false;
 }
 
-/**
- * Warm the local cache for a just-arrived message's files — within this
- * device's policies, and never for authors someone at this device blocked.
- */
-async function autoFetchAttachments(message: { id: string; channelId: string; authorId: string; createdAt: string }) {
-  const policies = getPolicies();
-  const attachments = space.state.attachmentsByMessage.get(message.id) ?? [];
-  const tooOld = Date.now() - new Date(message.createdAt).getTime() > policies.autoFetchRecentDays * 86_400_000;
-  const blockedLocally = onlineUserIds().some((uid) => space.state.blocks.get(uid)?.has(message.authorId));
-  if (tooOld || blockedLocally) return;
-  for (const a of attachments) {
-    if (!a.blob || space.blobs.isOwn(a.blob) || a.size > mb(policies.autoFetchMB)) continue;
-    const bytes = await space.blobs.get(a.blob, { wait: true, expectedHash: a.hash }).catch(() => null);
-    if (!bytes) continue;
-    publish(
-      { type: 'file.cached', channelId: message.channelId, messageId: message.id, attachmentId: a.id },
-      await channelAudience(message.channelId),
-    );
-  }
-  await space.blobs.enforceBudget(mb(policies.storageBudgetMB));
+/** Auto-fetch, with this edge's notion of "blocked here": any user with a
+ *  live socket to this instance who blocked the author. */
+function autoFetchForSockets(message: { id: string; channelId: string; authorId: string; createdAt: string }) {
+  return autoFetchAttachments(message, {
+    blockedLocally: (authorId) => onlineUserIds().some((uid) => space.state.blocks.get(uid)?.has(authorId)),
+    publish,
+  });
 }
 
 export async function buildApp() {
@@ -123,7 +112,7 @@ export async function buildApp() {
             { type: 'message.created', message: toMessageDto(op.message, '') },
             await channelAudience(op.message.channelId),
           );
-          void autoFetchAttachments(op.message);
+          void autoFetchForSockets(op.message);
         } else if (op.t === 'react') {
           const message = await getMessage(op.messageId);
           if (!message) return;
@@ -288,17 +277,7 @@ export async function buildApp() {
     return { ok: true };
   });
 
-  app.get('/api/me', async (req) => {
-    const me = (await getUserById(req.userId))!;
-    const expired = me.statusExpiresAt !== null && new Date(me.statusExpiresAt) < new Date();
-    return {
-      ...me,
-      statusEmoji: expired ? null : me.statusEmoji,
-      statusText: expired ? null : me.statusText,
-      statusExpiresAt: expired ? null : me.statusExpiresAt,
-      blockedUserIds: await blockedIds(req.userId),
-    };
-  });
+  app.get('/api/me', async (req) => getMe(req.userId));
 
   // viewerId is undefined on the pre-login surface (GET /api/space, join,
   // create) — manager flags simply come back false there.
@@ -737,30 +716,16 @@ export async function buildApp() {
       return sendBytes(fs.createReadStream(legacy));
     }
 
-    const wasCached = space.blobs.isCachedSync(attachment.blob);
-    const bytes = await space.blobs.get(attachment.blob, {
-      wait: wait === '1',
-      expectedHash: attachment.hash,
-    });
-    if (!bytes) {
+    const result = await fetchAttachmentBytes({ ...attachment, blob: attachment.blob }, wait === '1', publish);
+    if (result.status === 'needs-fetch') {
       return reply.code(409).send({
         error: 'file is not on this device yet',
         needsFetch: true,
         size: attachment.size,
       });
     }
-    if (!wasCached) {
-      publish(
-        { type: 'file.cached', channelId: attachment.channelId, messageId: attachment.messageId, attachmentId: id },
-        await channelAudience(attachment.channelId),
-      );
-      void space.blobs.enforceBudget(mb(getPolicies().storageBudgetMB));
-    }
-    // Blob bytes are sealed under the channel's content key; a device that was
-    // removed before this file was shared has no key to open it.
-    const clear = space.decryptBytes(bytes);
-    if (!clear) return reply.code(403).send({ error: 'you no longer have access to this file' });
-    return sendBytes(clear);
+    if (result.status === 'locked') return reply.code(403).send({ error: 'you no longer have access to this file' });
+    return sendBytes(result.clear);
   });
 
   // Everything shared in channels the viewer can read, newest first.

@@ -42,6 +42,9 @@ storage works, what gets stored, and where.
   (`views/`, `panels/`, `modals/`, `components/`, `lib/`)
 - [`apps/desktop`](apps/desktop/README.md) — Electron shell: the server
   in-process, data under the OS per-user dir, packaged with electron-builder
+- [`apps/mobile`](apps/mobile/README.md) — React Native app: the same P2P
+  core in a [Bare](https://docs.pears.com/reference/bare/bare-kit/) worklet,
+  RPC over IPC instead of HTTP, data in the app sandbox
 - [`packages/shared`](packages/shared/README.md) — DTO and realtime-event
   types shared end-to-end
 - `apps/server/seed/corpus.json` — the checked-in fictional company: coherent

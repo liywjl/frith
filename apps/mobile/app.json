@@ -1,0 +1,18 @@
+{
+  "expo": {
+    "name": "Frith",
+    "slug": "frith",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "frith",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "ios": {
+      "bundleIdentifier": "com.frith.mobile",
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.frith.mobile"
+    }
+  }
+}

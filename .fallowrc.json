@@ -1,4 +1,9 @@
 {
+  "entry": [
+    "apps/mobile/worklet/entry.ts",
+    "apps/mobile/worklet/smoke-bare.ts",
+    "apps/mobile/worklet/shims/crypto.ts"
+  ],
   "ignorePatterns": [
     ".ds-sync/**",
     "ds-bundle/**",
@@ -10,6 +15,7 @@
     "handleSignal",
     "isCachedSync",
     "leave",
+    "onEvent",
     "prune",
     "setMuted",
     "setVideoEnabled",
@@ -21,6 +27,12 @@
     "corestore",
     "hyperblobs",
     "hypercore-crypto",
-    "hyperswarm"
+    "hyperswarm",
+    "bare-fs",
+    "bare-path",
+    "bare-process",
+    "bare-url",
+    "bare-pack",
+    "require-asset"
   ]
 }

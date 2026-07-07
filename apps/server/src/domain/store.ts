@@ -11,6 +11,7 @@ import type {
   ChannelDto,
   ConnectDto,
   HomeDto,
+  MeDto,
   MessageDto,
   ProfilePageDto,
   ProfilePatch,
@@ -60,6 +61,19 @@ export async function getUserByHandle(handle: string) {
 
 export async function getUserById(id: string) {
   return state().users.get(id) ?? null;
+}
+
+/** The signed-in user's own view: profile + settings, expiry-aware. */
+export async function getMe(userId: string): Promise<MeDto> {
+  const me = state().users.get(userId);
+  if (!me) throw new Error('no such user');
+  const expired = me.statusExpiresAt !== null && new Date(me.statusExpiresAt) < new Date();
+  return {
+    ...toUserDto(me),
+    theme: me.theme as MeDto['theme'],
+    statusExpiresAt: expired ? null : me.statusExpiresAt,
+    blockedUserIds: await blockedIds(userId),
+  };
 }
 
 export async function createUser(handle: string, name: string): Promise<UserRow> {

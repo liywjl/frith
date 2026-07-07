@@ -1,0 +1,7 @@
+# generated worklet bundles
+.worklet/
+worklet/app.bundle.mjs
+# expo prebuild output
+ios/
+android/
+.expo/

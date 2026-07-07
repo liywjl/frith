@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { space } from '../space/space.js';
 import type { UserRow } from '../space/state.js';
 
-interface Corpus {
+export interface Corpus {
   users: (Pick<UserRow, 'handle' | 'name'> & Partial<UserRow>)[];
   channels: {
     name: string;
@@ -27,8 +27,15 @@ const CORPORA = {
 } as const;
 
 export async function seedCorpus(name: keyof typeof CORPORA = 'acme') {
-  const dir = process.env.FRITH_SEED_DIR ?? fileURLToPath(new URL('../../seed', import.meta.url));
-  const corpus: Corpus = JSON.parse(readFileSync(`${dir}/${CORPORA[name]}`, 'utf8'));
+  // .href so this also typechecks in the mobile program, where the global URL
+  // type is react-native's rather than node:url's.
+  const dir = process.env.FRITH_SEED_DIR ?? fileURLToPath(new URL('../../seed', import.meta.url).href);
+  return seedCorpusData(JSON.parse(readFileSync(`${dir}/${CORPORA[name]}`, 'utf8')) as Corpus);
+}
+
+/** Seed from an already-loaded corpus — the mobile worklet has no seed dir on
+ *  disk, so it bundles the JSON and hands it in directly. */
+export async function seedCorpusData(corpus: Corpus) {
   const now = Date.now();
 
   const userIds = new Map<string, string>();

@@ -1,0 +1,52 @@
+{
+  "name": "mobile",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "index.ts",
+  "scripts": {
+    "bundle:worklet": "node scripts/bundle-worklet.mjs",
+    "smoke": "tsx worklet/smoke.ts",
+    "smoke:bare": "node scripts/bundle-worklet.mjs --smoke && bare .worklet/smoke.mjs",
+    "typecheck": "tsc",
+    "start": "expo start --dev-client",
+    "start:seeded": "EXPO_PUBLIC_FRITH_SEEDED=1 expo start --dev-client",
+    "prebuild": "expo prebuild",
+    "ios": "expo run:ios",
+    "ios:seeded": "EXPO_PUBLIC_FRITH_SEEDED=1 expo run:ios",
+    "android": "expo run:android",
+    "android:seeded": "EXPO_PUBLIC_FRITH_SEEDED=1 expo run:android"
+  },
+  "dependencies": {
+    "@app/shared": "workspace:*",
+    "@noble/ciphers": "^2.2.0",
+    "@noble/hashes": "^2.2.0",
+    "autobase": "^7.28.1",
+    "b4a": "^1.8.1",
+    "bare-fs": "^4.7.4",
+    "bare-path": "^3.1.0",
+    "bare-process": "^4.5.1",
+    "bare-url": "^2.4.5",
+    "blind-pairing": "^2.3.1",
+    "corestore": "^7.11.0",
+    "expo": "^53.0.0",
+    "expo-file-system": "~18.1.0",
+    "hyperblobs": "^2.12.1",
+    "hypercore-crypto": "^3.7.0",
+    "hyperswarm": "^4.17.0",
+    "react": "19.0.0",
+    "react-native": "0.79.5",
+    "react-native-bare-kit": "^0.15.0",
+    "react-native-safe-area-context": "~5.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.0",
+    "@types/react": "~19.0.10",
+    "bare": "^1.30.3",
+    "bare-link": "^3.3.0",
+    "bare-pack": "^2.2.0",
+    "esbuild": "^0.28.1",
+    "require-asset": "^1.0.2",
+    "tsx": "^4.22.5"
+  }
+}

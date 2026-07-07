@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "lib": ["ES2023"],
+    "resolveJsonModule": true,
+    "types": ["node", "react"]
+  },
+  "include": ["src", "worklet", "common", "index.ts", "../server/src/space/modules.d.ts"]
+}
