@@ -77,7 +77,7 @@ export function MembersModal({
               <span className="member-plus">+ add</span>
             </button>
           ))}
-          {candidates.length === 0 && <p className="library-empty">Everyone in the space is already here.</p>}
+          {candidates.length === 0 && <p className="modal-empty">Everyone in the space is already here.</p>}
         </div>
       ) : (
         <div className="modal-actions">

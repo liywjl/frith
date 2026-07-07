@@ -1,9 +1,11 @@
-// Lore's data access layer, backed by the space's Autobase log (see
+// Frith's data access layer, backed by the space's Autobase log (see
 // data/space.ts). Reads come from materialized in-memory state; every write
 // appends an op that all peers apply identically. The function surface is
 // unchanged from the Postgres era — routes and tests didn't have to care.
+import crypto from 'node:crypto';
 import type {
-  AddonDto,
+  DocDto,
+  DocFullDto,
   AttachmentDto,
   FileDto,
   ChannelDto,
@@ -17,7 +19,7 @@ import type {
   UserDto,
 } from '@app/shared';
 import { space } from '../space/space.js';
-import type { AddonRow, AttachmentRow, MessageRow, UserRow } from '../space/state.js';
+import type { AttachmentRow, DocRow, MessageRow, UserRow } from '../space/state.js';
 import { isDangerousName } from './files.js';
 
 export { parseInvite } from '../space/space.js';
@@ -87,6 +89,9 @@ export async function createProfile(input: {
     id,
     patch: { handle, name: input.name.trim(), avatarEmoji: input.avatarEmoji ?? null },
   });
+  // A new person gets a root identity, and this device becomes its first
+  // certified device. Dev-seeded users skip this — nothing enforces yet.
+  await space.bindLocalDevice(id, crypto.randomBytes(32).toString('hex'));
   return state().users.get(id)!;
 }
 
@@ -231,7 +236,12 @@ export async function createChannel(
     t: 'channel',
     channel: { id, name, type: input.type, topic: input.topic ?? null, archivedAt: null },
   });
-  if (input.type === 'private') await space.append({ t: 'member', channelId: id, userId: creatorId });
+  if (input.type === 'private') {
+    await space.append({ t: 'member', channelId: id, userId: creatorId });
+    // A private channel gets its own content keychain from birth, so removing
+    // a member later locks exactly this channel.
+    await space.ensureDomainKey(space.contentDomain('private', id), creatorId);
+  }
   return { id };
 }
 
@@ -256,6 +266,7 @@ export async function addChannelMember(channelId: string, userId: string): Promi
   if (!state().users.has(userId)) return 'no-user';
   if (!state().members.get(channelId)?.has(userId)) {
     await space.append({ t: 'member', channelId, userId });
+    await space.reconcile(); // seal the channel's keys to their devices now
   }
   return 'ok';
 }
@@ -266,6 +277,9 @@ export async function removeChannelMember(channelId: string, userId: string): Pr
   if (!channel || channel.type === 'public') return 'public';
   if (state().members.get(channelId)?.has(userId)) {
     await space.append({ t: 'unmember', channelId, userId });
+    // Rotate the channel's content key away from them, if this device may.
+    // (Remote peers do the same via their own reconcile when the op arrives.)
+    await space.reconcile();
   }
   return 'ok';
 }
@@ -285,10 +299,25 @@ export async function getOrCreateGroup(creatorId: string, otherUserIds: string[]
     channel: { id, name: `group-${handles}`, type: 'dm', topic: null, archivedAt: null },
   });
   for (const userId of memberIds) await space.append({ t: 'member', channelId: id, userId });
+  await space.ensureDomainKey(space.contentDomain('dm', id), creatorId);
   return id;
 }
 
 /* ------------------------------ messages ------------------------------ */
+
+/** The content-key domain a channel's messages/files encrypt under. */
+function domainOf(channelId: string) {
+  const channel = state().channels.get(channelId);
+  return space.contentDomain(channel?.type ?? 'public', channelId);
+}
+
+/** A message's plaintext for search/snippets/previews — '' when this device
+ *  lacks the content key, so locked messages never leak into derived views. */
+export function clearBody(m: MessageRow): string {
+  return space.decryptBody(m.body) ?? '';
+}
+
+const snippet = (text: string, max = 120): string => (text.length > max ? `${text.slice(0, max)}…` : text);
 
 function reactionsFor(messageId: string, viewerId: string): ReactionDto[] {
   const set = state().reactions.get(messageId);
@@ -312,13 +341,15 @@ function attachmentKind(mime: string): AttachmentDto['kind'] {
 }
 
 function toAttachmentDto(a: AttachmentRow): AttachmentDto {
+  const name = space.decryptBody(a.name) ?? 'Encrypted file';
   return {
     id: a.id,
     kind: attachmentKind(a.mime),
-    name: a.name,
+    name,
     url: `/api/files/${a.id}`,
     size: a.size,
-    dangerous: isDangerousName(a.name),
+    mime: a.mime,
+    dangerous: isDangerousName(name),
     // Pre-blob attachments have bytes only on the uploader's disk; report
     // them cached so they render as a plain link (a peer's GET just 404s).
     cached: a.blob ? space.blobs.isCachedSync(a.blob) : true,
@@ -339,6 +370,9 @@ function replyCount(messageId: string): number {
 
 export function toMessageDto(row: MessageRow, viewerId: string): MessageDto {
   const author = state().users.get(row.authorId);
+  // Decrypt with the content key we hold; null means we were removed before
+  // this was sent (or never had the key) — show a lock, not a crash.
+  const clear = space.decryptBody(row.body);
   return {
     id: row.id,
     channelId: row.channelId,
@@ -346,11 +380,12 @@ export function toMessageDto(row: MessageRow, viewerId: string): MessageDto {
     authorName: author?.name ?? 'Unknown',
     authorAvatarEmoji: author?.avatarEmoji ?? null,
     parentMessageId: row.parentMessageId,
-    body: row.body,
+    body: clear ?? 'This message is unavailable — you no longer have access to it.',
     createdAt: row.createdAt,
     replyCount: replyCount(row.id),
     reactions: reactionsFor(row.id, viewerId),
     attachments: attachmentDtos(row.id),
+    ...(clear === null ? { locked: true } : {}),
   };
 }
 
@@ -397,12 +432,18 @@ export async function createMessage(input: {
   body: string;
   parentMessageId?: string | null;
 }): Promise<MessageDto> {
+  // Public channels encrypt under the space key; private channels and DMs
+  // under their own — so removal locks exactly the right scope. Pre-existing
+  // channels mint their key on first write. Plaintext fallback keeps
+  // pre-encryption spaces working.
+  const domain = domainOf(input.channelId);
+  await space.ensureDomainKey(domain, input.authorId);
   const message: MessageRow = {
     id: input.id ?? space.newId(),
     channelId: input.channelId,
     authorId: input.authorId,
     parentMessageId: input.parentMessageId ?? null,
-    body: input.body,
+    body: space.encryptBody(domain, input.body),
     createdAt: new Date().toISOString(),
   };
   await space.append({ t: 'msg', message });
@@ -417,15 +458,19 @@ export async function toggleReaction(userId: string, messageId: string, emoji: s
 
 /* ---------------------------- attachments ----------------------------- */
 
-/** Store the bytes in this instance's blob core, then append the metadata op. */
-export async function addAttachment(messageId: string, name: string, mime: string, bytes: Buffer) {
-  const { ref, hash } = await space.blobs.put(bytes);
+/** Store the bytes in this instance's blob core, then append the metadata op.
+ *  Takes the channel explicitly — the attachment op lands before its message. */
+export async function addAttachment(messageId: string, channelId: string, name: string, mime: string, bytes: Buffer) {
+  // Filename and bytes both encrypt under the channel's domain key; the blob
+  // hash covers the sealed envelope so peer verification still holds.
+  const domain = domainOf(channelId);
+  const { ref, hash } = await space.blobs.put(space.encryptBytes(domain, bytes));
   const attachment: AttachmentRow = {
     id: space.newId(),
     messageId,
-    name,
+    name: space.encryptBody(domain, name),
     mime,
-    size: bytes.length,
+    size: bytes.length, // plaintext size — what the UI shows
     hash,
     blob: ref,
   };
@@ -438,7 +483,9 @@ export async function getAttachment(id: string) {
   if (!attachment) return null;
   const message = state().messages.get(attachment.messageId);
   if (!message) return null;
-  return { ...attachment, channelId: message.channelId, authorId: message.authorId };
+  // Decrypt the filename for Content-Disposition / danger checks.
+  const name = space.decryptBody(attachment.name) ?? 'encrypted-file';
+  return { ...attachment, name, channelId: message.channelId, authorId: message.authorId };
 }
 
 /** Everything shared in channels the viewer can read — attachment + context. */
@@ -465,77 +512,70 @@ export async function listFiles(viewerId: string): Promise<FileDto[]> {
     }));
 }
 
-/* ------------------------------- add-ons ------------------------------- */
+/* ----------------------------- shared docs ----------------------------- */
 
-function toAddonDto(row: AddonRow): AddonDto {
-  const items = state().addonItems.get(row.id) ?? [];
+function toDocDto(doc: DocRow): DocDto {
   return {
-    ...row,
-    createdByName: state().users.get(row.createdBy)?.name ?? 'Unknown',
-    items: items.map((i) => ({
-      id: i.id,
-      text: i.text,
-      url: i.url,
-      done: i.done,
-      authorName: state().users.get(i.authorId)?.name ?? 'Unknown',
-      createdAt: i.createdAt,
-    })),
+    id: doc.id,
+    title: space.decryptBody(doc.title) ?? '(locked)',
+    createdBy: doc.createdBy,
+    updatedAt: doc.updatedAt,
+    updatedByName: state().users.get(doc.updatedBy)?.name ?? 'Unknown',
   };
 }
 
-export async function listAddons(): Promise<AddonDto[]> {
-  return [...state().addons.values()]
-    .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
-    .map(toAddonDto);
+export async function listDocs(): Promise<DocDto[]> {
+  return [...state().docs.values()]
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+    .map(toDocDto);
 }
 
-export async function createAddon(
-  creatorId: string,
-  input: { name: string; emoji: string; kind: AddonRow['kind'] },
-): Promise<AddonDto> {
-  const addon: AddonRow = {
+export async function getDoc(docId: string): Promise<DocFullDto | null> {
+  const doc = state().docs.get(docId);
+  if (!doc) return null;
+  return { ...toDocDto(doc), body: space.decryptBody(doc.body) ?? '' };
+}
+
+/** Docs are space-wide pages; title and body seal under the space key. */
+export async function createDoc(authorId: string, title: string): Promise<DocFullDto> {
+  await space.ensureDomainKey('space', authorId);
+  const doc: DocRow = {
     id: space.newId(),
-    name: input.name,
-    emoji: input.emoji,
-    kind: input.kind,
-    createdBy: creatorId,
-    createdAt: new Date().toISOString(),
+    title: space.encryptBody('space', title),
+    body: space.encryptBody('space', ''),
+    createdBy: authorId,
+    updatedBy: authorId,
+    updatedAt: new Date().toISOString(),
   };
-  await space.append({ t: 'addon', addon });
-  return toAddonDto(addon);
+  await space.append({ t: 'doc', doc });
+  return { ...toDocDto(doc), body: '' };
 }
 
-export async function removeAddon(addonId: string): Promise<boolean> {
-  if (!state().addons.has(addonId)) return false;
-  await space.append({ t: 'addon-remove', addonId });
-  return true;
+export async function updateDoc(
+  userId: string,
+  docId: string,
+  patch: { title?: string; body?: string },
+): Promise<DocFullDto | null> {
+  const current = state().docs.get(docId);
+  if (!current) return null;
+  const doc: DocRow = {
+    ...current,
+    title: patch.title !== undefined ? space.encryptBody('space', patch.title) : current.title,
+    body: patch.body !== undefined ? space.encryptBody('space', patch.body) : current.body,
+    updatedBy: userId,
+    updatedAt: new Date().toISOString(),
+  };
+  await space.append({ t: 'doc', doc });
+  return getDoc(docId);
 }
 
-export async function addAddonItem(
-  authorId: string,
-  addonId: string,
-  input: { text: string; url?: string | null },
-): Promise<AddonDto | null> {
-  if (!state().addons.has(addonId)) return null;
-  await space.append({
-    t: 'addon-item',
-    item: {
-      id: space.newId(),
-      addonId,
-      authorId,
-      text: input.text,
-      url: input.url ?? null,
-      done: false,
-      createdAt: new Date().toISOString(),
-    },
-  });
-  return toAddonDto(state().addons.get(addonId)!);
-}
-
-export async function toggleAddonItem(addonId: string, itemId: string, done: boolean): Promise<AddonDto | null> {
-  if (!state().addons.has(addonId)) return null;
-  await space.append({ t: 'addon-toggle', addonId, itemId, done });
-  return toAddonDto(state().addons.get(addonId)!);
+/** Remove a doc — only its creator or a space manager may. */
+export async function removeDoc(requesterId: string, docId: string): Promise<'ok' | 'no-doc' | 'forbidden'> {
+  const doc = state().docs.get(docId);
+  if (!doc) return 'no-doc';
+  if (doc.createdBy !== requesterId && !space.canManage(requesterId)) return 'forbidden';
+  await space.append({ t: 'doc-remove', docId });
+  return 'ok';
 }
 
 /* ------------------------- pins & scheduling -------------------------- */
@@ -549,7 +589,8 @@ export async function reorderPins(userId: string, channelIds: string[]): Promise
 }
 
 function toScheduledDto(row: { id: string; channelId: string; body: string; sendAt: string }): ScheduledMessageDto {
-  return { id: row.id, channelId: row.channelId, body: row.body, sendAt: row.sendAt };
+  // Scheduled bodies are encrypted in the log like sent messages.
+  return { id: row.id, channelId: row.channelId, body: space.decryptBody(row.body) ?? '', sendAt: row.sendAt };
 }
 
 export async function scheduleMessage(input: {
@@ -559,12 +600,15 @@ export async function scheduleMessage(input: {
   sendAt: Date;
   parentMessageId?: string | null;
 }): Promise<ScheduledMessageDto> {
+  const domain = domainOf(input.channelId);
+  await space.ensureDomainKey(domain, input.authorId);
   const scheduled = {
     id: space.newId(),
     channelId: input.channelId,
     authorId: input.authorId,
     parentMessageId: input.parentMessageId ?? null,
-    body: input.body,
+    // A pending message is still message content — never plaintext in the log.
+    body: space.encryptBody(domain, input.body),
     sendAt: input.sendAt.toISOString(),
   };
   await space.append({ t: 'sched', scheduled });
@@ -666,7 +710,7 @@ export async function getProfilePage(viewerId: string, targetId: string): Promis
   const { extractArtifacts } = await import('./artifacts.js');
   const artifacts = extractArtifacts(
     authored.slice(0, 150).map((m) => ({
-      body: m.body,
+      body: clearBody(m),
       channelId: m.channelId,
       channelName: state().channels.get(m.channelId)!.name,
     })),
@@ -703,7 +747,7 @@ export async function getHome(userId: string): Promise<HomeDto> {
       unreadCount: c.unreadCount,
       ...(c.type === 'dm' ? { dmPartnerNames: c.dmPartnerNames } : {}),
       latestAuthor: author?.name ?? 'Unknown',
-      latestSnippet: latest.body.length > 120 ? `${latest.body.slice(0, 120)}…` : latest.body,
+      latestSnippet: snippet(clearBody(latest)),
       latestAt: latest.createdAt,
     });
   }
@@ -728,7 +772,7 @@ export async function getHome(userId: string): Promise<HomeDto> {
         channelId: root.channelId,
         channelName: state().channels.get(root.channelId)!.name,
         rootAuthorName: state().users.get(root.authorId)?.name ?? 'Unknown',
-        rootSnippet: root.body.length > 120 ? `${root.body.slice(0, 120)}…` : root.body,
+        rootSnippet: snippet(clearBody(root)),
         replyCount: replies.length,
         lastReplyAt: last.createdAt,
         lastReplyAuthor: state().users.get(last.authorId)?.name ?? 'Unknown',
@@ -749,7 +793,7 @@ export async function getHome(userId: string): Promise<HomeDto> {
       channelId: m.channelId,
       channelName: state().channels.get(m.channelId)!.name,
       authorName: state().users.get(m.authorId)?.name ?? 'Unknown',
-      snippet: m.body.length > 120 ? `${m.body.slice(0, 120)}…` : m.body,
+      snippet: snippet(clearBody(m)),
       replyCount: replyCount(m.id),
       reactionCount: state().reactions.get(m.id)?.size ?? 0,
     }));

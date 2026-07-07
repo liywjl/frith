@@ -1,9 +1,8 @@
-import type { AskEvidence, AskFileHit, AskLocalHit, AskPerson, AskResponse, AskThread, TaskScopeDto, UserDto } from '@app/shared';
-import { channelName, filesVisibleTo, messagesVisibleTo, userDtoById } from './store.js';
+import type { AskEvidence, AskFileHit, AskPerson, AskResponse, AskThread, TaskScopeDto, UserDto } from '@app/shared';
+import { channelName, clearBody, filesVisibleTo, messagesVisibleTo, userDtoById } from './store.js';
 import type { MessageRow } from '../space/state.js';
 import { space } from '../space/space.js';
 import { extractArtifacts } from './artifacts.js';
-import { library } from './library.js';
 
 const STOPWORDS = new Set([
   'the', 'a', 'an', 'to', 'of', 'in', 'on', 'for', 'and', 'or', 'is', 'are', 'was', 'be',
@@ -58,9 +57,12 @@ function retrieve(userId: string, query: string): { hits: Hit[]; people: AskPers
   const tokens = tokenize(query);
   if (tokens.length === 0) return { hits: [], people: [], threads: [] };
 
+  // Search runs over decrypted text; locked messages (no key on this device)
+  // decrypt to '' and can never match.
   const rows = messagesVisibleTo(userId);
+  const texts = new Map(rows.map((r) => [r.id, clearBody(r)]));
   const score = (row: MessageRow, required: 'all' | 'any'): number => {
-    const lower = row.body.toLowerCase();
+    const lower = texts.get(row.id)!.toLowerCase();
     const perToken = tokens.map((t) => occurrences(lower, t));
     if (required === 'all' && perToken.some((c) => c === 0)) return 0;
     return perToken.reduce((a, b) => a + b, 0);
@@ -75,7 +77,7 @@ function retrieve(userId: string, query: string): { hits: Hit[]; people: AskPers
   const hits: Hit[] = scored
     .sort((a, b) => b.rank - a.rank)
     .slice(0, 40)
-    .map((h) => ({ ...h, snippet: makeSnippet(h.row.body, tokens) }));
+    .map((h) => ({ ...h, snippet: makeSnippet(texts.get(h.row.id)!, tokens) }));
   if (hits.length === 0) return { hits: [], people: [], threads: [] };
 
   // People: sum relevance per author, keep their strongest evidence.
@@ -114,11 +116,12 @@ function retrieve(userId: string, query: string): { hits: Hit[]; people: AskPers
       const replies = rows.filter((r) => r.parentMessageId === rootId);
       const lastActivity = [root, ...replies].map((r) => r.createdAt).sort().at(-1)!;
       const top = rootHits.reduce((a, b) => (a.rank >= b.rank ? a : b));
+      const rootText = texts.get(root.id) ?? clearBody(root);
       return {
         rootId,
         channelId: root.channelId,
         channelName: channelName(root.channelId),
-        rootBody: root.body.length > 140 ? `${root.body.slice(0, 140)}…` : root.body,
+        rootBody: rootText.length > 140 ? `${rootText.slice(0, 140)}…` : rootText,
         rootAuthorName: userDtoById(root.authorId)?.name ?? 'Unknown',
         matchCount: rootHits.length,
         topSnippet: top.snippet,
@@ -132,40 +135,6 @@ function retrieve(userId: string, query: string): { hits: Hit[]; people: AskPers
     .map(({ _score, ...t }) => t);
 
   return { hits, people, threads };
-}
-
-/**
- * Score this device's library (files, docs, commits) with the same tokens
- * the chat search uses. Results stay local — they're never shared into the
- * space, they just sit next to the chat evidence for whoever is asking.
- */
-function searchLibrary(query: string): AskLocalHit[] {
-  const tokens = tokenize(query);
-  if (tokens.length === 0) return [];
-  return library
-    .allDocs()
-    .map((doc) => {
-      const lower = `${doc.ref}\n${doc.text}`.toLowerCase();
-      const perToken = tokens.map((t) => occurrences(lower, t));
-      const matched = perToken.filter((c) => c > 0).length;
-      // Require most tokens to appear — code files are big enough that
-      // single-token noise would drown the chat results otherwise.
-      if (matched < Math.max(1, tokens.length - 1)) return null;
-      const score = perToken.reduce((a, b) => a + b, 0) + matched * 5;
-      return { doc, score };
-    })
-    .filter((h): h is NonNullable<typeof h> => h !== null)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 6)
-    .map(({ doc }) => ({
-      kind: doc.kind,
-      sourceId: doc.sourceId,
-      sourceName: library.sourceName(doc.sourceId),
-      ref: doc.ref,
-      title: doc.title,
-      snippet: makeSnippet(doc.text, tokens),
-      when: doc.when,
-    }));
 }
 
 /**
@@ -183,7 +152,9 @@ async function searchFiles(userId: string, query: string): Promise<AskFileHit[]>
     let content: string | null = null;
     if (textual(a.mime) && a.size <= 256 * 1024 && a.blob && space.blobs.isCachedSync(a.blob)) {
       const bytes = await space.blobs.get(a.blob, { expectedHash: a.hash }).catch(() => null);
-      if (bytes) content = bytes.toString('utf8');
+      // Sealed blobs decrypt with the domain key; null (key missing) stays unsearchable.
+      const clear = bytes ? space.decryptBytes(bytes) : null;
+      if (clear) content = clear.toString('utf8');
     }
     const contentHits = content
       ? tokens.map((t) => occurrences(content.toLowerCase(), t)).reduce((x, y) => x + y, 0)
@@ -222,7 +193,6 @@ export async function ask(userId: string, query: string): Promise<AskResponse> {
       snippet: h.snippet,
       createdAt: h.row.createdAt,
     })),
-    local: searchLibrary(query),
   };
 }
 
@@ -234,7 +204,7 @@ export async function taskScope(userId: string, requirements: string): Promise<T
     people,
     threads,
     artifacts: extractArtifacts(
-      hits.map((h) => ({ body: h.row.body, channelId: h.row.channelId, channelName: channelName(h.row.channelId) })),
+      hits.map((h) => ({ body: clearBody(h.row), channelId: h.row.channelId, channelName: channelName(h.row.channelId) })),
     ),
   };
 }
