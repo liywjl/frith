@@ -1,7 +1,10 @@
-// Lore's entire dataset, materialized in memory from the space's Autobase
+// Frith's entire dataset, materialized in memory from the space's Autobase
 // log. Every mutation in the app is an Op appended to the log; this class is
 // the deterministic reducer that turns the linearized ops back into state —
 // on every peer, identically.
+import hypercoreCrypto from 'hypercore-crypto';
+import b4a from 'b4a';
+import { wrapsHash } from './crypto.js';
 
 export interface UserRow {
   id: string;
@@ -33,6 +36,9 @@ export interface MessageRow {
   parentMessageId: string | null;
   body: string;
   createdAt: string;
+  /** Did the appending device provably belong to authorId? Computed by the
+   *  reducer from writer attribution; undefined for legacy/unbound writers. */
+  verified?: boolean;
 }
 
 export interface AttachmentRow {
@@ -56,27 +62,24 @@ export interface BlobId {
   byteLength: number;
 }
 
-/** A custom tab members added to the space — their own interface, synced. */
-export interface AddonRow {
-  id: string;
-  name: string;
-  emoji: string;
-  /** Template it was created from. */
-  kind: 'checklist' | 'links' | 'notes';
-  createdBy: string;
-  createdAt: string;
+/** The space's logo image: a blob reference plus the bytes' hash (verified on
+ *  fetch) and mime (for serving). Set by a manager, cleared to null. */
+export interface SpaceLogo {
+  key: string;
+  id: BlobId;
+  hash: string;
+  mime: string;
 }
 
-export interface AddonItemRow {
+/** A shared doc — the space's living pages. Title and body are sealed under
+ *  the space content key, like message bodies. Whole-doc last-write-wins. */
+export interface DocRow {
   id: string;
-  addonId: string;
-  authorId: string;
-  text: string;
-  /** links template: the target. */
-  url: string | null;
-  /** checklist template: ticked? */
-  done: boolean;
-  createdAt: string;
+  title: string;
+  body: string;
+  createdBy: string;
+  updatedBy: string;
+  updatedAt: string;
 }
 
 export interface ScheduledRow {
@@ -88,9 +91,78 @@ export interface ScheduledRow {
   sendAt: string;
 }
 
+/** What a root key signs to (un)bind a device. Deterministic across peers.
+ *  `encPubKey` binds the device's X25519 content-key public key into the same
+ *  root signature, so a peer can't publish a bogus enc key for someone's device.
+ *  Legacy device ops carry no enc key and sign the two-part message unchanged. */
+export const deviceBindingMessage = (userId: string, deviceKey: string, encPubKey?: string) =>
+  encPubKey ? `frith:device:${userId}:${deviceKey}:${encPubKey}` : `frith:device:${userId}:${deviceKey}`;
+export const deviceRevokeMessage = (userId: string, deviceKey: string) => `frith:device-revoke:${userId}:${deviceKey}`;
+/** Owner-signed admin (un)grant. */
+export const roleMessage = (userId: string, role: string, on: boolean) => `frith:role:${userId}:${role}:${on}`;
+/** Manager-signed eviction of a user from the whole space. The op names its
+ *  actor and the signature alone authorizes it (no writer coupling), which is
+ *  replay-safe because eviction is sticky — re-applying is a no-op. */
+export const evictMessage = (userId: string) => `frith:evict:${userId}`;
+/** Signed content-key rotation for a domain. `wrapsHash` binds the sealed key
+ *  map into the signature so a copied op with altered wraps fails verification.
+ *  Replay-safe: epochs are idempotent by keyId and monotone by seq. */
+export const epochMessage = (domain: string, keyId: string, seq: number, wrapsHash: string) =>
+  `frith:epoch:${domain}:${keyId}:${seq}:${wrapsHash}`;
+/** Manager-signed invite rotation — same discipline as epochs. */
+export const inviteRotateMessage = (seq: number, publicKey: string, discoveryKey: string, wrapsHash: string) =>
+  `frith:invite:${seq}:${publicKey}:${discoveryKey}:${wrapsHash}`;
+/** Manager-signed space setting change (name/description owner-or-admin;
+ *  historyVisibility owner-only — enforced in the reducer). */
+export const settingMessage = (key: string, value: string) => `frith:setting:${key}:${value}`;
+/** Manager-signed space logo change; the hash covers the bytes, null clears it. */
+export const logoMessage = (hash: string | null) => `frith:logo:${hash ?? 'none'}`;
+
+/** A domain is a set of devices sharing a content keychain: the whole space
+ *  ("space", covering public channels) or one private channel ("channel:<id>"). */
+export type Domain = 'space' | `channel:${string}`;
+export const channelDomain = (channelId: string): Domain => `channel:${channelId}`;
+
+/** One content key's public record: who it is sealed to, and its ordering. */
+interface EpochRecord {
+  seq: number;
+  keyId: string;
+  wraps: Record<string, string>; // deviceKey → sealed content key (hex)
+}
+
 export type Op =
   | { t: 'add-writer'; key: string } // appended by a member when pairing admits a new instance
   | { t: 'space'; name: string }
+  // Identity: a user's root ed25519 key (first write wins), and device keys
+  // (= autobase writer keys) the root signs in or out. Ops with bad
+  // signatures are ignored by every peer identically.
+  | { t: 'identity'; userId: string; rootKey: string }
+  | { t: 'device'; userId: string; deviceKey: string; sig: string; encPubKey?: string }
+  | { t: 'device-revoke'; userId: string; deviceKey: string; sig: string }
+  // Membership control: the owner grants admins; owner/admins evict users and
+  // rotate content keys. All are root-signed and authorization-checked, so a
+  // forged or unauthorized op is discarded identically on every peer.
+  | { t: 'role'; userId: string; role: 'admin'; on: boolean; actorId: string; sig: string }
+  | { t: 'evict'; userId: string; actorId: string; sig: string }
+  | { t: 'setting'; key: 'historyVisibility' | 'name' | 'description'; value: string; actorId: string; sig: string }
+  | { t: 'logo'; logo: SpaceLogo | null; actorId: string; sig: string }
+  // Content-key distribution. `epoch` mints a new current key for a domain
+  // (authorized). `grant` seals an existing key to one more device to onboard a
+  // newcomer — unsigned but self-verifying, since the recipient checks the
+  // unwrapped key's hash against keyId.
+  | { t: 'epoch'; domain: Domain; keyId: string; seq: number; wraps: Record<string, string>; actorId: string; sig: string }
+  | { t: 'grant'; domain: Domain; keyId: string; deviceKey: string; sealed: string }
+  // Invite rotation: new pairing credentials for every admitting device, with
+  // the invite secret sealed per member device so all peers share one invite.
+  | {
+      t: 'invite-rotate';
+      seq: number;
+      publicKey: string;
+      discoveryKey: string;
+      wraps: Record<string, string>;
+      actorId: string;
+      sig: string;
+    }
   | { t: 'user'; id: string; patch: Partial<UserRow> & Pick<UserRow, 'handle' | 'name'> }
   | { t: 'channel'; channel: ChannelRow }
   | { t: 'archive'; channelId: string; archived: boolean; at: string }
@@ -105,10 +177,8 @@ export type Op =
   | { t: 'pins'; userId: string; channelIds: string[] }
   | { t: 'sched'; scheduled: ScheduledRow }
   | { t: 'unsched'; id: string }
-  | { t: 'addon'; addon: AddonRow }
-  | { t: 'addon-remove'; addonId: string }
-  | { t: 'addon-item'; item: AddonItemRow }
-  | { t: 'addon-toggle'; addonId: string; itemId: string; done: boolean };
+  | { t: 'doc'; doc: DocRow }
+  | { t: 'doc-remove'; docId: string };
 
 const defaultUser = (id: string): UserRow => ({
   id,
@@ -122,12 +192,47 @@ const defaultUser = (id: string): UserRow => ({
   statusExpiresAt: null,
   interests: [],
   nowPlaying: null,
-  theme: 'ember',
+  theme: 'ocean',
 });
 
-export class LoreState {
+const verifySig = (message: string, sigHex: string, publicKeyHex: string): boolean => {
+  try {
+    return hypercoreCrypto.verify(b4a.from(message), b4a.from(sigHex, 'hex'), b4a.from(publicKeyHex, 'hex'));
+  } catch {
+    return false; // malformed hex/lengths — treat like a bad signature
+  }
+};
+
+export class FrithState {
   spaceName: string | null = null;
+  /** A one-line description of what the space is for; null until a manager sets it. */
+  spaceDescription: string | null = null;
+  /** The space's logo image, or null. Managers set/clear it. */
+  spaceLogo: SpaceLogo | null = null;
   users = new Map<string, UserRow>();
+  /** userId → root identity public key (hex). Immutable once set. */
+  roots = new Map<string, string>();
+  /** device (writer) key → userId, for devices whose binding verified. */
+  deviceOwners = new Map<string, string>();
+  /** Revoked device keys can never re-bind — a replayed 'device' op after
+   *  an Autobase reorder must not resurrect the binding. */
+  revokedDevices = new Set<string>();
+  /** device (writer) key → its X25519 content-key public key (root-vouched). */
+  deviceEncKeys = new Map<string, string>();
+  /** The space owner: author of the first `identity` op. Immutable once set. */
+  ownerUserId: string | null = null;
+  /** Users the owner has made admins. */
+  admins = new Set<string>();
+  /** Users evicted from the space — their devices are revoked, memberships dropped. */
+  evicted = new Set<string>();
+  /** domain → keyId → content-key record. Public data only; the plaintext keys
+   *  live in each device's encrypted registry, re-derived from these wraps. */
+  domains = new Map<Domain, Map<string, EpochRecord>>();
+  /** Whether newcomers are granted the whole keychain or only the current key. */
+  historyVisibility: 'full' | 'join-forward' = 'full';
+  /** The pairing credentials every admitting device should use, once an
+   *  invite rotation has happened. Null = the founder's original invite. */
+  currentInvite: { seq: number; publicKey: string; discoveryKey: string; wraps: Record<string, string> } | null = null;
   channels = new Map<string, ChannelRow>();
   members = new Map<string, Set<string>>(); // channelId → userIds
   messages = new Map<string, MessageRow>();
@@ -139,8 +244,9 @@ export class LoreState {
   scheduled = new Map<string, ScheduledRow>();
   attachments = new Map<string, AttachmentRow>();
   attachmentsByMessage = new Map<string, AttachmentRow[]>();
-  addons = new Map<string, AddonRow>();
-  addonItems = new Map<string, AddonItemRow[]>(); // addonId → items in arrival order
+  docs = new Map<string, DocRow>();
+  /** Deleted doc ids stay deleted — a reordered stale edit must not resurrect. */
+  removedDocs = new Set<string>();
 
   memberSet(channelId: string): Set<string> {
     let set = this.members.get(channelId);
@@ -151,7 +257,78 @@ export class LoreState {
     return set;
   }
 
-  apply(op: Op): void {
+  /** The user behind an appending writer, if its device binding verified and
+   *  the user holds a known root — else null (unauthorized to act). */
+  private actor(writer?: string): string | null {
+    if (writer === undefined) return null;
+    const userId = this.deviceOwners.get(writer);
+    return userId && this.roots.has(userId) ? userId : null;
+  }
+
+  /** Owner or admin: may evict and rotate. */
+  canManage(userId: string): boolean {
+    return userId === this.ownerUserId || this.admins.has(userId);
+  }
+
+  /** Who may mint a content key for a domain: managers always; a private
+   *  channel's current members may rotate their own channel. */
+  mayRotate(userId: string, domain: Domain): boolean {
+    if (this.evicted.has(userId)) return false;
+    if (this.canManage(userId)) return true;
+    if (domain === 'space') return false;
+    return this.members.get(domain.slice('channel:'.length))?.has(userId) ?? false;
+  }
+
+  /** Is a device eligible to receive a domain's keys? Bound, unrevoked, its
+   *  user not evicted — and for channel domains, its user a current member. */
+  deviceInDomain(deviceKey: string, domain: Domain): boolean {
+    if (this.revokedDevices.has(deviceKey)) return false;
+    const ownerId = this.deviceOwners.get(deviceKey);
+    if (!ownerId || this.evicted.has(ownerId)) return false;
+    if (domain === 'space') return true;
+    return this.members.get(domain.slice('channel:'.length))?.has(ownerId) ?? false;
+  }
+
+  private epochsFor(domain: Domain): Map<string, EpochRecord> {
+    let chain = this.domains.get(domain);
+    if (!chain) {
+      chain = new Map();
+      this.domains.set(domain, chain);
+    }
+    return chain;
+  }
+
+  /** The keyId new writes in a domain should use. Deterministic across peers:
+   *  the live key with the greatest (seq, keyId), so concurrent rotations
+   *  converge while every past key stays decryptable. Null before any epoch. */
+  currentKeyId(domain: Domain): string | null {
+    let best: EpochRecord | null = null;
+    for (const record of this.domains.get(domain)?.values() ?? []) {
+      if (!best || record.seq > best.seq || (record.seq === best.seq && record.keyId > best.keyId)) best = record;
+    }
+    return best?.keyId ?? null;
+  }
+
+  /** The seq a freshly minted key in this domain should carry. */
+  nextSeq(domain: Domain): number {
+    let max = -1;
+    for (const record of this.domains.get(domain)?.values() ?? []) max = Math.max(max, record.seq);
+    return max + 1;
+  }
+
+  /** Every keyId known for a domain (for full-history grants). */
+  keyIds(domain: Domain): string[] {
+    return [...(this.domains.get(domain)?.keys() ?? [])];
+  }
+
+  /** Whether a device already holds a wrap for a domain key. */
+  hasWrap(domain: Domain, keyId: string, deviceKey: string): boolean {
+    return this.domains.get(domain)?.get(keyId)?.wraps[deviceKey] !== undefined;
+  }
+
+  /** `writer` is the appending device's autobase writer key (hex) — absent
+   *   when replaying pre-envelope ops from legacy spaces. */
+  apply(op: Op, writer?: string): void {
     switch (op.t) {
       case 'add-writer':
         break; // writer management happens at the autobase level
@@ -159,6 +336,123 @@ export class LoreState {
       case 'space':
         this.spaceName = op.name;
         break;
+      case 'identity':
+        if (!this.roots.has(op.userId)) this.roots.set(op.userId, op.rootKey);
+        // The first identity minted in the space is its owner.
+        if (this.ownerUserId === null) this.ownerUserId = op.userId;
+        break;
+      case 'device': {
+        const root = this.roots.get(op.userId);
+        if (!root || this.revokedDevices.has(op.deviceKey) || this.evicted.has(op.userId)) break;
+        if (!verifySig(deviceBindingMessage(op.userId, op.deviceKey, op.encPubKey), op.sig, root)) break;
+        this.deviceOwners.set(op.deviceKey, op.userId);
+        // Record the enc key only when the root signature covered it.
+        if (op.encPubKey) this.deviceEncKeys.set(op.deviceKey, op.encPubKey);
+        break;
+      }
+      case 'device-revoke': {
+        const root = this.roots.get(op.userId);
+        if (!root) break;
+        if (!verifySig(deviceRevokeMessage(op.userId, op.deviceKey), op.sig, root)) break;
+        this.deviceOwners.delete(op.deviceKey);
+        this.revokedDevices.add(op.deviceKey);
+        break;
+      }
+      case 'role': {
+        // Only the owner grants/revokes admin. Authorized by the actor's root
+        // signature, not the appending device — same model as evict below.
+        const root = this.roots.get(op.actorId);
+        if (!root || op.actorId !== this.ownerUserId) break;
+        if (!verifySig(roleMessage(op.userId, op.role, op.on), op.sig, root)) break;
+        if (op.on) this.admins.add(op.userId);
+        else this.admins.delete(op.userId);
+        break;
+      }
+      case 'evict': {
+        // Authorized by the actor's root signature alone (not the appending
+        // device): who holds a manager's root speaks for that manager. Sticky,
+        // so a replayed op is a no-op.
+        const root = this.roots.get(op.actorId);
+        if (!root || !this.canManage(op.actorId)) break;
+        if (op.userId === this.ownerUserId) break; // the owner can't be evicted
+        if (!verifySig(evictMessage(op.userId), op.sig, root)) break;
+        this.evicted.add(op.userId);
+        this.admins.delete(op.userId);
+        // Revoke every device the evicted user holds and drop their memberships.
+        for (const [deviceKey, ownerId] of [...this.deviceOwners]) {
+          if (ownerId === op.userId) {
+            this.deviceOwners.delete(deviceKey);
+            this.revokedDevices.add(deviceKey);
+          }
+        }
+        for (const set of this.members.values()) set.delete(op.userId);
+        break;
+      }
+      case 'setting': {
+        const root = this.roots.get(op.actorId);
+        if (!root) break;
+        if (!verifySig(settingMessage(op.key, op.value), op.sig, root)) break;
+        // history is a privacy control (owner-only); name/description are
+        // identity a manager (owner or admin) can edit.
+        if (op.key === 'historyVisibility') {
+          if (op.actorId !== this.ownerUserId) break;
+          if (op.value === 'full' || op.value === 'join-forward') this.historyVisibility = op.value;
+        } else if (op.key === 'name') {
+          if (!this.canManage(op.actorId) || !op.value) break;
+          this.spaceName = op.value;
+        } else if (op.key === 'description') {
+          if (!this.canManage(op.actorId)) break;
+          this.spaceDescription = op.value || null;
+        }
+        break;
+      }
+      case 'logo': {
+        const root = this.roots.get(op.actorId);
+        if (!root || !this.canManage(op.actorId)) break;
+        if (!verifySig(logoMessage(op.logo?.hash ?? null), op.sig, root)) break;
+        this.spaceLogo = op.logo;
+        break;
+      }
+      case 'epoch': {
+        // Space rotations need a manager; a channel's members may rotate their
+        // own channel. Authorized by the actor's root signature, which also
+        // binds the wraps — a copied op with altered wraps fails verification.
+        const root = this.roots.get(op.actorId);
+        if (!root || !this.mayRotate(op.actorId, op.domain)) break;
+        if (!verifySig(epochMessage(op.domain, op.keyId, op.seq, wrapsHash(op.wraps)), op.sig, root)) break;
+        const chain = this.epochsFor(op.domain);
+        // First write of a keyId wins; replays after a reorder are no-ops.
+        if (!chain.has(op.keyId)) chain.set(op.keyId, { seq: op.seq, keyId: op.keyId, wraps: { ...op.wraps } });
+        break;
+      }
+      case 'grant': {
+        // Unsigned but self-verifying (recipient checks hash === keyId). Never
+        // hand a key to a revoked/evicted/out-of-domain device, even from a
+        // malicious insider — and never overwrite an existing wrap (griefing).
+        if (!this.deviceInDomain(op.deviceKey, op.domain)) break;
+        const record = this.domains.get(op.domain)?.get(op.keyId);
+        if (!record) break; // unknown key — the epoch that mints it must come first
+        if (record.wraps[op.deviceKey] === undefined) record.wraps[op.deviceKey] = op.sealed;
+        break;
+      }
+      case 'invite-rotate': {
+        // Only managers roll the invite; highest (seq, publicKey) wins so
+        // concurrent rotations converge on every peer.
+        const root = this.roots.get(op.actorId);
+        if (!root || !this.canManage(op.actorId)) break;
+        if (!verifySig(inviteRotateMessage(op.seq, op.publicKey, op.discoveryKey, wrapsHash(op.wraps)), op.sig, root))
+          break;
+        const cur = this.currentInvite;
+        if (!cur || op.seq > cur.seq || (op.seq === cur.seq && op.publicKey > cur.publicKey)) {
+          this.currentInvite = {
+            seq: op.seq,
+            publicKey: op.publicKey,
+            discoveryKey: op.discoveryKey,
+            wraps: { ...op.wraps },
+          };
+        }
+        break;
+      }
       case 'user': {
         const current = this.users.get(op.id) ?? defaultUser(op.id);
         this.users.set(op.id, { ...current, ...op.patch, id: op.id });
@@ -178,14 +472,17 @@ export class LoreState {
       case 'unmember':
         this.memberSet(op.channelId).delete(op.userId);
         break;
-      case 'msg':
+      case 'msg': {
         if (this.messages.has(op.message.id)) break;
-        this.messages.set(op.message.id, op.message);
+        // Authorship check: the claimed author must own the appending device.
+        const verified = writer === undefined ? undefined : this.deviceOwners.get(writer) === op.message.authorId;
+        this.messages.set(op.message.id, { ...op.message, verified });
         this.messagesByChannel.set(op.message.channelId, [
           ...(this.messagesByChannel.get(op.message.channelId) ?? []),
           op.message.id,
         ]);
         break;
+      }
       case 'att': {
         this.attachments.set(op.attachment.id, op.attachment);
         this.attachmentsByMessage.set(op.attachment.messageId, [
@@ -243,21 +540,18 @@ export class LoreState {
       case 'unsched':
         this.scheduled.delete(op.id);
         break;
-      case 'addon':
-        if (!this.addons.has(op.addon.id)) this.addons.set(op.addon.id, op.addon);
-        break;
-      case 'addon-remove':
-        this.addons.delete(op.addonId);
-        this.addonItems.delete(op.addonId);
-        break;
-      case 'addon-item':
-        this.addonItems.set(op.item.addonId, [...(this.addonItems.get(op.item.addonId) ?? []), op.item]);
-        break;
-      case 'addon-toggle': {
-        const item = this.addonItems.get(op.addonId)?.find((i) => i.id === op.itemId);
-        if (item) item.done = op.done;
+      case 'doc': {
+        // Whole-doc last-write-wins: concurrent edits converge on the newest
+        // save everywhere, and a removed doc never comes back.
+        if (this.removedDocs.has(op.doc.id)) break;
+        const current = this.docs.get(op.doc.id);
+        if (!current || op.doc.updatedAt >= current.updatedAt) this.docs.set(op.doc.id, op.doc);
         break;
       }
+      case 'doc-remove':
+        this.docs.delete(op.docId);
+        this.removedDocs.add(op.docId);
+        break;
     }
   }
 }

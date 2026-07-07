@@ -1,6 +1,6 @@
 export type ChannelType = 'public' | 'private' | 'dm';
 
-export const THEMES = ['ember', 'bubbly', 'paper', 'midnight', 'forest', 'sunset', 'ocean', 'mono'] as const;
+export const THEMES = ['ocean', 'bubbly', 'paper', 'midnight', 'forest', 'sunset', 'mono'] as const;
 export type Theme = (typeof THEMES)[number];
 
 export interface UserDto {
@@ -38,9 +38,23 @@ export interface ScheduledMessageDto {
 /** The P2P space this instance belongs to. */
 export interface SpaceDto {
   name: string;
+  /** What the space is for — set by a manager, null if unset. */
+  description: string | null;
+  /** URL for the space logo image, or null. Carries a cache-busting version. */
+  logoUrl: string | null;
   /** Shareable invite: high-entropy key, unguessable. */
   invite: string;
   connectedPeers: number;
+  /** userId of the space owner (author of the first identity), if known. */
+  ownerUserId: string | null;
+  /** userIds the owner has made admins. */
+  adminUserIds: string[];
+  /** Whether the viewer (this device's user) may evict/rotate. */
+  canManage: boolean;
+  /** Whether the viewer is the owner (may manage admins + settings). */
+  isOwner: boolean;
+  /** Whether newcomers can read history sent before they joined. */
+  historyVisibility: 'full' | 'join-forward';
 }
 
 /** All spaces on this device — one is open at a time. */
@@ -58,27 +72,18 @@ export interface FileDto extends AttachmentDto {
   createdAt: string;
 }
 
-export type AddonKind = 'checklist' | 'links' | 'notes';
-
-export interface AddonItemDto {
+/** A shared doc's listing entry — the space's living pages, synced P2P. */
+export interface DocDto {
   id: string;
-  text: string;
-  url: string | null;
-  done: boolean;
-  authorName: string;
-  createdAt: string;
+  title: string;
+  createdBy: string;
+  updatedAt: string;
+  updatedByName: string;
 }
 
-/** A custom tab members added to the space — synced P2P like everything else. */
-export interface AddonDto {
-  id: string;
-  name: string;
-  emoji: string;
-  kind: AddonKind;
-  createdBy: string;
-  createdByName: string;
-  createdAt: string;
-  items: AddonItemDto[];
+/** The full doc, body included, for the editor. */
+export interface DocFullDto extends DocDto {
+  body: string;
 }
 
 export interface ProfilePatch {
@@ -145,6 +150,8 @@ export interface AttachmentDto {
   name: string;
   url: string;
   size: number;
+  /** Byte-verified mime (see effectiveMime) — drives click-to-preview. */
+  mime: string;
   /** Bytes are on this device — render/serve immediately. False = a click
    *  (or auto-fetch policy) pulls them from whichever peer holds them. */
   cached: boolean;
@@ -181,6 +188,9 @@ export interface MessageDto {
   replyCount: number;
   reactions: ReactionDto[];
   attachments: AttachmentDto[];
+  /** True when this device lacks the content key (e.g. sent after we were
+   *  removed): `body` is a placeholder, not the real text. */
+  locked?: boolean;
 }
 
 /**
@@ -213,20 +223,6 @@ export interface AskThread {
   lastActivityAt: string;
 }
 
-/** A hit from this device's local library (files/repos the user indexed). */
-export interface AskLocalHit {
-  kind: 'file' | 'commit';
-  sourceId: string;
-  sourceName: string;
-  /** Relative file path, or short commit sha. */
-  ref: string;
-  /** File name, or commit subject line. */
-  title: string;
-  snippet: string;
-  /** File mtime or commit date (ISO). */
-  when: string;
-}
-
 /** A shared file that matched — by name, or by content when cached here. */
 export interface AskFileHit {
   attachmentId: string;
@@ -245,20 +241,6 @@ export interface AskResponse {
   messages: AskEvidence[];
   /** Files shared in the space (ACL-filtered, like everything else). */
   files: AskFileHit[];
-  /** From this device's library — never shared into the space. */
-  local: AskLocalHit[];
-}
-
-/** A local folder/repo indexed into Ask on this device only. */
-export interface LibrarySourceDto {
-  id: string;
-  name: string;
-  path: string;
-  /** Indexed text/code files. */
-  fileCount: number;
-  /** Indexed git commits (0 when the folder isn't a repo). */
-  commitCount: number;
-  indexedAt: string | null;
 }
 
 /** A code path, repo, or link that conversations keep referring to. */
@@ -354,18 +336,35 @@ export type ServerEvent =
   | { type: 'p2p.peers'; count: number }
   /** Campfire (call) membership changed in a channel. */
   | { type: 'call.changed'; channelId: string; participants: string[] }
+  /** Who is recording a channel's campfire changed — shown to everyone. */
+  | { type: 'call.recording'; channelId: string; recorders: string[] }
   /** A file's bytes finished downloading to this device. */
   | { type: 'file.cached'; channelId: string; messageId: string; attachmentId: string }
-  /** An add-on tab (or its items) changed — refetch the list. */
-  | { type: 'addons.changed' }
+  /** A shared doc changed (created, edited, or removed) — refetch. */
+  | { type: 'docs.changed'; docId: string }
   /** WebRTC signaling relayed between two users. */
-  | { type: 'rtc.signal'; from: string; payload: RtcPayload };
+  | { type: 'rtc.signal'; from: string; payload: RtcPayload }
+  /** Someone sketched on the shared screen — ephemeral ink, fades client-side. */
+  | { type: 'call.draw'; channelId: string; from: string; seg: DrawSeg };
 
 /** SDP offer/answer or ICE candidate, passed through the server verbatim. */
 export interface RtcPayload {
   sdp?: { type: string; sdp?: string };
   candidate?: unknown;
+  /** The sender's screen-share stream id (null = not sharing) — rides along
+   *  with SDP so the receiver can tell the screen apart from the camera. */
+  screen?: string | null;
+}
+
+/** One incremental chunk of a fading annotation stroke. Coordinates are
+ *  normalized 0..1 against the shared frame, so every viewport agrees. */
+export interface DrawSeg {
+  id: string;
+  color: string;
+  points: [number, number][];
 }
 
 /** Client → server over the websocket. */
-export type ClientEvent = { type: 'rtc.signal'; to: string; payload: RtcPayload };
+export type ClientEvent =
+  | { type: 'rtc.signal'; to: string; payload: RtcPayload }
+  | { type: 'call.draw'; channelId: string; seg: DrawSeg };

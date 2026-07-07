@@ -1,12 +1,11 @@
 import type {
-  AddonDto,
-  AddonKind,
   AskResponse,
+  DocDto,
+  DocFullDto,
   ChannelDto,
   FileDto,
   ConnectDto,
   HomeDto,
-  LibrarySourceDto,
   MeDto,
   MessageDto,
   PoliciesDto,
@@ -43,18 +42,34 @@ export const api = {
     request<SpaceDto>('/api/space', { method: 'POST', body: JSON.stringify({ name }) }),
   joinSpace: (invite: string) =>
     request<SpaceDto>('/api/space/join', { method: 'POST', body: JSON.stringify({ invite }) }),
+  patchSpace: (patch: { name?: string; description?: string }) =>
+    request<SpaceDto>('/api/space', { method: 'PATCH', body: JSON.stringify(patch) }),
+  setSpaceLogo: async (file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    const res = await fetch('/api/space/logo', { method: 'POST', body: form });
+    if (!res.ok) throw new Error(`${res.status} ${await res.text()}`);
+    return res.json() as Promise<SpaceDto>;
+  },
+  removeSpaceLogo: () => request<SpaceDto>('/api/space/logo', { method: 'DELETE' }),
+  // Remove a member from the whole space (owner/admin): rotates the content key
+  // and invite so they can't read new messages or re-join with the old link.
+  evictMember: (userId: string) =>
+    request<{ ok: boolean }>('/api/space/evict', { method: 'POST', body: JSON.stringify({ userId }) }),
+  setAdmin: (userId: string, admin: boolean) =>
+    request<{ ok: boolean }>('/api/space/admins', { method: 'POST', body: JSON.stringify({ userId, admin }) }),
+  setHistoryVisibility: (value: 'full' | 'join-forward') =>
+    request<SpaceDto>('/api/space/history', { method: 'POST', body: JSON.stringify({ value }) }),
   spaces: () => request<SpaceListDto>('/api/spaces'),
   switchSpace: (dir: string) =>
     request<SpaceDto>('/api/spaces/switch', { method: 'POST', body: JSON.stringify({ dir }) }),
   files: () => request<FileDto[]>('/api/files'),
-  addons: () => request<AddonDto[]>('/api/addons'),
-  createAddon: (input: { name: string; emoji: string; kind: AddonKind }) =>
-    request<AddonDto>('/api/addons', { method: 'POST', body: JSON.stringify(input) }),
-  removeAddon: (id: string) => request<{ ok: boolean }>(`/api/addons/${id}`, { method: 'DELETE' }),
-  addAddonItem: (id: string, input: { text: string; url?: string | null }) =>
-    request<AddonDto>(`/api/addons/${id}/items`, { method: 'POST', body: JSON.stringify(input) }),
-  toggleAddonItem: (id: string, itemId: string, done: boolean) =>
-    request<AddonDto>(`/api/addons/${id}/items/${itemId}`, { method: 'PUT', body: JSON.stringify({ done }) }),
+  docs: () => request<DocDto[]>('/api/docs'),
+  doc: (id: string) => request<DocFullDto>(`/api/docs/${id}`),
+  createDoc: (title: string) => request<DocFullDto>('/api/docs', { method: 'POST', body: JSON.stringify({ title }) }),
+  updateDoc: (id: string, patch: { title?: string; body?: string }) =>
+    request<DocFullDto>(`/api/docs/${id}`, { method: 'PUT', body: JSON.stringify(patch) }),
+  removeDoc: (id: string) => request<{ ok: boolean }>(`/api/docs/${id}`, { method: 'DELETE' }),
   setBlocked: (userId: string, blocked: boolean) =>
     request<{ blockedUserIds: string[] }>(`/api/users/${userId}/block`, {
       method: blocked ? 'POST' : 'DELETE',
@@ -64,6 +79,10 @@ export const api = {
     request<UserDto>('/api/dev/login', { method: 'POST', body: JSON.stringify({ handle }) }),
   createProfile: (input: { name: string; handle: string; avatarEmoji?: string | null }) =>
     request<UserDto>('/api/profiles', { method: 'POST', body: JSON.stringify(input) }),
+  logout: () => request<{ ok: boolean }>('/api/logout', { method: 'POST' }),
+  exportIdentity: () => request<{ code: string }>('/api/identity/export'),
+  importIdentity: (code: string) =>
+    request<{ userId: string }>('/api/identity/import', { method: 'POST', body: JSON.stringify({ code }) }),
   channelMembers: (channelId: string) => request<UserDto[]>(`/api/channels/${channelId}/members`),
   addChannelMember: (channelId: string, userId: string) =>
     request<UserDto[]>(`/api/channels/${channelId}/members`, { method: 'POST', body: JSON.stringify({ userId }) }),
@@ -103,7 +122,7 @@ export const api = {
       body: JSON.stringify({ emoji }),
     }),
   ask: (q: string) => request<AskResponse>(`/api/ask?q=${encodeURIComponent(q)}`),
-  calls: () => request<Record<string, string[]>>('/api/calls'),
+  calls: () => request<{ calls: Record<string, string[]>; recorders: Record<string, string[]> }>('/api/calls'),
   schedule: (channelId: string, body: string, inMinutes: number) =>
     request<ScheduledMessageDto>(`/api/channels/${channelId}/schedule`, {
       method: 'POST',
@@ -122,6 +141,11 @@ export const api = {
     request<{ participants: string[] }>(`/api/channels/${channelId}/call/join`, { method: 'POST' }),
   leaveCall: (channelId: string) =>
     request<{ ok: boolean }>(`/api/channels/${channelId}/call/leave`, { method: 'POST' }),
+  setCallRecording: (channelId: string, on: boolean) =>
+    request<{ ok: boolean }>(`/api/channels/${channelId}/call/record`, {
+      method: 'POST',
+      body: JSON.stringify({ on }),
+    }),
   taskScope: (requirements: string) =>
     request<TaskScopeDto>('/api/task-scope', { method: 'POST', body: JSON.stringify({ requirements }) }),
   /** Pull a file's bytes from whichever peer holds them (explicit click). */
@@ -133,10 +157,4 @@ export const api = {
   setPolicies: (patch: Partial<PoliciesDto>) =>
     request<StorageDto>('/api/storage/policies', { method: 'PUT', body: JSON.stringify(patch) }),
   clearFileCache: () => request<StorageDto>('/api/storage/cache', { method: 'DELETE' }),
-  library: () => request<LibrarySourceDto[]>('/api/library'),
-  addLibrarySource: (path: string, name?: string) =>
-    request<LibrarySourceDto>('/api/library/sources', { method: 'POST', body: JSON.stringify({ path, name }) }),
-  removeLibrarySource: (id: string) =>
-    request<{ ok: boolean }>(`/api/library/sources/${id}`, { method: 'DELETE' }),
-  reindexLibrary: () => request<LibrarySourceDto[]>('/api/library/reindex', { method: 'POST' }),
 };

@@ -19,6 +19,7 @@
     "blind-pairing",
     "corestore",
     "hyperblobs",
+    "hypercore-crypto",
     "hyperswarm"
   ]
 }

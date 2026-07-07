@@ -71,6 +71,14 @@ describe('auth', () => {
     expect(res.json().name).toBe('Alice');
     expect(res.cookies.find((c) => c.name === 'uid')?.value).toBe(alice);
   });
+
+  it('logs out by clearing the cookie — even when already logged out', async () => {
+    const res = await app.inject({ method: 'POST', url: '/api/logout', cookies: { uid: alice } });
+    expect(res.statusCode).toBe(200);
+    expect(res.cookies.find((c) => c.name === 'uid')?.value).toBe('');
+    // Allowlisted pre-login: a cookieless logout must not 401.
+    expect((await app.inject({ method: 'POST', url: '/api/logout' })).statusCode).toBe(200);
+  });
 });
 
 describe('ACL — a user must never read content from channels they cannot access', () => {
@@ -247,7 +255,7 @@ describe('profiles', () => {
       payload: { theme: 'vaporwave' },
       ...as(alice),
     });
-    expect(res.statusCode).toBe(500); // zod parse failure — fine for dev auth surface
+    expect(res.statusCode).toBe(400); // zod parse failure → caller's fault, said plainly
   });
 
   it('clears a timed status once it expires', async () => {
@@ -449,11 +457,11 @@ describe('attachments', () => {
   // A real (tiny) PNG prefix: magic bytes are what the upload sniffer checks.
   const PNG_BYTES = Buffer.concat([
     Buffer.from('89504e470d0a1a0a', 'hex'),
-    Buffer.from('lore-test-image-payload'),
+    Buffer.from('frith-test-image-payload'),
   ]);
 
   function multipart(fields: Record<string, string>, filename: string, content: Buffer, mime: string) {
-    const boundary = 'lore-test-boundary';
+    const boundary = 'frith-test-boundary';
     const parts: Buffer[] = Object.entries(fields).map(([k, v]) =>
       Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="${k}"\r\n\r\n${v}\r\n`),
     );
@@ -598,16 +606,57 @@ describe('campfires (calls)', () => {
     expect(second.json().participants).toEqual([alice]);
 
     const snapshot = await app.inject({ method: 'GET', url: '/api/calls', ...as(carol) });
-    expect([...snapshot.json()[publicChannel]].sort()).toEqual([alice, bob].sort());
+    expect([...snapshot.json().calls[publicChannel]].sort()).toEqual([alice, bob].sort());
 
     await app.inject({ method: 'POST', url: `/api/channels/${publicChannel}/call/leave`, ...as(bob) });
     await app.inject({ method: 'POST', url: `/api/channels/${publicChannel}/call/leave`, ...as(alice) });
     const after = await app.inject({ method: 'GET', url: '/api/calls', ...as(carol) });
-    expect(after.json()[publicChannel]).toBeUndefined();
+    expect(after.json().calls[publicChannel]).toBeUndefined();
   });
 
   it('requires channel access to join a campfire', async () => {
     const res = await app.inject({ method: 'POST', url: `/api/channels/${privateChannel}/call/join`, ...as(bob) });
+    expect(res.statusCode).toBe(403);
+  });
+
+  it('flags recording only for participants, shows it to everyone, clears it on leave', async () => {
+    // Outside the call, you can't record it.
+    const outside = await app.inject({
+      method: 'POST',
+      url: `/api/channels/${publicChannel}/call/record`,
+      payload: { on: true },
+      ...as(alice),
+    });
+    expect(outside.statusCode).toBe(409);
+
+    await app.inject({ method: 'POST', url: `/api/channels/${publicChannel}/call/join`, ...as(alice) });
+    await app.inject({ method: 'POST', url: `/api/channels/${publicChannel}/call/join`, ...as(bob) });
+    const rec = await app.inject({
+      method: 'POST',
+      url: `/api/channels/${publicChannel}/call/record`,
+      payload: { on: true },
+      ...as(alice),
+    });
+    expect(rec.statusCode).toBe(200);
+
+    // Everyone (even someone not in the call) sees who is recording.
+    const snapshot = await app.inject({ method: 'GET', url: '/api/calls', ...as(carol) });
+    expect(snapshot.json().recorders[publicChannel]).toEqual([alice]);
+
+    // Leaving must never strand a stale REC flag.
+    await app.inject({ method: 'POST', url: `/api/channels/${publicChannel}/call/leave`, ...as(alice) });
+    const after = await app.inject({ method: 'GET', url: '/api/calls', ...as(carol) });
+    expect(after.json().recorders[publicChannel]).toBeUndefined();
+    await app.inject({ method: 'POST', url: `/api/channels/${publicChannel}/call/leave`, ...as(bob) });
+  });
+
+  it('blocks non-members from even flagging a private channel recording', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/channels/${privateChannel}/call/record`,
+      payload: { on: true },
+      ...as(bob),
+    });
     expect(res.statusCode).toBe(403);
   });
 });
@@ -615,7 +664,7 @@ describe('campfires (calls)', () => {
 describe('spaces', () => {
   it('exposes the current space with a capability invite', async () => {
     const read = await app.inject({ method: 'GET', url: '/api/space', ...as(bob) });
-    expect(read.json().invite).toMatch(/^lore:[^:]+:[0-9a-f]{40,}$/);
+    expect(read.json().invite).toMatch(/^frith:[^:]+:[0-9a-f]{40,}$/);
     expect(read.json().connectedPeers).toBe(0);
   });
 
@@ -774,40 +823,64 @@ describe('ask retrieval — the ACL applies to search too', () => {
   });
 });
 
-describe('add-ons (custom tabs)', () => {
-  it('creates a tab, adds and toggles items, and removes it for everyone', async () => {
+describe('shared docs', () => {
+  it('creates, edits, syncs, and deletes a doc — sealed at rest', async () => {
     const created = await app.inject({
       method: 'POST',
-      url: '/api/addons',
-      payload: { name: 'Summer jam prep', emoji: '✅', kind: 'checklist' },
+      url: '/api/docs',
+      payload: { title: 'Launch checklist' },
       ...as(alice),
     });
     expect(created.statusCode).toBe(200);
-    const addon = created.json();
-    expect(addon.createdByName).toBe('Alice Cooper');
+    const doc = created.json();
+    expect(doc.title).toBe('Launch checklist');
+    expect(doc.body).toBe('');
 
-    const withItem = await app.inject({
-      method: 'POST',
-      url: `/api/addons/${addon.id}/items`,
-      payload: { text: 'Book the park' },
+    // Anyone in the space can edit; the read comes back decrypted.
+    const edited = await app.inject({
+      method: 'PUT',
+      url: `/api/docs/${doc.id}`,
+      payload: { body: 'ship the kumquat build' },
       ...as(bob),
     });
-    const item = withItem.json().items[0];
-    expect(item.text).toBe('Book the park');
-    expect(item.done).toBe(false);
+    expect(edited.statusCode).toBe(200);
+    expect(edited.json().body).toBe('ship the kumquat build');
+    expect(edited.json().updatedByName).toBe('Bob');
 
-    const toggled = await app.inject({
+    // Deletion is guarded: a member who neither created the doc nor manages
+    // the space cannot delete the crew's page.
+    const denied = await app.inject({ method: 'DELETE', url: `/api/docs/${doc.id}`, ...as(bob) });
+    expect(denied.statusCode).toBe(403);
+
+    const removed = await app.inject({ method: 'DELETE', url: `/api/docs/${doc.id}`, ...as(alice) });
+    expect(removed.json().ok).toBe(true);
+    const list = await app.inject({ method: 'GET', url: '/api/docs', ...as(alice) });
+    expect(list.json().some((d: { id: string }) => d.id === doc.id)).toBe(false);
+    // Removed stays removed — editing a deleted doc is a 404, not a revival.
+    const ghost = await app.inject({
       method: 'PUT',
-      url: `/api/addons/${addon.id}/items/${item.id}`,
-      payload: { done: true },
+      url: `/api/docs/${doc.id}`,
+      payload: { body: 'zombie' },
       ...as(alice),
     });
-    expect(toggled.json().items[0].done).toBe(true);
+    expect(ghost.statusCode).toBe(404);
+  });
 
-    const removed = await app.inject({ method: 'DELETE', url: `/api/addons/${addon.id}`, ...as(bob) });
-    expect(removed.json().ok).toBe(true);
-    const list = await app.inject({ method: 'GET', url: '/api/addons', ...as(alice) });
-    expect(list.json().some((a: { id: string }) => a.id === addon.id)).toBe(false);
+  it('404s on unknown docs', async () => {
+    const missing = '00000000-0000-4000-8000-000000000000';
+    expect((await app.inject({ method: 'GET', url: `/api/docs/${missing}`, ...as(alice) })).statusCode).toBe(404);
+    expect((await app.inject({ method: 'DELETE', url: `/api/docs/${missing}`, ...as(alice) })).statusCode).toBe(404);
+  });
+});
+
+describe('effectiveMime (upload sniffing)', () => {
+  it('lets an audio-declared webm stay audio — call recordings must get a player', async () => {
+    const { effectiveMime } = await import('../src/domain/files.js');
+    const webm = Buffer.from([0x1a, 0x45, 0xdf, 0xa3, 0x00, 0x00]);
+    expect(effectiveMime(webm, 'audio/webm;codecs=opus')).toBe('audio/webm');
+    expect(effectiveMime(webm, 'video/webm')).toBe('video/webm');
+    // But a fake png declared as audio is still demoted.
+    expect(effectiveMime(Buffer.from('not media'), 'audio/webm')).toBe('application/octet-stream');
   });
 });
 
@@ -877,6 +950,44 @@ describe('membership (add/remove people)', () => {
     await app.inject({ method: 'DELETE', url: `/api/channels/${privateChannel}/members/${bob}`, ...as(bob) });
     const after = await app.inject({ method: 'GET', url: `/api/channels/${privateChannel}/messages`, ...as(bob) });
     expect(after.statusCode).toBe(403);
+  });
+
+  it('re-inviting an existing member is an idempotent no-op', async () => {
+    const first = await app.inject({
+      method: 'POST',
+      url: `/api/channels/${privateChannel}/members`,
+      payload: { userId: carol },
+      ...as(alice),
+    });
+    expect(first.statusCode).toBe(200);
+    const again = await app.inject({
+      method: 'POST',
+      url: `/api/channels/${privateChannel}/members`,
+      payload: { userId: carol },
+      ...as(alice),
+    });
+    expect(again.statusCode).toBe(200);
+    expect(again.json().filter((u: { id: string }) => u.id === carol)).toHaveLength(1);
+  });
+
+  it('404s on inviting someone who does not exist in the space', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/channels/${privateChannel}/members`,
+      payload: { userId: '00000000-0000-4000-8000-000000000000' },
+      ...as(alice),
+    });
+    expect(res.statusCode).toBe(404);
+  });
+
+  it('removing someone who is not a member is a harmless no-op', async () => {
+    const res = await app.inject({
+      method: 'DELETE',
+      url: `/api/channels/${privateChannel}/members/${bob}`,
+      ...as(alice),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().some((u: { id: string }) => u.id === bob)).toBe(false);
   });
 
   it('public channels have no member list to manage', async () => {

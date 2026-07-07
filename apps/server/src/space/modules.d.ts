@@ -4,6 +4,26 @@ declare module 'b4a' {
   export function toString(buffer: Uint8Array, encoding?: string): string;
 }
 
+declare module 'hypercore-crypto' {
+  interface KeyPair {
+    publicKey: Buffer;
+    secretKey: Buffer;
+  }
+  const crypto: {
+    keyPair(seed?: Buffer): KeyPair;
+    sign(message: Buffer, secretKey: Buffer): Buffer;
+    verify(message: Buffer, signature: Buffer, publicKey: Buffer): boolean;
+    hash(data: Buffer | Buffer[]): Buffer;
+    /** X25519 keypair for encryption (crypto_box), distinct from the ed25519 signing pair. */
+    encryptionKeyPair(seed?: Buffer): KeyPair;
+    /** crypto_box_seal: encrypt to a public key with no sender identity. */
+    encrypt(message: Buffer, publicKey: Buffer): Buffer;
+    /** crypto_box_seal_open: returns null if it does not open under keyPair. */
+    decrypt(ciphertext: Buffer, keyPair: KeyPair): Buffer | null;
+  };
+  export default crypto;
+}
+
 declare module 'hyperswarm' {
   import type { Duplex } from 'node:stream';
   interface Discovery {
@@ -31,7 +51,7 @@ declare module 'corestore' {
   }
   export default class Corestore {
     constructor(storage: string);
-    get(opts: { name: string; valueEncoding?: string } | Buffer): StoreCore;
+    get(opts: { name?: string; key?: Buffer; valueEncoding?: string; encryption?: { key: Buffer } } | Buffer): StoreCore;
     replicate(stream: Duplex | boolean): Duplex;
     close(): Promise<void>;
   }
@@ -53,7 +73,7 @@ declare module 'blind-pairing' {
   interface Candidate {
     userData: Buffer;
     open(publicKey: Buffer): void;
-    confirm(data: { key: Buffer }): void;
+    confirm(data: { key: Buffer; encryptionKey?: Buffer | null }): void;
   }
   interface Member {
     flushed(): Promise<void>;
@@ -69,7 +89,7 @@ declare module 'blind-pairing' {
     addCandidate(opts: {
       invite: Buffer;
       userData: Buffer;
-      onadd?(result: { key: Buffer }): void | Promise<void>;
+      onadd?(result: { key: Buffer; encryptionKey?: Buffer | null }): void | Promise<void>;
     }): CandidateHandle;
     close(): Promise<void>;
   }
@@ -90,6 +110,8 @@ declare module 'autobase' {
     valueEncoding?: string;
     optimistic?: boolean;
     ackInterval?: number;
+    /** Encrypts the local writer core, remote writer cores, and all views. */
+    encryptionKey?: Buffer | null;
     open(viewStore: Corestore): StoreCore;
     apply(nodes: AppliedNode[], view: StoreCore, host: ApplyHost): Promise<void>;
   }
@@ -100,6 +122,8 @@ declare module 'autobase' {
     static getLocalCore(store: Corestore): StoreCore & { key: Buffer };
     readonly key: Buffer;
     readonly discoveryKey: Buffer;
+    /** This instance's own writer core. */
+    readonly local: StoreCore;
     readonly writable: boolean;
     readonly length: number;
     readonly signedLength: number;

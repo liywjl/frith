@@ -31,9 +31,14 @@ export class BlobStore {
   /** Evictable remote blobs held locally, LRU bookkeeping. */
   private cache = new Map<string, CacheEntry>();
 
-  constructor(store: Corestore, cacheFile: string) {
+  private encryption: { key: Buffer } | undefined;
+
+  constructor(store: Corestore, cacheFile: string, encryptionKey: Buffer | null = null) {
     this.store = store;
-    this.own = new Hyperblobs(store.get({ name: 'blobs' }));
+    // Same shared space key as the log: blocks are ciphertext on disk and on
+    // the wire; hyperblobs reads through it, so hashes still cover plaintext.
+    this.encryption = encryptionKey ? { key: encryptionKey } : undefined;
+    this.own = new Hyperblobs(store.get({ name: 'blobs', encryption: this.encryption }));
     this.cacheFile = cacheFile;
     try {
       this.cache = new Map(Object.entries(JSON.parse(fs.readFileSync(this.cacheFile, 'utf8'))));
@@ -64,7 +69,7 @@ export class BlobStore {
     if (this.isOwn(ref)) return this.own;
     let blobs = this.remotes.get(ref.key);
     if (!blobs) {
-      blobs = new Hyperblobs(this.store.get(b4a.from(ref.key, 'hex')));
+      blobs = new Hyperblobs(this.store.get({ key: b4a.from(ref.key, 'hex'), encryption: this.encryption }));
       this.remotes.set(ref.key, blobs);
     }
     return blobs;
