@@ -257,8 +257,15 @@ function Login({ onLogin }: { onLogin: () => void }) {
             {users.map((u) => (
               <button key={u.id} onClick={() => api.login(u.handle).then(onLogin)}>
                 <Avatar name={u.name} />
-                {u.name} <span className="handle">@{u.handle}</span>
-                <span className="login-title">{[u.title, u.team].filter(Boolean).join(' · ')}</span>
+                <span className="login-user">
+                  <span className="login-name">{u.name}</span>
+                  <span className="login-meta">
+                    <span className="handle">@{u.handle}</span>
+                    {(u.title || u.team) && (
+                      <span className="login-title">{[u.title, u.team].filter(Boolean).join(' · ')}</span>
+                    )}
+                  </span>
+                </span>
               </button>
             ))}
           </div>

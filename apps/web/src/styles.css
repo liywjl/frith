@@ -150,7 +150,7 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
   border-radius: 8px; background: var(--card);
 }
 .login-list button:hover { border-color: var(--ai); }
-.login-list .handle { color: var(--ink-soft); font-size: 13px; }
+.login-list .handle { color: var(--ink-soft); font-size: 13px; flex: none; }
 .hint { color: var(--ink-soft); }
 
 /* shell */
@@ -523,9 +523,18 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
 .status-clear-link:hover, .status-profile-link:hover { color: var(--ink); }
 
 /* login extras */
-.login-list button { display: flex; align-items: center; gap: 8px; }
-.login-list .avatar { width: 24px; height: 24px; border-radius: 7px; font-size: 10px; }
-.login-title { margin-left: auto; color: var(--ink-soft); font-size: 12px; }
+.login-list button { display: flex; align-items: center; gap: 10px; min-height: 52px; }
+.login-list .avatar { width: 30px; height: 30px; border-radius: 7px; font-size: 11px; flex: none; }
+.login-user { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
+.login-name {
+  font-weight: 600; color: var(--ink);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.login-meta { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.login-title {
+  color: var(--ink-soft); font-size: 12px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0;
+}
 
 /* modals (profile, group) */
 .modal {
