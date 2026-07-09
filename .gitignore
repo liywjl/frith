@@ -19,3 +19,4 @@ apps/web/.ds-entry.tsx
 .ds-sync/
 .design-sync/
 ds-bundle/
+.claude/worktrees/

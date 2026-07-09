@@ -38,6 +38,18 @@
       "port": 5273
     },
     {
+      "name": "api-seeded",
+      "runtimeExecutable": "./scripts/seeded-api.sh",
+      "runtimeArgs": [],
+      "port": 3211
+    },
+    {
+      "name": "web-seeded",
+      "runtimeExecutable": "./scripts/seeded-web.sh",
+      "runtimeArgs": [],
+      "port": 5374
+    },
+    {
       "name": "site",
       "runtimeExecutable": "python3",
       "runtimeArgs": ["-m", "http.server", "4173", "-d", "site"],

@@ -1,8 +1,13 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { fileURLToPath } from 'node:url';
+import { uxlens } from './uxlens/vite';
+
+const repoRoot = fileURLToPath(new URL('../..', import.meta.url));
 
 export default defineConfig({
-  plugins: [react()],
+  // UX Lens (dev server only): source stamping + capture endpoint.
+  plugins: [uxlens(repoRoot), react()],
   server: {
     port: 5173,
     proxy: {

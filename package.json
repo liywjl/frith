@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "./scripts/dev.sh",
     "dev:seeded": "./scripts/dev.sh --seeded",
+    "dev:seeded:web": "./scripts/dev.sh --seeded --web",
     "seed": "pnpm --filter server seed",
     "typecheck": "pnpm -r typecheck",
     "lint": "eslint .",

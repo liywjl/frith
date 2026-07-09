@@ -7,9 +7,16 @@ cd "$(dirname "$0")/.."
 
 # --seeded: boot on a throwaway data dir, wiped and re-seeded with the three
 # demo spaces every run — an instant disposable instance for testing.
+# --web: skip the Electron shell, just serve the web client in the browser.
 SEEDED=0
-if [[ "${1:-}" == "--seeded" ]]; then
-  SEEDED=1
+WEB_ONLY=0
+for arg in "$@"; do
+  case "$arg" in
+    --seeded) SEEDED=1 ;;
+    --web) WEB_ONLY=1 ;;
+  esac
+done
+if [[ $SEEDED == 1 ]]; then
   export FRITH_DATA=.frith-data-seeded
   export FRITH_FILES=.data/uploads-seeded
   rm -rf apps/server/.frith-data-seeded apps/server/.data/uploads-seeded
@@ -36,6 +43,11 @@ if [[ $SEEDED == 1 ]]; then
   until curl -sf -o /dev/null "http://127.0.0.1:$API_PORT/api/spaces"; do sleep 0.3; done
   PORT=$API_PORT ./scripts/demo-spaces.sh
 fi
-cd apps/desktop
-node build.mjs --dev
-FRITH_DEV_URL="http://localhost:$WEB_PORT" pnpm exec electron .
+if [[ $WEB_ONLY == 1 ]]; then
+  echo "web: http://localhost:$WEB_PORT  api: http://localhost:$API_PORT  (ctrl-c to stop)"
+  wait
+else
+  cd apps/desktop
+  node build.mjs --dev
+  FRITH_DEV_URL="http://localhost:$WEB_PORT" pnpm exec electron .
+fi
