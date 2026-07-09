@@ -473,6 +473,7 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
 .side-me {
   margin-top: auto; padding: 10px 8px; font-size: 13px; text-align: left;
   display: flex; align-items: center; gap: 9px; border-radius: 8px; width: 100%;
+  background: var(--card);
 }
 .side-me:hover { background: var(--block); }
 .side-me-text { min-width: 0; display: flex; flex-direction: column; }

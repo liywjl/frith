@@ -194,16 +194,21 @@ export function Sidebar({
         <button className={`side-item home-item ${filesActive ? 'active' : ''}`} onClick={onFiles}>
           <span className="side-label"><Icon name="folder" /> Files</span>
         </button>
-        <button
-          className="side-item home-item"
-          title={space ? `About “${space.name}”${space.canManage ? ' — settings & invites' : ''}` : 'Join a space'}
-          onClick={onOpenSpace}
-        >
-          <span className="side-label">
-            {space ? <SpaceLogo space={space} /> : <Icon name="globe" />} {space ? space.name : 'Join a space'}
-          </span>
-          {space && space.connectedPeers > 0 && <span className="peer-badge">{space.connectedPeers} ⇄</span>}
-        </button>
+        {/* Opening this row leads straight to the invite/share panel, which only
+            managers can act on — so surface it to them alone. When there's no
+            space yet, it's the "join a space" entry and everyone needs it. */}
+        {(!space || space.canManage) && (
+          <button
+            className="side-item home-item"
+            title={space ? `Add someone to “${space.name}” — invites & settings` : 'Join a space'}
+            onClick={onOpenSpace}
+          >
+            <span className="side-label">
+              {space ? <SpaceLogo space={space} /> : <Icon name="globe" />} {space ? 'Add someone' : 'Join a space'}
+            </span>
+            {space && space.connectedPeers > 0 && <span className="peer-badge">{space.connectedPeers} ⇄</span>}
+          </button>
+        )}
 
         <div className="side-h side-h-action">
           <button className="side-h-toggle" onClick={() => toggle('docs')} aria-expanded={!collapsed.has('docs')}>
