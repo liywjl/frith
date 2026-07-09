@@ -1039,7 +1039,7 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
   transition: border-radius 0.15s, background 0.15s;
 }
 .rail-space:hover { border-radius: 19px; background: rgba(255, 255, 255, 0.24); }
-.rail-space.active { background: var(--ai); border-radius: 19px; }
+.rail-space.active { background: var(--ai); }
 .rail-new { font-size: 20px; font-weight: 400; opacity: 0.7; }
 .rail-new:hover { opacity: 1; }
 
