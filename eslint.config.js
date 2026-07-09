@@ -2,7 +2,7 @@ import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['**/dist/**', '**/node_modules/**', '**/drizzle/**', 'spikes/**', 'apps/desktop/.deploy/**', 'apps/desktop/release/**', 'apps/mobile/.worklet/**', 'apps/mobile/worklet/app.bundle.mjs', 'apps/mobile/ios/**', 'apps/mobile/android/**', '.ds-sync/**', 'ds-bundle/**'] },
+  { ignores: ['**/dist/**', '**/node_modules/**', '**/drizzle/**', 'spikes/**', 'apps/desktop/.deploy/**', 'apps/desktop/release/**', 'apps/mobile/.worklet/**', 'apps/mobile/worklet/app.bundle.mjs', 'apps/mobile/ios/**', 'apps/mobile/android/**', '.ds-sync/**', 'ds-bundle/**', '.claude/worktrees/**'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
