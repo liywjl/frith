@@ -34,7 +34,8 @@ and drained by the `/ux-run` Claude command.
 1. Capture items while browsing (`pnpm dev:seeded:web`, then `⌥⇧U`).
 2. Run `/ux-run` in Claude Code — it groups open items, implements them one
    commit apiece against the seeded instance, and verifies in the browser.
-3. Resolved items are deleted from the queue (line + shot) in the resolving
-   commit — the commit message carries the `[ux-…]` id, and git history keeps
-   the annotated shot at that commit. The queue only ever holds open work;
-   `skipped` items stay behind with a `reason` until you re-capture or clarify.
+3. Resolved items are deleted from the queue (line + shot). The queue is
+   local working state — `items.jsonl` and `shots/` are gitignored — so the
+   record of what happened is the resolving commit itself, whose message
+   carries the `[ux-…]` id. `skipped` items stay behind with a `reason`
+   until you re-capture or clarify.
