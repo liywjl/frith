@@ -730,7 +730,7 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
   border: 1px solid var(--line); border-radius: 99px; padding: 3px 11px 3px 4px;
 }
 .connect-member:hover { border-color: var(--ai); }
-.connect-member .avatar { width: 22px; height: 22px; border-radius: 6px; font-size: 12px; }
+.connect-member .avatar { width: 22px; height: 22px; border-radius: 50%; font-size: 12px; }
 /* minmax(0, …) lets tracks shrink below content width in narrow panes. */
 .connect-people { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .connect-person {
