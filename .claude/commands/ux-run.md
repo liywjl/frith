@@ -16,8 +16,8 @@ Process the UX Lens capture queue in `ux-backlog/items.jsonl`. Arguments (all op
 2. **Implement** — smallest diff that satisfies the note. Match surrounding style. For `L` items (structural: modal→page, flow changes) think before editing: read the surrounding wiring (App.tsx state, keyboard handlers) first.
 3. **Verify in the browser** — reload the seeded app, navigate to where the item was captured, exercise the change (preview_click / preview_fill / preview_resize as needed), check `preview_console_logs` for errors, and take a `preview_screenshot` for visual changes. For keyboard-shortcut items, verify no clash with existing bindings (Cmd+K, Cmd+J, Alt+Arrows, ⌥⇧U is reserved for UX Lens).
 4. **Gate** — `pnpm --filter web typecheck` (fast). Full `pnpm check` once at the end of the batch, not per item.
-5. **Record** — update the item's line in `items.jsonl`: `status: "done"`, add `"commit"` field. Then commit the code change *and* the backlog line together, message style matches the repo log (plain sentence, e.g. `Sidebar hover state is visible now [ux-mbz3k2-a4f]`). Fill the `commit` field with the hash via a follow-up amend, or just note the id in the message and set `"commit"` after committing in a tiny follow-up commit at batch end.
-   - If an item is unclear or seems wrong after inspection, set `status: "skipped"` with a `"reason"` field instead of guessing — report it at the end.
+5. **Record** — resolved items are *deleted*, not archived: remove the item's line from `items.jsonl` and delete its `shots/` PNG, then commit that removal together with the code change. The commit message carries the id (plain sentence matching the repo log, e.g. `Sidebar hover state is visible now [ux-mbz3k2-a4f]`), and git history preserves the shot at the resolving commit — that's the archive.
+   - If an item is unclear or seems wrong after inspection, leave it in the queue with `status: "skipped"` and a `"reason"` field instead of guessing — report it at the end so the user can re-capture or clarify.
 
 ## `--fanout` mode (cheap-model batching)
 
