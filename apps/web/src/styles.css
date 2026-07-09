@@ -248,7 +248,7 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
   color: var(--ink-soft); font-size: 12px; font-weight: 600;
 }
 
-.msg { display: flex; gap: 10px; padding: 3px 6px; margin: 1px -6px; border-radius: 8px; position: relative; }
+.msg { display: flex; align-items: flex-start; gap: 10px; padding: 3px 6px; margin: 1px -6px; border-radius: 8px; position: relative; }
 .msg:not(.compact) { margin-top: 10px; }
 .msg:hover { background: var(--hover); }
 .avatar {
@@ -988,12 +988,20 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
 .people-name { display: flex; flex-direction: column; min-width: 0; }
 .people-name b { font-size: 13.5px; }
 .people-name small { color: var(--ink-soft); font-size: 11.5px; }
-.people-tags { display: flex; gap: 4px; flex-wrap: wrap; max-width: 220px; }
+.people-tags { display: flex; gap: 4px; flex-wrap: nowrap; align-items: center; max-width: 220px; overflow: hidden; }
+.people-tags.expanded { flex-wrap: wrap; overflow: visible; }
 .tag-mini {
+  flex: 0 0 auto;
   font-size: 11px; border: 1px solid var(--line); border-radius: 99px;
   padding: 1px 8px; color: var(--ink-soft); white-space: nowrap;
 }
 .tag-mini:hover { border-color: var(--ai); color: var(--ai); }
+.tag-more {
+  flex: 0 0 auto;
+  font-size: 11px; border: 1px solid var(--line); border-radius: 99px;
+  padding: 1px 8px; color: var(--ink-soft); white-space: nowrap; font-weight: 600;
+}
+.tag-more:hover { border-color: var(--ai); color: var(--ai); }
 .people-actions { display: flex; gap: 6px; }
 .people-actions .btn { padding: 4px 10px; font-size: 12.5px; }
 

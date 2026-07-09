@@ -102,7 +102,7 @@ export const Message = memo(function Message({
   message: MessageDto;
   /** Consecutive message from the same author — hide the avatar/header. */
   compact?: boolean;
-  /** Mine: right-aligned, no avatar/name — the room's other voices sit left. */
+  /** Mine: right-aligned with the avatar on the right, name hidden — the room's other voices sit left. */
   own?: boolean;
   onOpenThread?: (root: MessageDto) => void;
 }) {
@@ -115,7 +115,7 @@ export const Message = memo(function Message({
   }
   return (
     <div className={`msg ${compact ? 'compact' : ''} ${own ? 'own' : ''}`}>
-      {own ? null : compact ? (
+      {compact ? (
         <div className="msg-gutter">{timeFormat.format(new Date(message.createdAt))}</div>
       ) : (
         <button
