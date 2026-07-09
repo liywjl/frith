@@ -1,7 +1,39 @@
+import { useState } from 'react';
 import type { MeDto, SpaceDto, UserDto } from '@app/shared';
 import { Avatar } from '../components/Avatar';
 import { Icon } from '../components/Icon';
 import { useUserActions } from '../lib/userActions';
+
+/** How many interest tags to show before collapsing the rest behind a "+N" bubble. */
+const TAG_LIMIT = 2;
+
+/**
+ * A person's interest tags on a single line. Anything past TAG_LIMIT hides behind
+ * a "+N" bubble the reader can click to reveal the full list in place.
+ */
+function PeopleTags({ interests, onOpenTag }: { interests: string[]; onOpenTag: (tag: string) => void }) {
+  const [expanded, setExpanded] = useState(false);
+  const shown = expanded ? interests : interests.slice(0, TAG_LIMIT);
+  const hidden = interests.length - shown.length;
+  return (
+    <span className={`people-tags ${expanded ? 'expanded' : ''}`}>
+      {shown.map((i) => (
+        <button key={i} className="tag-mini" onClick={() => onOpenTag(i)}>
+          {i}
+        </button>
+      ))}
+      {hidden > 0 && (
+        <button
+          className="tag-more"
+          onClick={() => setExpanded(true)}
+          title={`Show ${hidden} more tag${hidden === 1 ? '' : 's'}`}
+        >
+          +{hidden}
+        </button>
+      )}
+    </span>
+  );
+}
 
 /** Your network: everyone in the workspace, who's online, who's blocked. */
 export function PeopleView({
@@ -38,13 +70,7 @@ export function PeopleView({
         <span className={`presence-inline ${online.has(u.id) ? 'on' : ''}`}>
           {online.has(u.id) ? 'online' : ''}
         </span>
-        <span className="people-tags">
-          {u.interests.slice(0, 3).map((i) => (
-            <button key={i} className="tag-mini" onClick={() => openTag(i)}>
-              {i}
-            </button>
-          ))}
-        </span>
+        <PeopleTags interests={u.interests} onOpenTag={openTag} />
         <span className="people-actions">
           {!isBlocked && (
             <button className="btn" onClick={() => openDm(u.id)}>
