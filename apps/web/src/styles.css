@@ -1285,10 +1285,21 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
 .group-more { color: var(--ink-soft); font-size: 12.5px; padding: 6px 2px; }
 
 /* inline tag editing */
+.tag-add-form {
+  display: inline-flex; align-items: center;
+  border: 1px dashed var(--line); border-radius: 99px; padding-right: 4px;
+}
+.tag-add-form:focus-within { border-color: var(--ai); }
 .tag-add {
   font: inherit; font-size: 13px; color: var(--ink); background: transparent;
-  border: 1px dashed var(--line); border-radius: 99px; padding: 4px 13px; width: 120px;
+  border: none; outline: none; border-radius: 99px; padding: 4px 4px 4px 13px; width: 104px;
 }
-.tag-add:focus { outline: none; border-color: var(--ai); }
+.tag-add-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; border: none; border-radius: 99px;
+  background: transparent; color: var(--ink-soft); cursor: pointer;
+  font-size: 16px; line-height: 1;
+}
+.tag-add-btn:hover { background: var(--ai-soft); color: var(--ai); }
 .chip-remove { cursor: pointer; opacity: 0.7; }
 .chip-remove:hover { opacity: 1; color: var(--unread); }

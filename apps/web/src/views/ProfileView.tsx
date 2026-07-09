@@ -115,18 +115,21 @@ export function ProfileView({
                 </button>
               ))}
               {isMe && (
-                <input
-                  className="tag-add"
-                  placeholder="+ add a tag"
-                  onKeyDown={(e) => {
-                    const value = e.currentTarget.value.trim();
-                    if (e.key === 'Enter' && value) {
-                      const interests = [...me.interests.filter((m) => m.toLowerCase() !== value.toLowerCase()), value].slice(0, 12);
-                      e.currentTarget.value = '';
-                      void api.patchMe({ interests }).then(() => onMeChange({ ...me, interests }));
-                    }
+                <form
+                  className="tag-add-form"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const input = e.currentTarget.elements.namedItem('tag') as HTMLInputElement;
+                    const value = input.value.trim();
+                    if (!value) return;
+                    const interests = [...me.interests.filter((m) => m.toLowerCase() !== value.toLowerCase()), value].slice(0, 12);
+                    input.value = '';
+                    void api.patchMe({ interests }).then(() => onMeChange({ ...me, interests }));
                   }}
-                />
+                >
+                  <input className="tag-add" name="tag" placeholder="add a tag" aria-label="Add a tag" />
+                  <button type="submit" className="tag-add-btn" title="Add tag" aria-label="Add tag">+</button>
+                </form>
               )}
             </div>
           </section>
