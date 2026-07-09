@@ -1,43 +1,273 @@
 {
   "users": [
-    { "handle": "nora", "name": "Nora Vang", "title": "Vocals", "team": "Static Bloom", "avatarEmoji": "🎤", "statusEmoji": "✍️", "statusText": "lyrics for the bridge", "interests": ["harmonies", "vinyl", "gig posters"], "nowPlaying": "our own demo, critically" },
-    { "handle": "eli", "name": "Eli Brandt", "title": "Guitar", "team": "Static Bloom", "avatarEmoji": "🎸", "statusEmoji": "🔊", "statusText": "pedalboard surgery", "interests": ["fuzz pedals", "open tunings"], "nowPlaying": "amp hum, lovingly" },
-    { "handle": "sam", "name": "Sam Reyes", "title": "Drums", "team": "Static Bloom", "avatarEmoji": "🥁", "statusEmoji": null, "statusText": null, "interests": ["click tracks", "breakfast burritos"], "nowPlaying": "metronome at 128" },
-    { "handle": "ida", "name": "Ida Kask", "title": "Bass", "team": "Static Bloom", "avatarEmoji": "🎻", "statusEmoji": "🚚", "statusText": "has the van", "interests": ["groove", "cable management", "merch design"], "nowPlaying": "the low end" },
-    { "handle": "theo", "name": "Theo Alves", "title": "Keys", "team": "Static Bloom", "avatarEmoji": "🎹", "statusEmoji": "🎛️", "statusText": "synth patch rabbit hole", "interests": ["analog synths", "arrangements", "live-recording"], "nowPlaying": "one pad, forever" }
+    {
+      "handle": "nora",
+      "name": "Nora Vang",
+      "title": "Vocals",
+      "team": "Static Bloom",
+      "avatarEmoji": "🎤",
+      "statusEmoji": "✍️",
+      "statusText": "lyrics for the bridge",
+      "interests": [
+        "harmonies",
+        "vinyl",
+        "gig posters"
+      ],
+      "nowPlaying": "our own demo, critically",
+      "owner": true
+    },
+    {
+      "handle": "eli",
+      "name": "Eli Brandt",
+      "title": "Guitar",
+      "team": "Static Bloom",
+      "avatarEmoji": "🎸",
+      "statusEmoji": "🔊",
+      "statusText": "pedalboard surgery",
+      "interests": [
+        "fuzz pedals",
+        "open tunings"
+      ],
+      "nowPlaying": "amp hum, lovingly",
+      "admin": true
+    },
+    {
+      "handle": "sam",
+      "name": "Sam Reyes",
+      "title": "Drums",
+      "team": "Static Bloom",
+      "avatarEmoji": "🥁",
+      "statusEmoji": null,
+      "statusText": null,
+      "interests": [
+        "click tracks",
+        "breakfast burritos"
+      ],
+      "nowPlaying": "metronome at 128"
+    },
+    {
+      "handle": "ida",
+      "name": "Ida Kask",
+      "title": "Bass",
+      "team": "Static Bloom",
+      "avatarEmoji": "🎻",
+      "statusEmoji": "🚚",
+      "statusText": "has the van",
+      "interests": [
+        "groove",
+        "cable management",
+        "merch design"
+      ],
+      "nowPlaying": "the low end"
+    },
+    {
+      "handle": "theo",
+      "name": "Theo Alves",
+      "title": "Keys",
+      "team": "Static Bloom",
+      "avatarEmoji": "🎹",
+      "statusEmoji": "🎛️",
+      "statusText": "synth patch rabbit hole",
+      "interests": [
+        "analog synths",
+        "arrangements",
+        "live-recording"
+      ],
+      "nowPlaying": "one pad, forever"
+    }
   ],
   "channels": [
-    { "name": "general", "type": "public", "topic": "Static Bloom — band things and non-band things" },
-    { "name": "setlist", "type": "public", "topic": "What we play and in what order" },
-    { "name": "gigs", "type": "public", "topic": "Bookings, load-in times, who has the van" },
-    { "name": "gear", "type": "public", "topic": "Pedals, patches, and the eternal amp debate" },
-    { "name": "bookings", "type": "private", "topic": "Money and contracts — keep it drama-free", "members": ["nora", "ida"] }
+    {
+      "name": "general",
+      "type": "public",
+      "topic": "Static Bloom — band things and non-band things"
+    },
+    {
+      "name": "setlist",
+      "type": "public",
+      "topic": "What we play and in what order"
+    },
+    {
+      "name": "gigs",
+      "type": "public",
+      "topic": "Bookings, load-in times, who has the van"
+    },
+    {
+      "name": "gear",
+      "type": "public",
+      "topic": "Pedals, patches, and the eternal amp debate"
+    },
+    {
+      "name": "bookings",
+      "type": "private",
+      "topic": "Money and contracts — keep it drama-free",
+      "members": [
+        "nora",
+        "ida"
+      ]
+    }
   ],
   "messages": [
-    { "channel": "general", "author": "nora", "daysAgo": 50, "body": "Moving all band chat here. One space, everything findable — no more scrolling through three group chats to find the rehearsal time." },
-    { "channel": "general", "author": "sam", "daysAgo": 30, "body": "Rehearsal recording from Tuesday is uploaded to the channel. The new bridge section at 12:40 — THAT is the version. Listen before Thursday." },
-    { "id": "band-name", "channel": "general", "author": "theo", "daysAgo": 18, "body": "Reminder that we told the brewery our name is Static Bloom and it is now on a poster, so the annual name-change debate is officially closed." },
-    { "id": "setlist-v2", "channel": "setlist", "author": "nora", "daysAgo": 14, "body": "Draft setlist v2 for the brewery gig: open with Copper Sky, then Undertow, new song third while ears are fresh, Fault Lines, close with Night Bus. 35 minutes with banter." },
-    { "channel": "setlist", "author": "eli", "daysAgo": 14, "replyTo": "setlist-v2", "body": "Swap Fault Lines and the new one? The new song needs the crowd warm, and Fault Lines is bulletproof." },
-    { "channel": "setlist", "author": "sam", "daysAgo": 13, "replyTo": "setlist-v2", "body": "Either way works but I need 30 seconds between Undertow and whatever is next — that ending destroys me." },
-    { "channel": "setlist", "author": "nora", "daysAgo": 13, "replyTo": "setlist-v2", "body": "Both fair. v3: Copper Sky, Undertow, (Sam breathes), Fault Lines, new song, Night Bus. Locking it unless the run-through says otherwise." },
-    { "id": "brewery-gig", "channel": "gigs", "author": "ida", "daysAgo": 12, "body": "Brewery gig confirmed for the 21st! Load-in 18:00, soundcheck 18:45, on at 20:30. They feed us. I have the van, need one navigator and two lifters." },
-    { "channel": "gigs", "author": "theo", "daysAgo": 12, "replyTo": "brewery-gig", "body": "Navigator. I also call NOT carrying my own synth case up those stairs alone, it's a two-person instrument." },
-    { "channel": "gigs", "author": "sam", "daysAgo": 11, "replyTo": "brewery-gig", "body": "Lifting. Bringing the small kit — the corner stage won't fit the full one, I checked the photos from last time." },
-    { "channel": "gigs", "author": "nora", "daysAgo": 6, "body": "Idea for autumn: tiny two-date 'tour' — brewery here, then Ida's cousin's venue in the next town. Same weekend, shared petrol. Feasible?" },
-    { "id": "amp-debate", "channel": "gear", "author": "eli", "daysAgo": 9, "body": "The amp question, once more: keep gigging the heavy tube head, or get the modeller and save my spine? I recorded both — clips in the channel. Be honest." },
-    { "channel": "gear", "author": "theo", "daysAgo": 9, "replyTo": "amp-debate", "body": "Listened blind, picked the modeller twice out of three. Your spine wins on evidence." },
-    { "channel": "gear", "author": "ida", "daysAgo": 8, "replyTo": "amp-debate", "body": "The van also votes modeller. The tube head has its own postcode." },
-    { "channel": "gear", "author": "eli", "daysAgo": 8, "replyTo": "amp-debate", "body": "Fine. FINE. Selling the head, keeping the cab out of sentiment, buying the modeller on Friday. Pour one out." },
-    { "channel": "gear", "author": "theo", "daysAgo": 3, "body": "New patch for the Undertow intro — recording in the channel. It finally has that underwater wobble Nora kept describing with hand gestures." },
-    { "channel": "bookings", "author": "ida", "daysAgo": 11, "body": "Brewery pays 150 + food. Cousin's venue would be door split, likely 80-120. Petrol both ways about 40. Not quitting our jobs, but the tour pays for itself." },
-    { "channel": "bookings", "author": "nora", "daysAgo": 10, "body": "Good enough for me. I'll ask for the 20th at the cousin's place so we keep the shared-weekend plan. Contract for the brewery is signed and in the channel." }
+    {
+      "channel": "general",
+      "author": "nora",
+      "daysAgo": 50,
+      "body": "Moving all band chat here. One space, everything findable — no more scrolling through three group chats to find the rehearsal time."
+    },
+    {
+      "channel": "general",
+      "author": "sam",
+      "daysAgo": 30,
+      "body": "Rehearsal recording from Tuesday is uploaded to the channel. The new bridge section at 12:40 — THAT is the version. Listen before Thursday."
+    },
+    {
+      "id": "band-name",
+      "channel": "general",
+      "author": "theo",
+      "daysAgo": 18,
+      "body": "Reminder that we told the brewery our name is Static Bloom and it is now on a poster, so the annual name-change debate is officially closed."
+    },
+    {
+      "id": "setlist-v2",
+      "channel": "setlist",
+      "author": "nora",
+      "daysAgo": 14,
+      "body": "Draft setlist v2 for the brewery gig: open with Copper Sky, then Undertow, new song third while ears are fresh, Fault Lines, close with Night Bus. 35 minutes with banter."
+    },
+    {
+      "channel": "setlist",
+      "author": "eli",
+      "daysAgo": 14,
+      "replyTo": "setlist-v2",
+      "body": "Swap Fault Lines and the new one? The new song needs the crowd warm, and Fault Lines is bulletproof."
+    },
+    {
+      "channel": "setlist",
+      "author": "sam",
+      "daysAgo": 13,
+      "replyTo": "setlist-v2",
+      "body": "Either way works but I need 30 seconds between Undertow and whatever is next — that ending destroys me."
+    },
+    {
+      "channel": "setlist",
+      "author": "nora",
+      "daysAgo": 13,
+      "replyTo": "setlist-v2",
+      "body": "Both fair. v3: Copper Sky, Undertow, (Sam breathes), Fault Lines, new song, Night Bus. Locking it unless the run-through says otherwise."
+    },
+    {
+      "id": "brewery-gig",
+      "channel": "gigs",
+      "author": "ida",
+      "daysAgo": 12,
+      "body": "Brewery gig confirmed for the 21st! Load-in 18:00, soundcheck 18:45, on at 20:30. They feed us. I have the van, need one navigator and two lifters."
+    },
+    {
+      "channel": "gigs",
+      "author": "theo",
+      "daysAgo": 12,
+      "replyTo": "brewery-gig",
+      "body": "Navigator. I also call NOT carrying my own synth case up those stairs alone, it's a two-person instrument."
+    },
+    {
+      "channel": "gigs",
+      "author": "sam",
+      "daysAgo": 11,
+      "replyTo": "brewery-gig",
+      "body": "Lifting. Bringing the small kit — the corner stage won't fit the full one, I checked the photos from last time."
+    },
+    {
+      "channel": "gigs",
+      "author": "nora",
+      "daysAgo": 6,
+      "body": "Idea for autumn: tiny two-date 'tour' — brewery here, then Ida's cousin's venue in the next town. Same weekend, shared petrol. Feasible?"
+    },
+    {
+      "id": "amp-debate",
+      "channel": "gear",
+      "author": "eli",
+      "daysAgo": 9,
+      "body": "The amp question, once more: keep gigging the heavy tube head, or get the modeller and save my spine? I recorded both — clips in the channel. Be honest."
+    },
+    {
+      "channel": "gear",
+      "author": "theo",
+      "daysAgo": 9,
+      "replyTo": "amp-debate",
+      "body": "Listened blind, picked the modeller twice out of three. Your spine wins on evidence."
+    },
+    {
+      "channel": "gear",
+      "author": "ida",
+      "daysAgo": 8,
+      "replyTo": "amp-debate",
+      "body": "The van also votes modeller. The tube head has its own postcode."
+    },
+    {
+      "channel": "gear",
+      "author": "eli",
+      "daysAgo": 8,
+      "replyTo": "amp-debate",
+      "body": "Fine. FINE. Selling the head, keeping the cab out of sentiment, buying the modeller on Friday. Pour one out."
+    },
+    {
+      "channel": "gear",
+      "author": "theo",
+      "daysAgo": 3,
+      "body": "New patch for the Undertow intro — recording in the channel. It finally has that underwater wobble Nora kept describing with hand gestures."
+    },
+    {
+      "channel": "bookings",
+      "author": "ida",
+      "daysAgo": 11,
+      "body": "Brewery pays 150 + food. Cousin's venue would be door split, likely 80-120. Petrol both ways about 40. Not quitting our jobs, but the tour pays for itself."
+    },
+    {
+      "channel": "bookings",
+      "author": "nora",
+      "daysAgo": 10,
+      "body": "Good enough for me. I'll ask for the 20th at the cousin's place so we keep the shared-weekend plan. Contract for the brewery is signed and in the channel."
+    }
   ],
   "reactions": [
-    { "message": "brewery-gig", "emoji": "🎉", "users": ["nora", "eli", "sam", "theo"] },
-    { "message": "setlist-v2", "emoji": "✅", "users": ["eli", "sam", "ida"] },
-    { "message": "amp-debate", "emoji": "😂", "users": ["ida", "sam", "nora"] },
-    { "message": "band-name", "emoji": "🫡", "users": ["nora", "eli", "sam", "ida"] }
+    {
+      "message": "brewery-gig",
+      "emoji": "🎉",
+      "users": [
+        "nora",
+        "eli",
+        "sam",
+        "theo"
+      ]
+    },
+    {
+      "message": "setlist-v2",
+      "emoji": "✅",
+      "users": [
+        "eli",
+        "sam",
+        "ida"
+      ]
+    },
+    {
+      "message": "amp-debate",
+      "emoji": "😂",
+      "users": [
+        "ida",
+        "sam",
+        "nora"
+      ]
+    },
+    {
+      "message": "band-name",
+      "emoji": "🫡",
+      "users": [
+        "nora",
+        "eli",
+        "sam",
+        "ida"
+      ]
+    }
   ],
   "docs": [
     {

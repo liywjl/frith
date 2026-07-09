@@ -1,12 +1,14 @@
 // Loads the fictional Acme corpus into the current space's log — the same
 // coherent storylines as always, now as ops instead of SQL inserts.
+import { randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { space } from '../space/space.js';
 import type { UserRow } from '../space/state.js';
 
 export interface Corpus {
-  users: (Pick<UserRow, 'handle' | 'name'> & Partial<UserRow>)[];
+  /** owner/admin give the demo space a real management chain (see below). */
+  users: (Pick<UserRow, 'handle' | 'name'> & Partial<UserRow> & { owner?: boolean; admin?: boolean })[];
   channels: {
     name: string;
     type: 'public' | 'private' | 'dm';
@@ -43,7 +45,25 @@ export async function seedCorpusData(corpus: Corpus) {
     const existing = [...space.state.users.values()].find((row) => row.handle === u.handle);
     const id = existing?.id ?? space.newId();
     userIds.set(u.handle, id);
-    await space.append({ t: 'user', id, patch: { ...u } });
+    const { owner: _owner, admin: _admin, ...patch } = u;
+    await space.append({ t: 'user', id, patch });
+  }
+
+  // Management chain: the corpus's designated owner mints the space's first
+  // identity (first identity = owner), then grants admin to the flagged users.
+  // Skipped when the space already has an owner — seeding into a real space
+  // must never steal it (and we won't sign role ops as the human owner).
+  if (!space.state.ownerUserId) {
+    const ownerHandle = corpus.users.find((u) => u.owner)?.handle;
+    if (ownerHandle) {
+      const ownerId = userIds.get(ownerHandle)!;
+      await space.bindLocalDevice(ownerId, randomBytes(32).toString('hex'));
+      for (const u of corpus.users) {
+        if (u.admin && u.handle !== ownerHandle) {
+          await space.setAdmin(userIds.get(u.handle)!, true, ownerId);
+        }
+      }
+    }
   }
 
   const channelIds = new Map<string, string>();
