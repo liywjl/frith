@@ -127,10 +127,15 @@ export function createBackend(): Backend {
     for (const l of listeners) l(event);
   };
 
-  /** The device's acting user: the bound identity (production posture), or
-   *  the dev-login user in dev/seeded mode — same split as routes.ts. */
+  /** The device's acting user: in production the bound identity, in dev/seeded
+   *  the dev-login selection — the same split as routes.ts (prod = bound user,
+   *  dev = cookie). Dev must NOT fall back to the bound identity: seeding binds
+   *  this device to the demo space's owner to set up the management chain, so
+   *  the pick-a-user picker would otherwise boot signed-in as the owner.
+   *  createProfile/import set devUserId explicitly in dev, like the desktop
+   *  cookie. */
   const viewer = (): string | null => {
-    const uid = DEV() && devUserId ? devUserId : space.boundUserId();
+    const uid = DEV() ? devUserId : space.boundUserId();
     if (!uid) return null;
     const user = space.state.users.get(uid);
     return user && !space.state.evicted.has(uid) ? uid : null;
@@ -302,6 +307,9 @@ export function createBackend(): Backend {
         });
         if (result === 'invalid-handle') throw bad('handles are letters, numbers, and dashes');
         if (result === 'handle-taken') throw new RpcError('conflict', 'that handle is taken in this space');
+        // createProfile binds this device (prod reads that via boundUserId);
+        // in dev, mirror the desktop cookie so the new profile is signed in.
+        if (DEV()) devUserId = result.id;
         return hello();
       }
       case 'identity.import': {
@@ -316,6 +324,7 @@ export function createBackend(): Backend {
         } catch (err) {
           throw bad(err instanceof Error ? err.message : 'could not bind this device');
         }
+        if (DEV()) devUserId = userId!; // dev parity with the desktop cookie
         return hello();
       }
       case 'space.get':

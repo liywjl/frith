@@ -32,6 +32,8 @@ export function Sidebar({
   online,
   activeId,
   homeActive,
+  feedActive,
+  directoryActive,
   peopleActive,
   filesActive,
   docs,
@@ -39,6 +41,8 @@ export function Sidebar({
   space,
   liveCalls,
   onHome,
+  onFeed,
+  onDirectory,
   onPeople,
   onFiles,
   onDoc,
@@ -57,6 +61,8 @@ export function Sidebar({
   online: Set<string>;
   activeId: string | null;
   homeActive: boolean;
+  feedActive: boolean;
+  directoryActive: boolean;
   peopleActive: boolean;
   filesActive: boolean;
   docs: DocDto[];
@@ -64,6 +70,8 @@ export function Sidebar({
   space: SpaceDto | null;
   liveCalls: Set<string>;
   onHome: () => void;
+  onFeed: () => void;
+  onDirectory: () => void;
   onPeople: () => void;
   onFiles: () => void;
   onDoc: (docId: string) => void;
@@ -188,11 +196,17 @@ export function Sidebar({
         <button className={`side-item home-item ${homeActive ? 'active' : ''}`} onClick={onHome}>
           <span className="side-label"><Icon name="home" /> Home</span>
         </button>
+        <button className={`side-item home-item ${feedActive ? 'active' : ''}`} onClick={onFeed}>
+          <span className="side-label"><Icon name="activity" /> Feed</span>
+        </button>
         <button className={`side-item home-item ${peopleActive ? 'active' : ''}`} onClick={onPeople}>
           <span className="side-label"><Icon name="people" /> People</span>
         </button>
         <button className={`side-item home-item ${filesActive ? 'active' : ''}`} onClick={onFiles}>
           <span className="side-label"><Icon name="folder" /> Files</span>
+        </button>
+        <button className={`side-item home-item ${directoryActive ? 'active' : ''}`} onClick={onDirectory}>
+          <span className="side-label"><Icon name="globe" /> Directory</span>
         </button>
         {/* Opening this row leads straight to the invite/share panel, which only
             managers can act on — so surface it to them alone. When there's no

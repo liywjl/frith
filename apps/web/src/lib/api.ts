@@ -3,6 +3,8 @@ import type {
   DocDto,
   DocFullDto,
   ChannelDto,
+  DirectoryDto,
+  FeedDto,
   FileDto,
   ConnectDto,
   HomeDto,
@@ -35,6 +37,9 @@ export const api = {
     request<UserDto>('/api/me', { method: 'PATCH', body: JSON.stringify(patch) }),
   users: () => request<UserDto[]>('/api/users'),
   home: () => request<HomeDto>('/api/home'),
+  feed: () => request<FeedDto>('/api/feed'),
+  userFeed: (userId: string) => request<FeedDto>(`/api/users/${userId}/feed`),
+  directory: () => request<DirectoryDto>('/api/directory'),
   connect: () => request<ConnectDto>('/api/connect'),
   space: () => request<SpaceDto | null>('/api/space'),
   createSpace: (name: string) =>

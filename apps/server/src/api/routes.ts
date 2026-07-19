@@ -29,10 +29,12 @@ import {
   getChannel,
   getMe,
   getMessage,
+  getFeed,
   getHome,
   getOrCreateGroup,
   getProfilePage,
   getThread,
+  hasBlocked,
   getUserByHandle,
   getUserById,
   listChannelMessages,
@@ -54,9 +56,10 @@ import {
   visibleChannels,
 } from '../domain/store.js';
 import { ask } from '../domain/ask.js';
+import { getDirectory } from '../domain/directory.js';
 import { autoFetchAttachments, fetchAttachmentBytes } from '../domain/attachments.js';
 import { onlineUserIds, publish, register, sendToUser, setOnUserOffline } from './realtime.js';
-import { activeCalls, joinCall, leaveAllCalls, leaveCall, setRecording } from '../domain/calls.js';
+import { activeCallsFor, joinCall, leaveAllCalls, leaveCall, setRecording, shareActiveCall } from '../domain/calls.js';
 import { getPolicies, setPolicies, mb } from '../domain/policies.js';
 import { effectiveMime, isDangerousName } from '../domain/files.js';
 import { space } from '../space/space.js';
@@ -69,6 +72,37 @@ declare module 'fastify' {
 }
 
 const AUTH_COOKIE = 'uid';
+
+// The dev cookie is only ever sent by the same-origin client and never read by
+// JS, so lock it down: httpOnly (no script access), sameSite=strict (a cross-
+// site page can't ride it), path-scoped. Belt-and-braces with the origin guard.
+const AUTH_COOKIE_OPTS = { path: '/', httpOnly: true, sameSite: 'strict' as const };
+
+// The server binds 127.0.0.1 and is the device's own process, but any web page
+// the user visits can still try to reach http://127.0.0.1:<port>/api — a
+// classic CSRF / DNS-rebinding / cross-site-WebSocket surface against a local
+// server. Two cheap, exact checks close it, aligned with the documented
+// loopback trust boundary (DESIGN §17):
+//   • Host must resolve to localhost — defeats DNS rebinding (attacker.com → 127.0.0.1).
+//   • Any Origin present must be localhost — defeats cross-site fetch / WS hijack.
+// A trusted deployment host (future hosted edge) can be allowed via env.
+const TRUSTED_ORIGIN = process.env.FRITH_TRUSTED_ORIGIN?.trim() || null;
+const isLocalHostname = (h: string | undefined): boolean =>
+  h === 'localhost' || h === '127.0.0.1' || h === '::1';
+function hostAllowed(host: string | undefined): boolean {
+  if (!host) return false; // a browser always sends Host; its absence is not a real client
+  const name = host.replace(/:\d+$/, '').replace(/^\[|\]$/g, '');
+  return isLocalHostname(name) || (TRUSTED_ORIGIN != null && host === TRUSTED_ORIGIN);
+}
+function originAllowed(origin: string | undefined): boolean {
+  if (!origin) return true; // no Origin header → not a cross-site browser request (native clients, tests)
+  try {
+    const { host, hostname } = new URL(origin);
+    return isLocalHostname(hostname) || (TRUSTED_ORIGIN != null && host === TRUSTED_ORIGIN);
+  } catch {
+    return false;
+  }
+}
 
 // Production (packaged desktop / deployed): no dev routes, and requests act
 // as the device's bound user — the server binds 127.0.0.1 in-process, so the
@@ -108,14 +142,18 @@ export async function buildApp() {
     space.onOp((op) => {
       void (async () => {
         if (op.t === 'msg') {
+          const { authorId } = op.message;
           publish(
             { type: 'message.created', message: toMessageDto(op.message, '') },
             await channelAudience(op.message.channelId),
+            (uid) => hasBlocked(uid, authorId),
           );
           void autoFetchForSockets(op.message);
         } else if (op.t === 'react') {
           const message = await getMessage(op.messageId);
           if (!message) return;
+          // Reads hide a blocked author's messages entirely, so a recipient who
+          // blocked that author must not see reactions on them either.
           publish(
             {
               type: 'reaction.changed',
@@ -126,6 +164,7 @@ export async function buildApp() {
               added: op.on,
             },
             await channelAudience(message.channelId),
+            (uid) => hasBlocked(uid, message.authorId),
           );
         } else if (op.t === 'user') {
           const user = userDtoById(op.id);
@@ -172,7 +211,7 @@ export async function buildApp() {
       const body = z.object({ handle: z.string() }).parse(req.body);
       const user = await getUserByHandle(body.handle);
       if (!user) return reply.code(404).send({ error: 'no such user' });
-      reply.setCookie(AUTH_COOKIE, user.id, { path: '/' });
+      reply.setCookie(AUTH_COOKIE, user.id, AUTH_COOKIE_OPTS);
       return { id: user.id, handle: user.handle, name: user.name };
     });
   }
@@ -192,7 +231,7 @@ export async function buildApp() {
     const result = await createProfile(input);
     if (result === 'invalid-handle') return reply.code(400).send({ error: 'handles are letters, numbers, and dashes' });
     if (result === 'handle-taken') return reply.code(409).send({ error: 'that handle is taken in this space' });
-    reply.setCookie(AUTH_COOKIE, result.id, { path: '/' });
+    reply.setCookie(AUTH_COOKIE, result.id, AUTH_COOKIE_OPTS);
     return { id: result.id, handle: result.handle, name: result.name };
   });
 
@@ -209,6 +248,10 @@ export async function buildApp() {
   // but privileged space routes (evict, admins, settings) always need a user.
   app.addHook('preHandler', async (req, reply) => {
     if (!req.url.startsWith('/api/')) return; // static web client — the API guards the data
+    // Reject requests a foreign web page could forge against the local server
+    // BEFORE any auth or side effect — the loopback boundary made honest.
+    if (!hostAllowed(req.headers.host)) return reply.code(403).send({ error: 'bad host' });
+    if (!originAllowed(req.headers.origin)) return reply.code(403).send({ error: 'cross-origin request blocked' });
     const path = req.url.split('?')[0]!;
     // Pre-login surface: pick/create a profile, link a device, see/join/create
     // a space. Everything else under /api/space* falls through to auth.
@@ -263,7 +306,7 @@ export async function buildApp() {
     } catch (err) {
       return reply.code(400).send({ error: err instanceof Error ? err.message : 'could not bind this device' });
     }
-    reply.setCookie(AUTH_COOKIE, userId!, { path: '/' }); // dev parity; prod ignores cookies
+    reply.setCookie(AUTH_COOKIE, userId!, AUTH_COOKIE_OPTS); // dev parity; prod ignores cookies
     return { userId };
   });
 
@@ -495,6 +538,22 @@ export async function buildApp() {
         statusExpiresInMinutes: z.number().int().min(1).max(10_080).nullable().optional(),
         interests: z.array(z.string().trim().min(1).max(40)).max(12).optional(),
         nowPlaying: trimmed(120),
+        bio: trimmed(400),
+        location: trimmed(80),
+        accentColor: z
+          .string()
+          .regex(/^#[0-9a-f]{6}$/i, 'accentColor must be a #rrggbb hex color')
+          .nullable()
+          .optional(),
+        links: z
+          .array(
+            z.object({
+              label: z.string().trim().min(1).max(40),
+              url: z.string().trim().url().max(400).startsWith('http'),
+            }),
+          )
+          .max(8)
+          .optional(),
         theme: z.enum(THEMES).optional(),
       })
       .parse(req.body);
@@ -502,6 +561,24 @@ export async function buildApp() {
   });
 
   app.get('/api/home', async (req) => getHome(req.userId));
+
+  app.get('/api/feed', async (req) => getFeed(req.userId));
+
+  app.get('/api/users/:id/feed', async (req, reply) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+    if (!(await getUserById(id))) return reply.code(404).send({ error: 'no such user' });
+    return getFeed(req.userId, id);
+  });
+
+  // The community directory is external data (or a bundled sample) — an
+  // unreachable or malformed feed degrades to an empty list, never a 500.
+  app.get('/api/directory', async () =>
+    getDirectory().catch((err: Error) => ({
+      source: process.env.FRITH_DIRECTORY_URL ?? null,
+      entries: [],
+      error: err.message,
+    })),
+  );
 
   app.get('/api/connect', async (req) => connectSuggestions(req.userId));
 
@@ -534,7 +611,16 @@ export async function buildApp() {
       const channel = await getChannel(id);
       if (!channel) return reply.code(404).send({ error: 'no such channel' });
       if (channel.type === 'dm') return reply.code(400).send({ error: 'conversations cannot be archived' });
-      if (!(await requireChannelAccess(req, reply, id))) return reply;
+      // Read access alone isn't enough: every space member can read a public
+      // channel, so gating on it lets anyone freeze any public channel. Public
+      // channels are space-wide, so only managers may archive them; private
+      // channels belong to their members, so membership (read access) governs.
+      if (channel.type === 'public') {
+        if (!space.canManage(req.userId))
+          return reply.code(403).send({ error: 'only owner or admins can archive this channel' });
+      } else if (!(await requireChannelAccess(req, reply, id))) {
+        return reply;
+      }
       await setChannelArchived(id, action === 'archive');
       return { ok: true };
     });
@@ -802,7 +888,7 @@ export async function buildApp() {
     return { policies: getPolicies(), usage: space.blobs.usage() };
   });
 
-  app.get('/api/calls', async () => activeCalls());
+  app.get('/api/calls', async (req) => activeCallsFor(req.userId));
 
   app.post('/api/channels/:id/schedule', async (req, reply) => {
     const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
@@ -882,7 +968,11 @@ export async function buildApp() {
           channelId?: string;
           seg?: { id?: unknown; color?: unknown; points?: unknown };
         };
+        // Relay signaling only between people actually in a call together —
+        // otherwise any member could signal (or probe the presence of) an
+        // arbitrary user by guessing their id.
         if (event.type === 'rtc.signal' && typeof event.to === 'string' && event.payload) {
+          if (!shareActiveCall(req.userId, event.to)) return;
           sendToUser(event.to, {
             type: 'rtc.signal',
             from: req.userId,
@@ -898,9 +988,14 @@ export async function buildApp() {
           if (!Array.isArray(points) || points.length === 0 || points.length > 128) return;
           if (!points.every((p) => Array.isArray(p) && typeof p[0] === 'number' && typeof p[1] === 'number')) return;
           const channelId = event.channelId;
-          void channelAudience(channelId).then((audience) =>
-            publish({ type: 'call.draw', channelId, from: req.userId, seg: { id, color, points: points as [number, number][] } }, audience),
-          );
+          // Only a member of the channel may inject annotations into its call —
+          // the sender-supplied channelId is not a capability on its own.
+          void canReadChannel(req.userId, channelId).then((ok) => {
+            if (!ok) return;
+            return channelAudience(channelId).then((audience) =>
+              publish({ type: 'call.draw', channelId, from: req.userId, seg: { id, color, points: points as [number, number][] } }, audience),
+            );
+          });
         }
       } catch {
         // ignore malformed frames

@@ -10,6 +10,9 @@ import type {
   FileDto,
   ChannelDto,
   ConnectDto,
+  FeedDto,
+  FeedItemDto,
+  FeedLinkDto,
   HomeDto,
   MeDto,
   MessageDto,
@@ -48,6 +51,10 @@ function toUserDto(user: UserRow): UserDto {
     ...statusVisible(user),
     interests: user.interests,
     nowPlaying: user.nowPlaying,
+    bio: user.bio,
+    links: user.links,
+    accentColor: user.accentColor,
+    location: user.location,
   };
 }
 
@@ -114,6 +121,10 @@ export async function updateProfile(userId: string, patch: ProfilePatch): Promis
   if (!user) throw new Error('no such user');
   const { statusExpiresInMinutes, ...fields } = patch;
   const full: Partial<UserRow> = { ...fields, handle: user.handle, name: patch.name ?? user.name };
+  // Date the change so the feed can show "currently enjoying" updates.
+  if (patch.nowPlaying !== undefined && patch.nowPlaying !== user.nowPlaying) {
+    full.nowPlayingAt = patch.nowPlaying ? new Date().toISOString() : null;
+  }
   // Only touch the expiry when the caller explicitly set/cleared the timer.
   if (statusExpiresInMinutes !== undefined) {
     full.statusExpiresAt =
@@ -407,6 +418,12 @@ export async function blockedIds(viewerId: string): Promise<string[]> {
   return [...(state().blocks.get(viewerId) ?? [])];
 }
 
+/** Has `viewerId` blocked `authorId`? Synchronous — for per-recipient fan-out
+ *  filtering, where reads already drop blocked authors (see channelMessages). */
+export function hasBlocked(viewerId: string, authorId: string): boolean {
+  return state().blocks.get(viewerId)?.has(authorId) ?? false;
+}
+
 export async function setBlocked(viewerId: string, targetId: string, blocked: boolean): Promise<string[]> {
   await space.append({ t: 'block', userId: viewerId, blockedId: targetId, on: blocked });
   return blockedIds(viewerId);
@@ -434,9 +451,9 @@ export async function getThread(rootId: string, viewerId: string): Promise<Messa
     .map((m) => toMessageDto(m, viewerId));
 }
 
-export async function getMessage(id: string): Promise<{ channelId: string } | null> {
+export async function getMessage(id: string): Promise<{ channelId: string; authorId: string } | null> {
   const m = state().messages.get(id);
-  return m ? { channelId: m.channelId } : null;
+  return m ? { channelId: m.channelId, authorId: m.authorId } : null;
 }
 
 export async function createMessage(input: {
@@ -513,17 +530,21 @@ export function filesVisibleTo(viewerId: string): (AttachmentRow & { message: Me
     });
 }
 
+function toFileDto(a: AttachmentRow & { message: MessageRow }): FileDto {
+  return {
+    ...toAttachmentDto(a),
+    messageId: a.messageId,
+    channelId: a.message.channelId,
+    channelName: state().channels.get(a.message.channelId)?.name ?? 'unknown',
+    authorName: state().users.get(a.message.authorId)?.name ?? 'Unknown',
+    createdAt: a.message.createdAt,
+  };
+}
+
 export async function listFiles(viewerId: string): Promise<FileDto[]> {
   return filesVisibleTo(viewerId)
     .sort((a, b) => b.message.createdAt.localeCompare(a.message.createdAt))
-    .map((a) => ({
-      ...toAttachmentDto(a),
-      messageId: a.messageId,
-      channelId: a.message.channelId,
-      channelName: state().channels.get(a.message.channelId)?.name ?? 'unknown',
-      authorName: state().users.get(a.message.authorId)?.name ?? 'Unknown',
-      createdAt: a.message.createdAt,
-    }));
+    .map(toFileDto);
 }
 
 /* ----------------------------- shared docs ----------------------------- */
@@ -731,6 +752,20 @@ export async function getProfilePage(viewerId: string, targetId: string): Promis
     6,
   );
 
+  // Their photo wall: images they shared, in channels the viewer can read —
+  // and never DMs, even when the viewer is the other half of the DM.
+  const photos = filesVisibleTo(viewerId)
+    .filter(
+      (a) =>
+        a.message.authorId === targetId &&
+        scope.has(a.message.channelId) &&
+        a.mime.startsWith('image/') &&
+        !isDangerousName(space.decryptBody(a.name) ?? ''),
+    )
+    .sort((a, b) => b.message.createdAt.localeCompare(a.message.createdAt))
+    .slice(0, 12)
+    .map(toFileDto);
+
   return {
     user: toUserDto(target),
     stats: {
@@ -743,6 +778,7 @@ export async function getProfilePage(viewerId: string, targetId: string): Promis
     popular: popular.map((m) => toMessageDto(m, viewerId)),
     artifacts,
     recent: authored.slice(0, 5).map((m) => toMessageDto(m, viewerId)),
+    photos,
   };
 }
 
@@ -813,6 +849,83 @@ export async function getHome(userId: string): Promise<HomeDto> {
     }));
 
   return { unread, threads, popular };
+}
+
+/* ------------------------------- the feed ------------------------------ */
+
+const FEED_CAP = 60;
+const FEED_URL_RE = /https?:\/\/[^\s)]+/g;
+
+function feedLink(url: string): FeedLinkDto {
+  try {
+    return { url, domain: new URL(url).hostname.replace(/^www\./, '') };
+  } catch {
+    return { url, domain: url };
+  }
+}
+
+/**
+ * The space feed: what people shared, strictly newest-first. No ranking, no
+ * engagement weighting — chronology is the whole algorithm, and it ends.
+ * Scope mirrors profile pages: channels the viewer may read, never DMs, never
+ * archived channels; locked messages decrypt to '' and so contribute nothing.
+ * With `authorId` it becomes one person's timeline for their profile page.
+ */
+export async function getFeed(viewerId: string, authorId?: string): Promise<FeedDto> {
+  const scope = nonDmScope(viewerId);
+  for (const c of state().channels.values()) if (c.archivedAt) scope.delete(c.id);
+  const blocked = state().blocks.get(viewerId);
+  const items: FeedItemDto[] = [];
+
+  for (const m of state().messages.values()) {
+    // Replies are comments on their post (surfaced as a count), not posts.
+    if (m.parentMessageId) continue;
+    if (authorId && m.authorId !== authorId) continue;
+    if (!scope.has(m.channelId) || blocked?.has(m.authorId)) continue;
+    const author = userDtoById(m.authorId);
+    if (!author) continue;
+    const photos = attachmentDtos(m.id).filter((a) => a.kind === 'image' && !a.dangerous);
+    const clear = clearBody(m);
+    const urls = [...new Set(clear.match(FEED_URL_RE) ?? [])];
+    if (photos.length === 0 && urls.length === 0) continue;
+    const base = {
+      at: m.createdAt,
+      author,
+      channelId: m.channelId,
+      channelName: state().channels.get(m.channelId)!.name,
+      messageId: m.id,
+      body: snippet(clear, 200),
+      comments: replyCount(m.id),
+      reactions: state().reactions.get(m.id)?.size ?? 0,
+    };
+    // A message with both photos and links shows as photos — the image is the
+    // share; its links stay readable in the body text.
+    if (photos.length > 0) items.push({ kind: 'photos', id: `photos:${m.id}`, ...base, photos });
+    else items.push({ kind: 'links', id: `links:${m.id}`, ...base, links: urls.slice(0, 3).map(feedLink) });
+  }
+
+  for (const doc of state().docs.values()) {
+    if (authorId && doc.updatedBy !== authorId) continue;
+    const author = userDtoById(doc.updatedBy);
+    const title = space.decryptBody(doc.title);
+    if (!author || title === null) continue;
+    items.push({ kind: 'doc', id: `doc:${doc.id}:${doc.updatedAt}`, at: doc.updatedAt, author, docId: doc.id, title });
+  }
+
+  for (const u of state().users.values()) {
+    if (authorId && u.id !== authorId) continue;
+    if (!u.nowPlaying || !u.nowPlayingAt || blocked?.has(u.id)) continue;
+    items.push({
+      kind: 'enjoying',
+      id: `enjoying:${u.id}:${u.nowPlayingAt}`,
+      at: u.nowPlayingAt,
+      author: toUserDto(u),
+      nowPlaying: u.nowPlaying,
+    });
+  }
+
+  items.sort((a, b) => b.at.localeCompare(a.at));
+  return { items: items.slice(0, FEED_CAP) };
 }
 
 /* ------------------------------ channels for search ------------------- */

@@ -14,7 +14,24 @@
         "gig posters"
       ],
       "nowPlaying": "our own demo, critically",
-      "owner": true
+      "owner": true,
+      "bio": "I write the words and worry about the rest. Static Bloom is the good kind of loud.",
+      "links": [
+        {
+          "label": "Bandcamp",
+          "url": "https://staticbloom.bandcamp.com"
+        },
+        {
+          "label": "Tour diary",
+          "url": "https://staticbloom.substack.com"
+        },
+        {
+          "label": "Instagram",
+          "url": "https://instagram.com/staticbloomband"
+        }
+      ],
+      "accentColor": "#c2255c",
+      "location": "Trondheim, Norway"
     },
     {
       "handle": "eli",
@@ -29,7 +46,20 @@
         "open tunings"
       ],
       "nowPlaying": "amp hum, lovingly",
-      "admin": true
+      "admin": true,
+      "bio": "Guitar, fuzz, and strong opinions about both. My pedalboard has a waiting list.",
+      "links": [
+        {
+          "label": "Pedal demos",
+          "url": "https://youtube.com/@elibrandt"
+        },
+        {
+          "label": "Reverb shop",
+          "url": "https://reverb.com/shop/elis-fuzz-emporium"
+        }
+      ],
+      "accentColor": "#e8590c",
+      "location": "Trondheim, Norway"
     },
     {
       "handle": "sam",
@@ -43,7 +73,9 @@
         "click tracks",
         "breakfast burritos"
       ],
-      "nowPlaying": "metronome at 128"
+      "nowPlaying": "metronome at 128",
+      "bio": "I hit things in time. @ida and I hold the rhythm section together. Breakfast burrito rankings on request.",
+      "location": "Trondheim, Norway"
     },
     {
       "handle": "ida",
@@ -58,7 +90,16 @@
         "cable management",
         "merch design"
       ],
-      "nowPlaying": "the low end"
+      "nowPlaying": "the low end",
+      "bio": "Bass and merch. The groove and the van are both my responsibility.",
+      "links": [
+        {
+          "label": "Merch store",
+          "url": "https://staticbloom.bigcartel.com"
+        }
+      ],
+      "accentColor": "#2f9e44",
+      "location": "Malvik, Norway"
     },
     {
       "handle": "theo",
@@ -73,7 +114,20 @@
         "arrangements",
         "live-recording"
       ],
-      "nowPlaying": "one pad, forever"
+      "nowPlaying": "one pad, forever",
+      "bio": "Keys and patches. Every song needs one more pad. (It does. Ask @nora.)",
+      "links": [
+        {
+          "label": "ModularGrid",
+          "url": "https://modulargrid.net/e/racks/view/theo-alves"
+        },
+        {
+          "label": "Solo stuff",
+          "url": "https://theoalves.bandcamp.com"
+        }
+      ],
+      "accentColor": "#6741d9",
+      "location": "Trondheim, Norway"
     }
   ],
   "channels": [
@@ -227,6 +281,146 @@
       "author": "nora",
       "daysAgo": 10,
       "body": "Good enough for me. I'll ask for the 20th at the cousin's place so we keep the shared-weekend plan. Contract for the brewery is signed and in the channel."
+    },
+    {
+      "channel": "gear",
+      "author": "eli",
+      "daysAgo": 2,
+      "body": "found the fuzz from the demo. full shootout here: https://youtube.com/watch?v=fuzz-shootout-24 — it's the 80€ clone. of course it is"
+    },
+    {
+      "channel": "setlist",
+      "author": "theo",
+      "daysAgo": 2,
+      "body": "the exact pad from the bridge, patched from scratch: https://modulargrid.net/e/patches/static-pad — saving it before the cat unplugs something"
+    },
+    {
+      "channel": "general",
+      "author": "nora",
+      "daysAgo": 1,
+      "id": "demo-mix",
+      "body": "demo mixes are UP: https://staticbloom.bandcamp.com/album/demo-sessions-3 — bridge harmonies at 1:47 on track two. i only cried a little"
+    },
+    {
+      "channel": "general",
+      "author": "ida",
+      "daysAgo": 1,
+      "id": "merch-mockups",
+      "body": "merch mockups!! the bloom tee goes HARD. store preview: https://staticbloom.bigcartel.com/preview",
+      "photos": [
+        {
+          "name": "merch-mockup-bloom-tee.png"
+        },
+        {
+          "name": "merch-mockup-tote.png"
+        }
+      ]
+    },
+    {
+      "channel": "gigs",
+      "author": "sam",
+      "daysAgo": 1,
+      "id": "soundcheck-pic",
+      "body": "soundcheck at verkstedet last night. red lights make us look 30% more professional",
+      "photos": [
+        {
+          "name": "soundcheck-red-lights.png"
+        }
+      ]
+    },
+    {
+      "channel": "gigs",
+      "author": "ida",
+      "daysAgo": 6,
+      "id": "bergen-trip",
+      "body": "BERGEN TRIP 🚐 — 7 hours in the van, one venue, zero regrets. @sam drummed on the dashboard the entire E39",
+      "photos": [
+        {
+          "name": "bergen-van-window.png"
+        },
+        {
+          "name": "bergen-venue-neon.png"
+        },
+        {
+          "name": "bergen-load-in.png"
+        }
+      ]
+    },
+    {
+      "channel": "gigs",
+      "author": "nora",
+      "daysAgo": 6,
+      "replyTo": "bergen-trip",
+      "body": "the neon shot goes on the tour diary. writing it up tonight — https://staticbloom.substack.com"
+    },
+    {
+      "channel": "gigs",
+      "author": "theo",
+      "daysAgo": 6,
+      "replyTo": "bergen-trip",
+      "body": "my synth survived the E39. miracles are real"
+    },
+    {
+      "channel": "gigs",
+      "author": "sam",
+      "daysAgo": 6,
+      "replyTo": "bergen-trip",
+      "body": "dashboard percussion is a legitimate instrument"
+    },
+    {
+      "channel": "gigs",
+      "author": "eli",
+      "daysAgo": 6,
+      "replyTo": "bergen-trip",
+      "body": "next time we buy @theo's modular its own seatbelt"
+    },
+    {
+      "channel": "gigs",
+      "author": "theo",
+      "daysAgo": 5,
+      "id": "bergen-clip",
+      "body": "30 seconds of the soundcheck pad drone. turn it up, close your eyes, you're in Bergen",
+      "photos": [
+        {
+          "name": "bergen-pad-drone.gif",
+          "clip": true
+        }
+      ]
+    },
+    {
+      "channel": "gigs",
+      "author": "nora",
+      "daysAgo": 5,
+      "replyTo": "bergen-clip",
+      "body": "chills. every time"
+    },
+    {
+      "channel": "gigs",
+      "author": "ida",
+      "daysAgo": 5,
+      "replyTo": "bergen-clip",
+      "body": "merch idea: this, but as a lava lamp"
+    },
+    {
+      "channel": "general",
+      "author": "eli",
+      "daysAgo": 1,
+      "replyTo": "merch-mockups",
+      "body": "need the bloom tee in XL immediately"
+    },
+    {
+      "channel": "general",
+      "author": "theo",
+      "daysAgo": 1,
+      "replyTo": "merch-mockups",
+      "body": "tote for cable transport. practical AND beautiful"
+    },
+    {
+      "channel": "gigs",
+      "author": "nora",
+      "daysAgo": 1,
+      "replyTo": "soundcheck-pic",
+      "body": "red lights hide the fear in our eyes"
     }
   ],
   "reactions": [
@@ -266,6 +460,60 @@
         "eli",
         "sam",
         "ida"
+      ]
+    },
+    {
+      "message": "demo-mix",
+      "emoji": "🔥",
+      "users": [
+        "eli",
+        "sam",
+        "ida",
+        "theo"
+      ]
+    },
+    {
+      "message": "merch-mockups",
+      "emoji": "🤩",
+      "users": [
+        "nora",
+        "sam"
+      ]
+    },
+    {
+      "message": "soundcheck-pic",
+      "emoji": "🎸",
+      "users": [
+        "nora",
+        "eli",
+        "ida"
+      ]
+    },
+    {
+      "message": "bergen-trip",
+      "emoji": "🚐",
+      "users": [
+        "nora",
+        "eli",
+        "sam",
+        "theo"
+      ]
+    },
+    {
+      "message": "bergen-trip",
+      "emoji": "❤️",
+      "users": [
+        "nora",
+        "theo"
+      ]
+    },
+    {
+      "message": "bergen-clip",
+      "emoji": "🎹",
+      "users": [
+        "nora",
+        "ida",
+        "sam"
       ]
     }
   ],

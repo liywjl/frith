@@ -5,6 +5,8 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { space } from '../space/space.js';
 import type { UserRow } from '../space/state.js';
+import { addAttachment } from './store.js';
+import { seedClip, seedPhoto } from './seed-photos.js';
 
 export interface Corpus {
   /** owner/admin give the demo space a real management chain (see below). */
@@ -16,7 +18,17 @@ export interface Corpus {
     members?: string[];
     archived?: boolean;
   }[];
-  messages: { id?: string; channel: string; author: string; daysAgo: number; replyTo?: string; body: string }[];
+  messages: {
+    id?: string;
+    channel: string;
+    author: string;
+    daysAgo: number;
+    replyTo?: string;
+    body: string;
+    /** Procedurally generated images attached to this message (seed-photos.ts).
+     *  `clip: true` makes it a looping animated GIF instead of a still. */
+    photos?: { name: string; clip?: boolean }[];
+  }[];
   reactions: { message: string; emoji: string; users: string[] }[];
   /** Shared docs (markdown; one array entry per line). */
   docs?: { title: string; author: string; daysAgo: number; body: string[] }[];
@@ -41,11 +53,15 @@ export async function seedCorpusData(corpus: Corpus) {
   const now = Date.now();
 
   const userIds = new Map<string, string>();
-  for (const u of corpus.users) {
+  for (const [i, u] of corpus.users.entries()) {
     const existing = [...space.state.users.values()].find((row) => row.handle === u.handle);
     const id = existing?.id ?? space.newId();
     userIds.set(u.handle, id);
     const { owner: _owner, admin: _admin, ...patch } = u;
+    // Spread "currently enjoying" updates over recent days so the feed has them.
+    if (patch.nowPlaying && !patch.nowPlayingAt) {
+      patch.nowPlayingAt = new Date(now - (i * 11 + 3) * 3_600_000).toISOString();
+    }
     await space.append({ t: 'user', id, patch });
   }
 
@@ -105,6 +121,12 @@ export async function seedCorpusData(corpus: Corpus) {
         createdAt: new Date(now - m.daysAgo * 86_400_000 + index * 300_000).toISOString(),
       },
     });
+    for (const photo of m.photos ?? []) {
+      const [mime, bytes] = photo.clip
+        ? (['image/gif', seedClip(photo.name)] as const)
+        : (['image/png', seedPhoto(photo.name)] as const);
+      await addAttachment(id, channelIds.get(m.channel)!, photo.name, mime, Buffer.from(bytes));
+    }
   }
 
   for (const r of corpus.reactions) {

@@ -18,6 +18,13 @@ export interface UserRow {
   statusExpiresAt: string | null;
   interests: string[];
   nowPlaying: string | null;
+  /** When nowPlaying was last changed — lets the feed date "enjoying" items. */
+  nowPlayingAt: string | null;
+  bio: string | null;
+  links: { label: string; url: string }[];
+  accentColor: string | null;
+  /** Where they are (or claim to be) — profile flavour, free text. */
+  location: string | null;
   theme: string;
 }
 
@@ -192,6 +199,11 @@ const defaultUser = (id: string): UserRow => ({
   statusExpiresAt: null,
   interests: [],
   nowPlaying: null,
+  nowPlayingAt: null,
+  bio: null,
+  links: [],
+  accentColor: null,
+  location: null,
   theme: 'ocean',
 });
 

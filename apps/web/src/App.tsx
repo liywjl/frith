@@ -41,10 +41,14 @@ import { TagModal } from './modals/TagModal';
 import { UserActionsContext, type UserActions } from './lib/userActions';
 import { SpaceRail } from './components/SpaceRail';
 import { FilesView } from './views/FilesView';
+import { FeedView } from './views/FeedView';
+import { DirectoryView } from './views/DirectoryView';
 import { DocView } from './views/DocView';
 
 type View =
   | { kind: 'home' }
+  | { kind: 'feed' }
+  | { kind: 'directory' }
   | { kind: 'people' }
   | { kind: 'files' }
   | { kind: 'doc'; docId: string }
@@ -302,6 +306,7 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
   const [messages, setMessages] = useState<MessageDto[]>([]);
   const [threadRoot, setThreadRoot] = useState<MessageDto | null>(null);
   const [homeTick, setHomeTick] = useState(0);
+  const [feedTick, setFeedTick] = useState(0);
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [askOpen, setAskOpen] = useState(false);
   const [storageOpen, setStorageOpen] = useState(false);
@@ -475,6 +480,19 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
     setView({ kind: 'home' });
   }, [closeOverlays]);
 
+  const openFeed = useCallback(() => {
+    closeOverlays();
+    setThreadRoot(null);
+    setFeedTick((t) => t + 1);
+    setView({ kind: 'feed' });
+  }, [closeOverlays]);
+
+  const openDirectory = useCallback(() => {
+    closeOverlays();
+    setThreadRoot(null);
+    setView({ kind: 'directory' });
+  }, [closeOverlays]);
+
   const openPeople = useCallback(() => {
     closeOverlays();
     setThreadRoot(null);
@@ -526,6 +544,8 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
       }
       if (event.type === 'user.updated') {
         setUsers((cur) => cur.map((u) => (u.id === event.user.id ? event.user : u)));
+        // A profile change can be a new "currently enjoying" — feed material.
+        if (view.kind === 'feed') setFeedTick((t) => t + 1);
         return;
       }
       if (event.type === 'channels.changed') {
@@ -564,6 +584,7 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
         return;
       }
       if (event.type === 'docs.changed') {
+        if (view.kind === 'feed') setFeedTick((t) => t + 1);
         void api.docs().then((next) => {
           setDocs(next);
           // If the doc we're looking at was removed, fall back home.
@@ -586,6 +607,7 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
       }
       const msg = event.message;
       if (me.blockedUserIds.includes(msg.authorId)) return; // blocked: no feed, no badge
+      if (view.kind === 'feed') setFeedTick((t) => t + 1);
       const viewingThatChannel = view.kind === 'channel' && msg.channelId === activeId;
       if (msg.channelId === activeId) {
         // Keep the cached feed fresh even when Home or a profile is on screen.
@@ -727,6 +749,8 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
       },
     },
     { name: 'home', hint: 'Back to your digest', run: () => openHome() },
+    { name: 'feed', hint: "What your people shared — chronological, that's it", run: () => openFeed() },
+    { name: 'directory', hint: 'Public communities you could join', run: () => openDirectory() },
     { name: 'storage', hint: 'What this device stores & auto-downloads', run: () => setStorageOpen(true) },
     { name: 'devices', hint: 'Link another device to your identity', run: () => setDevicesOpen(true) },
     { name: 'palettes', hint: 'Try on colour combos, live', run: () => setPalettesOpen(true) },
@@ -743,6 +767,7 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
     openProfile,
     openTag: setOpenedTag,
     getUser: (userId) => users.find((u) => u.id === userId),
+    userByHandle: (handle) => users.find((u) => u.handle.toLowerCase() === handle.toLowerCase()),
     isOnline: (userId) => online.has(userId),
   };
 
@@ -757,6 +782,8 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
         online={online}
         activeId={view.kind === 'channel' ? activeId : null}
         homeActive={view.kind === 'home'}
+        feedActive={view.kind === 'feed'}
+        directoryActive={view.kind === 'directory'}
         peopleActive={view.kind === 'people'}
         filesActive={view.kind === 'files'}
         docs={docs}
@@ -764,6 +791,8 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
         space={space}
         liveCalls={new Set(Object.keys(calls).filter((id) => (calls[id] ?? []).length > 0))}
         onHome={openHome}
+        onFeed={openFeed}
+        onDirectory={openDirectory}
         onPeople={openPeople}
         onFiles={openFiles}
         onDoc={openDoc}
@@ -784,6 +813,10 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
         onMeChange={onMeChange}
       />
       {view.kind === 'files' && <FilesView onOpenChannel={openChannel} />}
+      {view.kind === 'feed' && (
+        <FeedView refreshTick={feedTick} onOpenChannel={openChannel} onOpenDoc={openDoc} onOpenThread={openThread} />
+      )}
+      {view.kind === 'directory' && <DirectoryView />}
       {view.kind === 'doc' && (
         <DocView
           docId={view.docId}
@@ -819,6 +852,8 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
           online={online}
           onOpenDm={openDm}
           onOpenChannel={openChannel}
+          onOpenDoc={openDoc}
+          onOpenThread={openThread}
           onEditProfile={() => setProfileEditOpen(true)}
           onToggleBlock={(userId, blocked) => void toggleBlock(userId, blocked)}
           onMeChange={onMeChange}

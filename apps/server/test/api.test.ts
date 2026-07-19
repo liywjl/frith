@@ -1,4 +1,6 @@
+import type { AddressInfo } from 'node:net';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { WebSocket } from 'ws';
 import type { FastifyInstance } from 'fastify';
 import { buildApp } from '../src/api/routes.js';
 import { scheduleMessage } from '../src/domain/store.js';
@@ -23,6 +25,10 @@ beforeAll(async () => {
   alice = await user('alice', 'Alice');
   bob = await user('bob', 'Bob');
   carol = await user('carol', 'Carol');
+  // The first identity minted in a space owns it. Dev users skip identity, so
+  // mint one for alice — she's the founder, and managing public channels
+  // (e.g. archiving) is a manager-only action.
+  await space.append({ t: 'identity', userId: alice, rootKey: 'alice-root' });
 
   const channel = async (name: string, type: string, memberHandles: string[] = []) =>
     (await app.inject({ method: 'POST', url: '/api/dev/channel', payload: { name, type, memberHandles } })).json()
@@ -663,12 +669,9 @@ describe('campfires (calls)', () => {
 
 describe('spaces', () => {
   it('exposes the capability invite to managers only', async () => {
-    // Bind a real owner (first identity author) — dev users carry no identity.
-    const owner = (
-      await app.inject({ method: 'POST', url: '/api/profiles', payload: { name: 'Erik Owner', handle: 'erik' } })
-    ).json().id as string;
+    // alice is the space owner (first identity, bound in beforeAll).
     // The invite IS the key to the space: the owner sees it…
-    const read = await app.inject({ method: 'GET', url: '/api/space', ...as(owner) });
+    const read = await app.inject({ method: 'GET', url: '/api/space', ...as(alice) });
     expect(read.json().invite).toMatch(/^frith:[^:]+:[0-9a-f]{40,}$/);
     expect(read.json().connectedPeers).toBe(0);
     // …a plain member does not.
@@ -722,6 +725,45 @@ describe('blocking', () => {
     expect(JSON.stringify(list.json())).toContain('kraken');
     const dm = await app.inject({ method: 'POST', url: `/api/dms/${bob}`, ...as(alice) });
     expect(dm.statusCode).toBe(200);
+  });
+
+  // Reads already hide a blocked author, but live delivery used to leak: the
+  // op fan-out published `message.created` to the whole channel audience with
+  // no per-recipient block filter, so a blocked person's messages still landed
+  // on the blocker's socket and only vanished on refresh.
+  it('does not deliver a blocked author’s message over the live socket', async () => {
+    const mkUser = async (handle: string, name: string) =>
+      (await app.inject({ method: 'POST', url: '/api/dev/user', payload: { handle, name } })).json().id as string;
+    const dave = await mkUser('dave', 'Dave');
+    const erin = await mkUser('erin', 'Erin');
+    await app.inject({ method: 'POST', url: `/api/users/${erin}/block`, ...as(dave) });
+
+    await app.listen({ port: 0, host: '127.0.0.1' });
+    const { port } = app.server.address() as AddressInfo;
+    const ws = new WebSocket(`ws://127.0.0.1:${port}/api/ws`, { headers: { cookie: `uid=${dave}` } });
+    const received: { type: string; message?: { body?: string } }[] = [];
+    ws.on('message', (d: Buffer) => received.push(JSON.parse(d.toString())));
+    await new Promise<void>((resolve, reject) => {
+      ws.on('open', () => resolve());
+      ws.on('error', reject);
+    });
+
+    const post = (uid: string, body: string) =>
+      app.inject({ method: 'POST', url: `/api/channels/${publicChannel}/messages`, payload: { body }, ...as(uid) });
+    const settle = () => new Promise((r) => setTimeout(r, 100));
+
+    // Blocked author: must NOT arrive live.
+    await post(erin, 'octopus ink recipe');
+    await settle();
+    const msgs = () => received.filter((e) => e.type === 'message.created');
+    expect(msgs().some((e) => e.message?.body?.includes('octopus'))).toBe(false);
+
+    // Control: an author Dave did NOT block still arrives live.
+    await post(carol, 'walrus tusk polish');
+    await settle();
+    expect(msgs().some((e) => e.message?.body?.includes('walrus'))).toBe(true);
+
+    ws.close();
   });
 });
 
@@ -972,6 +1014,200 @@ describe('membership (add/remove people)', () => {
 
 // LAST: switching spaces swaps the whole world; the fixtures above live in
 // the original space.
+describe('social profiles', () => {
+  it('round-trips bio, links, and accent color through /api/me', async () => {
+    const patch = await app.inject({
+      method: 'PATCH',
+      url: '/api/me',
+      payload: {
+        bio: 'I skate and I know things.',
+        location: 'Oslo, Norway',
+        accentColor: '#e8590c',
+        links: [
+          { label: 'Blog', url: 'https://example.com/blog' },
+          { label: 'Instagram', url: 'https://instagram.com/alice' },
+        ],
+      },
+      ...as(alice),
+    });
+    expect(patch.statusCode).toBe(200);
+
+    const me = (await app.inject({ method: 'GET', url: '/api/me', ...as(alice) })).json();
+    expect(me).toMatchObject({ bio: 'I skate and I know things.', accentColor: '#e8590c', location: 'Oslo, Norway' });
+    expect(me.links).toEqual([
+      { label: 'Blog', url: 'https://example.com/blog' },
+      { label: 'Instagram', url: 'https://instagram.com/alice' },
+    ]);
+
+    // Other people see it too — it's a profile, not a setting.
+    const list = (await app.inject({ method: 'GET', url: '/api/users', ...as(bob) })).json();
+    const aliceDto = list.find((u: { handle: string }) => u.handle === 'alice');
+    expect(aliceDto.bio).toBe('I skate and I know things.');
+    expect(aliceDto.links).toHaveLength(2);
+  });
+
+  it('rejects a malformed accent color and a non-http link', async () => {
+    for (const payload of [
+      { accentColor: 'tomato' },
+      { accentColor: '#ff00' },
+      { links: [{ label: 'x', url: 'javascript:alert(1)' }] },
+      { links: [{ label: 'x', url: 'not a url' }] },
+    ]) {
+      const res = await app.inject({ method: 'PATCH', url: '/api/me', payload, ...as(alice) });
+      expect(res.statusCode).toBe(400);
+    }
+  });
+
+  it('stamps nowPlayingAt only when nowPlaying actually changes', async () => {
+    await app.inject({ method: 'PATCH', url: '/api/me', payload: { nowPlaying: 'the low end' }, ...as(carol) });
+    const first = (await app.inject({ method: 'GET', url: '/api/feed', ...as(carol) })).json();
+    const item = first.items.find(
+      (i: { kind: string; author: { id: string } }) => i.kind === 'enjoying' && i.author.id === carol,
+    );
+    expect(item.nowPlaying).toBe('the low end');
+
+    // An unrelated profile edit must not re-date the enjoying item.
+    await app.inject({ method: 'PATCH', url: '/api/me', payload: { title: 'Bassist' }, ...as(carol) });
+    const second = (await app.inject({ method: 'GET', url: '/api/feed', ...as(carol) })).json();
+    const again = second.items.find(
+      (i: { kind: string; author: { id: string } }) => i.kind === 'enjoying' && i.author.id === carol,
+    );
+    expect(again.at).toBe(item.at);
+  });
+});
+
+describe('the feed', () => {
+  beforeAll(async () => {
+    const post = (channelId: string, body: string, uid: string) =>
+      app.inject({ method: 'POST', url: `/api/channels/${channelId}/messages`, payload: { body }, cookies: { uid } });
+    await post(publicChannel, 'route for saturday https://example.com/routes/28k two coffee stops', alice);
+    await post(privateChannel, 'secret demo at https://example.com/secret-demo', alice);
+    await post(dmChannel, 'just for us: https://example.com/dm-only-link', alice);
+  });
+
+  it('shows shared links from readable channels, newest first', async () => {
+    const feed = (await app.inject({ method: 'GET', url: '/api/feed', ...as(bob) })).json();
+    const links = feed.items.filter((i: { kind: string }) => i.kind === 'links');
+    expect(links.length).toBeGreaterThan(0);
+    expect(JSON.stringify(links)).toContain('https://example.com/routes/28k');
+    expect(links[0].links[0].domain).toBe('example.com');
+    const times = feed.items.map((i: { at: string }) => i.at);
+    expect([...times].sort().reverse()).toEqual(times);
+  });
+
+  it('never leaks private channels or DMs — not even to their own members', async () => {
+    // Bob is outside the private channel entirely.
+    expect(JSON.stringify((await app.inject({ method: 'GET', url: '/api/feed', ...as(bob) })).json())).not.toContain(
+      'secret-demo',
+    );
+    // Alice IS in the private channel and the DM: private-channel shares
+    // appear for her, but DM content stays out of any feed by design.
+    const aliceFeed = JSON.stringify((await app.inject({ method: 'GET', url: '/api/feed', ...as(alice) })).json());
+    expect(aliceFeed).toContain('secret-demo');
+    expect(aliceFeed).not.toContain('dm-only-link');
+  });
+
+  it('surfaces shared images as photo items and on the author profile', async () => {
+    const png = Buffer.concat([Buffer.from('89504e470d0a1a0a', 'hex'), Buffer.from('feed-photo-payload')]);
+    const boundary = 'feed-photo-boundary';
+    const payload = Buffer.concat([
+      Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="caption"\r\n\r\nsunrise, worth it\r\n`),
+      Buffer.from(
+        `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="sunrise.png"\r\nContent-Type: image/png\r\n\r\n`,
+      ),
+      png,
+      Buffer.from(`\r\n--${boundary}--\r\n`),
+    ]);
+    const upload = await app.inject({
+      method: 'POST',
+      url: `/api/channels/${publicChannel}/attachments`,
+      payload,
+      headers: { 'content-type': `multipart/form-data; boundary=${boundary}` },
+      ...as(alice),
+    });
+    expect(upload.statusCode).toBe(200);
+
+    const feed = (await app.inject({ method: 'GET', url: '/api/feed', ...as(bob) })).json();
+    const photos = feed.items.find((i: { kind: string }) => i.kind === 'photos');
+    expect(photos.photos[0].kind).toBe('image');
+    expect(photos.body).toContain('sunrise, worth it');
+
+    const profile = (await app.inject({ method: 'GET', url: `/api/users/${alice}/profile`, ...as(bob) })).json();
+    expect(profile.photos.some((p: { name: string }) => p.name === 'sunrise.png')).toBe(true);
+  });
+
+  it('treats replies as comments: counted on the post, never posts themselves', async () => {
+    const root = (
+      await app.inject({
+        method: 'POST',
+        url: `/api/channels/${publicChannel}/messages`,
+        payload: { body: 'trip album planning doc https://example.com/trip-plan' },
+        ...as(alice),
+      })
+    ).json();
+    await app.inject({
+      method: 'POST',
+      url: `/api/channels/${publicChannel}/messages`,
+      payload: { body: 'adding the hostel link https://example.com/hostel-in-reply', parentMessageId: root.id },
+      ...as(carol),
+    });
+    await app.inject({
+      method: 'POST',
+      url: `/api/messages/${root.id}/reactions`,
+      payload: { emoji: '🔥' },
+      ...as(carol),
+    });
+
+    const feed = (await app.inject({ method: 'GET', url: '/api/feed', ...as(bob) })).json();
+    const post = feed.items.find((i: { messageId?: string }) => i.messageId === root.id);
+    expect(post).toMatchObject({ comments: 1, reactions: 1 });
+    // The reply's link rides along as a comment, not as its own feed item.
+    expect(feed.items.some((i: { body?: string }) => i.body?.includes('hostel-in-reply'))).toBe(false);
+  });
+
+  it('excludes blocked authors', async () => {
+    await app.inject({ method: 'POST', url: `/api/users/${alice}/block`, ...as(bob) });
+    const feed = (await app.inject({ method: 'GET', url: '/api/feed', ...as(bob) })).json();
+    expect(feed.items.some((i: { author: { id: string } }) => i.author.id === alice)).toBe(false);
+    await app.inject({ method: 'DELETE', url: `/api/users/${alice}/block`, ...as(bob) });
+  });
+
+  it("serves one person's timeline, still viewer-scoped", async () => {
+    await app.inject({ method: 'PATCH', url: '/api/me', payload: { nowPlaying: 'metronome at 128' }, ...as(bob) });
+    const timeline = (await app.inject({ method: 'GET', url: `/api/users/${alice}/feed`, ...as(bob) })).json();
+    expect(timeline.items.length).toBeGreaterThan(0);
+    // Only alice's items — bob's fresh "enjoying" must not appear here...
+    expect(timeline.items.every((i: { author: { id: string } }) => i.author.id === alice)).toBe(true);
+    // ...and the viewer's ACL still applies to what of hers bob can see.
+    expect(JSON.stringify(timeline)).not.toContain('secret-demo');
+
+    const missing = await app.inject({ method: 'GET', url: `/api/users/${crypto.randomUUID()}/feed`, ...as(bob) });
+    expect(missing.statusCode).toBe(404);
+  });
+});
+
+describe('community directory', () => {
+  it('serves the bundled sample when no directory URL is configured', async () => {
+    const res = await app.inject({ method: 'GET', url: '/api/directory', ...as(bob) });
+    expect(res.statusCode).toBe(200);
+    const dir = res.json();
+    expect(dir.source).toBeNull();
+    expect(dir.entries.length).toBeGreaterThan(0);
+    expect(dir.entries[0]).toMatchObject({ name: expect.any(String), tags: expect.any(Array) });
+  });
+
+  it('degrades to an empty list when the configured directory is unreachable', async () => {
+    process.env.FRITH_DIRECTORY_URL = 'http://127.0.0.1:1/nope.json';
+    try {
+      const dir = (await app.inject({ method: 'GET', url: '/api/directory', ...as(bob) })).json();
+      expect(dir.entries).toEqual([]);
+      expect(dir.error).toBeTruthy();
+    } finally {
+      delete process.env.FRITH_DIRECTORY_URL;
+    }
+  });
+});
+
 describe('multi-space', () => {
   it('creates a second space, seeds it, and switches back — fully isolated', async () => {
     const before = (await app.inject({ method: 'GET', url: '/api/spaces' })).json();

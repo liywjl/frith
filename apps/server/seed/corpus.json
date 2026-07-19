@@ -14,7 +14,16 @@
         "sourdough"
       ],
       "nowPlaying": "Severance, season 2",
-      "admin": true
+      "admin": true,
+      "bio": "Staff engineer on payments. My sourdough starter is named Brioche Fett.",
+      "links": [
+        {
+          "label": "Blog",
+          "url": "https://priyasharma.dev"
+        }
+      ],
+      "accentColor": "#1971c2",
+      "location": "Berlin, Germany"
     },
     {
       "handle": "marco",
@@ -29,7 +38,16 @@
         "synthwave",
         "cooking"
       ],
-      "nowPlaying": "Blade Runner OST on loop"
+      "nowPlaying": "Blade Runner OST on loop",
+      "bio": "Payments by day, synthwave by night.",
+      "links": [
+        {
+          "label": "Mixes",
+          "url": "https://soundcloud.com/marco-ruiz-mixes"
+        }
+      ],
+      "accentColor": "#6741d9",
+      "location": "Lisbon, Portugal"
     },
     {
       "handle": "amara",
@@ -44,7 +62,8 @@
         "climbing",
         "synthwave"
       ],
-      "nowPlaying": "Andor"
+      "nowPlaying": "Andor",
+      "location": "Amsterdam, Netherlands"
     },
     {
       "handle": "jonas",
@@ -59,7 +78,20 @@
         "dogs",
         "vinyl"
       ],
-      "nowPlaying": "In Rainbows, again"
+      "nowPlaying": "In Rainbows, again",
+      "bio": "Designer. I shoot film on weekends and think about type the rest of the time.",
+      "links": [
+        {
+          "label": "Glass",
+          "url": "https://glass.photo/jonasweber"
+        },
+        {
+          "label": "Vinyl log",
+          "url": "https://www.discogs.com/user/jonasweber"
+        }
+      ],
+      "accentColor": "#e8590c",
+      "location": "Berlin, Germany"
     },
     {
       "handle": "sofia",
@@ -74,7 +106,8 @@
         "board games"
       ],
       "nowPlaying": "The Bear, season 3",
-      "owner": true
+      "owner": true,
+      "location": "Stockholm, Sweden"
     },
     {
       "handle": "tomas",
@@ -89,7 +122,9 @@
         "board games",
         "dogs"
       ],
-      "nowPlaying": "learning-Rust playlists"
+      "nowPlaying": "learning-Rust playlists",
+      "location": "Prague, Czechia",
+      "bio": "New here! Learning Rust and the coffee machine, in that order. @priya is guiding me through the payments maze."
     },
     {
       "handle": "elena",
@@ -104,7 +139,8 @@
         "chess",
         "hiking"
       ],
-      "nowPlaying": "lofi focus mix"
+      "nowPlaying": "lofi focus mix",
+      "location": "Warsaw, Poland"
     },
     {
       "handle": "kwame",
@@ -119,7 +155,8 @@
         "synthwave",
         "cooking"
       ],
-      "nowPlaying": "Dune: Part Two"
+      "nowPlaying": "Dune: Part Two",
+      "location": "Berlin, Germany"
     },
     {
       "handle": "ingrid",
@@ -134,7 +171,8 @@
         "gardening",
         "true crime podcasts"
       ],
-      "nowPlaying": "Serial rewatch"
+      "nowPlaying": "Serial rewatch",
+      "location": "Oslo, Norway"
     },
     {
       "handle": "yuki",
@@ -149,7 +187,16 @@
         "film photography",
         "climbing"
       ],
-      "nowPlaying": "Studio Ghibli marathon"
+      "nowPlaying": "Studio Ghibli marathon",
+      "bio": "Mobile. Will trade code review for trail recommendations. Film camera comes on every hike — blame @jonas.",
+      "links": [
+        {
+          "label": "Photos",
+          "url": "https://glass.photo/yukitanaka"
+        }
+      ],
+      "accentColor": "#0c8599",
+      "location": "Munich, Germany"
     },
     {
       "handle": "omar",
@@ -164,7 +211,8 @@
         "basketball",
         "grilling"
       ],
-      "nowPlaying": "F1 highlights"
+      "nowPlaying": "F1 highlights",
+      "location": "Madrid, Spain"
     },
     {
       "handle": "chloe",
@@ -179,7 +227,8 @@
         "sailing",
         "chess"
       ],
-      "nowPlaying": "Wingspan strategy videos"
+      "nowPlaying": "Wingspan strategy videos",
+      "location": "Copenhagen, Denmark"
     }
   ],
   "channels": [
@@ -537,6 +586,77 @@
       "author": "tomas",
       "daysAgo": 1,
       "body": "Count me in 🙌"
+    },
+    {
+      "channel": "general",
+      "author": "marco",
+      "daysAgo": 2,
+      "body": "new deep-work mix is up: https://soundcloud.com/marco-ruiz-mixes/deepwork-vol-4 — 90 minutes, no drops. you're welcome"
+    },
+    {
+      "channel": "general",
+      "author": "jonas",
+      "daysAgo": 1,
+      "id": "darkroom-scans",
+      "body": "darkroom scans from the weekend — the light leak on the second one stays, that's a feature",
+      "photos": [
+        {
+          "name": "darkroom-scan-01.png"
+        },
+        {
+          "name": "darkroom-scan-02.png"
+        }
+      ]
+    },
+    {
+      "channel": "general",
+      "author": "yuki",
+      "daysAgo": 4,
+      "id": "alps-trip",
+      "body": "took the film camera up the Zugspitze this weekend — light above the clouds was unreal. @jonas the Portra did NOT disappoint",
+      "photos": [
+        {
+          "name": "zugspitze-above-clouds.png"
+        },
+        {
+          "name": "zugspitze-ridge.png"
+        }
+      ]
+    },
+    {
+      "channel": "general",
+      "author": "jonas",
+      "daysAgo": 4,
+      "replyTo": "alps-trip",
+      "body": "TOLD you. scan the rest, I need the ridge line on my wall"
+    },
+    {
+      "channel": "general",
+      "author": "amara",
+      "daysAgo": 4,
+      "replyTo": "alps-trip",
+      "body": "adding this to the list — what was the hut situation like?"
+    },
+    {
+      "channel": "general",
+      "author": "marco",
+      "daysAgo": 4,
+      "replyTo": "alps-trip",
+      "body": "this is a desktop wallpaper, thank you for your service"
+    },
+    {
+      "channel": "general",
+      "author": "yuki",
+      "daysAgo": 1,
+      "replyTo": "darkroom-scans",
+      "body": "the light leak one is art, don't let anyone tell you otherwise"
+    },
+    {
+      "channel": "general",
+      "author": "priya",
+      "daysAgo": 1,
+      "replyTo": "darkroom-scans",
+      "body": "framed print for the office please"
     }
   ],
   "reactions": [
@@ -598,6 +718,34 @@
       "users": [
         "priya",
         "jonas"
+      ]
+    },
+    {
+      "message": "darkroom-scans",
+      "emoji": "❤️",
+      "users": [
+        "priya",
+        "yuki",
+        "sofia"
+      ]
+    },
+    {
+      "message": "alps-trip",
+      "emoji": "🏔️",
+      "users": [
+        "jonas",
+        "amara",
+        "marco",
+        "chloe",
+        "tomas"
+      ]
+    },
+    {
+      "message": "alps-trip",
+      "emoji": "❤️",
+      "users": [
+        "jonas",
+        "sofia"
       ]
     }
   ],

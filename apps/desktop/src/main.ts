@@ -64,10 +64,23 @@ async function createWindow(url: string) {
   // so they never vanish and leave an empty strip in the sidebar's top band.
   if (process.platform === 'darwin') win.setWindowButtonVisibility?.(true);
   // The window shows only our own local server; anything else goes to the
-  // system browser.
+  // system browser — and only via http(s)/mailto, never file:// or a custom
+  // scheme a compromised page might try to hand off to another app.
+  const openExternally = (external: string) => {
+    if (/^(https?|mailto):/i.test(external)) void shell.openExternal(external);
+  };
   win.webContents.setWindowOpenHandler(({ url: external }) => {
-    void shell.openExternal(external);
+    openExternally(external);
     return { action: 'deny' };
+  });
+  // setWindowOpenHandler only covers new windows; a top-level navigation
+  // (location = '…') would otherwise replace the app with arbitrary content.
+  // Pin the window to the app's own origin and externalize the rest.
+  const appOrigin = new URL(url).origin;
+  win.webContents.on('will-navigate', (event, target) => {
+    if (new URL(target).origin === appOrigin) return;
+    event.preventDefault();
+    openExternally(target);
   });
   await win.loadURL(url);
 }
