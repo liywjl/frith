@@ -16,6 +16,12 @@
     "desktop": "pnpm --filter desktop build && pnpm --filter desktop start",
     "dev:web": "pnpm --parallel -r dev"
   },
+  "pnpm": {
+    "overrides": {
+      "adm-zip@<0.6.0": ">=0.6.0",
+      "postcss@<8.5.10": ">=8.5.10"
+    }
+  },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "eslint": "^10.6.0",
