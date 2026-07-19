@@ -6,6 +6,7 @@
     "dev": "tsx watch src/index.ts",
     "db:migrate": "drizzle-kit migrate",
     "seed": "tsx scripts/seed.ts",
+    "sign-directory": "tsx scripts/sign-directory.ts",
     "typecheck": "tsc",
     "test": "vitest run"
   },

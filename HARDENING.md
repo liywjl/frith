@@ -30,17 +30,51 @@ credit, which is a membership problem — see §2. Tests in
 [hardening.test.ts](apps/server/test/hardening.test.ts) ("per-writer append
 budget").
 
-## 2. Writer removal via membership epochs (log rotation)
+## 2. Writer removal via membership epochs (log rotation) 📐
 
-`evictUser` ([space.ts:675](apps/server/src/space/space.ts:675)) revokes
-bindings and rotates keys but never removes the writer core. Design a "found a
-fresh Autobase excluding the writer, migrate honest members, abandon the old
-log" flow.
+`evictUser` ([space.ts](apps/server/src/space/space.ts)) revokes bindings and
+rotates keys but never removes the writer core. Design a "found a fresh
+Autobase excluding the writer, migrate honest members, abandon the old log"
+flow.
 
 **Acceptance:** after rotation, an evicted node's appends reach no honest
 member's active log.
 
-## 3. Selective replication by decryptable domain
+**Status: designed, not yet implemented.** Until it lands, an evicted node's
+appends still replicate into honest members' logs (inert — no keys, no
+bindings, and §1 bounds their materialization — but they consume disk and
+replay time). Design:
+
+1. **Trigger.** A manager runs `rotateLog(actorId)` — offered in the UI after
+   any eviction, and advisable after key compromise.
+2. **Found.** The initiating device creates a fresh Autobase (new bootstrap
+   key) in the same corestore, whose genesis op embeds
+   `{ prevSpace, epochSeq, sig }` — the manager's root signature binds the new
+   log to the old one so members can verify lineage.
+3. **Announce.** The manager appends `{ t: 'space-rotated', next, epochSeq,
+   actorId, sig }` to the OLD log. The signature covers `next`, so a
+   compromised peer can't redirect members to a hijacked log. Highest
+   authorized `epochSeq` wins, same convergence discipline as invite rotation.
+4. **Migrate.** On applying a valid `space-rotated`, each honest device joins
+   the new base: the rotating manager runs the blind-pairing admitting loop
+   on the new log and re-admits only devices that are bound + unrevoked +
+   unevicted at rotation time (it has their enc keys from the wraps, so
+   admission can be automatic — no QR ceremony). State carries over as a
+   manager-appended compacted snapshot of live rows, each op stamped
+   `{ from: prevSpace }`; full history stays locally readable from the old
+   log archive.
+5. **Abandon.** After a grace window for offline devices (they catch up via
+   the old log's `space-rotated` op whenever they reconnect), honest peers
+   stop announcing/replicating the old discovery key and keep it read-only
+   on disk per retention policy.
+
+Evicted devices see the rotation op but hold no wraps for the new log's
+invite and are not in the re-admission set — their appends land only on the
+abandoned log. Test plan: two-peer harness, evict + rotate, assert the
+evicted writer's post-rotation appends never reach an honest peer's active
+view.
+
+## 3. Selective replication by decryptable domain 📐
 
 Don't serve a peer the cores/blocks for domains it can't decrypt — closes the
 metadata leak (non-members currently receive private-channel ciphertext and
@@ -48,6 +82,34 @@ envelopes). ROADMAP already flags this as "per-core serve control."
 
 **Acceptance:** a non-member's node never stores blocks for a private channel
 it isn't in.
+
+**Status: designed, not yet implemented.** Today non-members replicate
+private-channel ciphertext plus envelope metadata (author, channel, timing).
+Content is sealed (safe), but the traffic-analysis surface is real. The
+constraint: all ops share ONE Autobase view, so private payloads can't be
+withheld from the shared log — they have to move out of it. Design:
+
+1. **Split payload from header.** New op type `msg2`: the shared log keeps
+   the header (channel, author, keyId, `payloadRef`) while the body's
+   ciphertext lives in a per-domain payload core (one per private channel,
+   same pattern as blob cores). Public/space-domain messages keep inline
+   bodies — no overhead where there's nothing to hide.
+2. **Serve control.** Gate each payload core at the corestore replication
+   session: a peer must prove domain membership before the core is served —
+   its device key appears in a current epoch's wraps for that domain (the
+   log both sides already hold makes this checkable without extra
+   round-trips). Deny = don't announce the core on that session.
+3. **Migration.** Old `msg` ops remain readable forever; clients write
+   `msg2` for private channels once the payload core exists. No data
+   migration required.
+4. **Residual leak, stated honestly.** Headers still replicate to all
+   members of the space (who posted in which private channel, when) — closing
+   that fully means per-domain Autobases, a much larger change. This step
+   closes the payload-bytes and size-correlation leak and stops non-members
+   storing private blocks at all.
+
+Test plan: two corestore peers, one non-member — assert zero payload-core
+blocks transfer; then grant membership and assert they do.
 
 ## 4. Blob purge on eviction ✅
 
