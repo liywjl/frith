@@ -207,6 +207,19 @@ const defaultUser = (id: string): UserRow => ({
   theme: 'ocean',
 });
 
+/** Rate bounding (HARDENING §1). Every peer replays and materializes every
+ *  op, so an admitted writer must not be able to grow honest peers' state
+ *  without bound. Each writer spends 1 credit per op and earns credit only
+ *  from other writers' interleaved ops — log position is the clock, so a
+ *  from-scratch replay reaches the identical verdict on every peer (wall
+ *  clocks would not). A lone spammer is capped at the burst; a writer in an
+ *  active space earns headroom from the activity around it, sustaining up to
+ *  CREDITS_PER_OTHER_OP times everyone else's combined rate before going
+ *  inert. Colluding admitted writers can feed each other credit — that is a
+ *  membership problem (eviction, HARDENING §2), not a rate one. */
+export const WRITER_BURST = 4096; // opening balance and bank cap, in ops
+export const CREDITS_PER_OTHER_OP = 64;
+
 const verifySig = (message: string, sigHex: string, publicKeyHex: string): boolean => {
   try {
     return hypercoreCrypto.verify(b4a.from(message), b4a.from(sigHex, 'hex'), b4a.from(publicKeyHex, 'hex'));
@@ -259,6 +272,12 @@ export class FrithState {
   docs = new Map<string, DocRow>();
   /** Deleted doc ids stay deleted — a reordered stale edit must not resurrect. */
   removedDocs = new Set<string>();
+  /** Total enveloped ops applied — the logical clock for writer budgets. */
+  private opSeq = 0;
+  /** writer key → banked credit and the clock reading at their last op. */
+  private writerBudgets = new Map<string, { credit: number; lastSeq: number }>();
+  /** Writers that ran over budget — their excess ops were skipped as inert. */
+  flaggedWriters = new Set<string>();
 
   memberSet(channelId: string): Set<string> {
     let set = this.members.get(channelId);
@@ -338,9 +357,34 @@ export class FrithState {
     return this.domains.get(domain)?.get(keyId)?.wraps[deviceKey] !== undefined;
   }
 
+  /** Spend one credit for an op from `writer`. False means the writer is over
+   *  budget: flag it and leave the op inert. */
+  private chargeWriter(writer: string): boolean {
+    this.opSeq += 1;
+    let budget = this.writerBudgets.get(writer);
+    if (!budget) {
+      budget = { credit: WRITER_BURST, lastSeq: this.opSeq };
+      this.writerBudgets.set(writer, budget);
+    } else {
+      const earned = (this.opSeq - budget.lastSeq - 1) * CREDITS_PER_OTHER_OP;
+      budget.credit = Math.min(WRITER_BURST, budget.credit + earned);
+      budget.lastSeq = this.opSeq;
+    }
+    if (budget.credit <= 0) {
+      this.flaggedWriters.add(writer);
+      return false;
+    }
+    budget.credit -= 1;
+    return true;
+  }
+
   /** `writer` is the appending device's autobase writer key (hex) — absent
    *   when replaying pre-envelope ops from legacy spaces. */
   apply(op: Op, writer?: string): void {
+    // Rate bound: an over-budget writer's ops stay in the log (retained) but
+    // never materialize (inert). Pre-envelope legacy ops carry no writer and
+    // predate the budget.
+    if (writer !== undefined && !this.chargeWriter(writer)) return;
     switch (op.t) {
       case 'add-writer':
         break; // writer management happens at the autobase level

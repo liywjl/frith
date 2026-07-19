@@ -8,6 +8,8 @@ import type { FastifyInstance } from 'fastify';
 const scratch = path.join(os.tmpdir(), `frith-prod-${process.pid}`);
 process.env.FRITH_DATA = path.join(scratch, 'space');
 process.env.FRITH_MODE = 'production';
+// Read at module load in routes.ts, so it must be set before the import.
+process.env.FRITH_TRUSTED_ORIGIN = 'app.frith.example';
 
 const { buildApp } = await import('../src/api/routes.js');
 const { space } = await import('../src/space/space.js');
@@ -23,6 +25,7 @@ afterAll(async () => {
   await app.close();
   await space.close();
   delete process.env.FRITH_MODE;
+  delete process.env.FRITH_TRUSTED_ORIGIN;
 });
 
 describe('production auth', () => {
@@ -57,5 +60,30 @@ describe('production auth', () => {
     expect(login.statusCode).toBe(404);
     const debug = await app.inject({ method: 'GET', url: '/api/dev/debug' });
     expect(debug.statusCode).toBe(404);
+  });
+});
+
+describe('FRITH_TRUSTED_ORIGIN admits exactly one origin (HARDENING §8)', () => {
+  const get = (headers: Record<string, string>) => app.inject({ method: 'GET', url: '/api/users', headers });
+
+  it('admits the configured origin, and localhost as ever', async () => {
+    expect((await get({ origin: 'https://app.frith.example' })).statusCode).toBe(200);
+    expect((await get({ origin: 'http://localhost:5173' })).statusCode).toBe(200);
+  });
+
+  it('rejects every other origin — including lookalikes and port variants', async () => {
+    for (const origin of [
+      'https://evil.example',
+      'https://evil-app.frith.example', // sibling subdomain
+      'https://app.frith.example.evil.example', // suffix spoof
+      'https://app.frith.example:8443', // port variant is a different origin
+    ]) {
+      expect((await get({ origin })).statusCode, origin).toBe(403);
+    }
+  });
+
+  it('extends the Host allowance to the trusted origin and nothing else', async () => {
+    expect((await get({ host: 'app.frith.example' })).statusCode).toBe(200);
+    expect((await get({ host: 'evil.example' })).statusCode).toBe(403);
   });
 });
