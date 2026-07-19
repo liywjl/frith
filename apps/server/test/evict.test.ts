@@ -5,7 +5,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import b4a from 'b4a';
 import hypercoreCrypto from 'hypercore-crypto';
@@ -146,6 +146,63 @@ describe('per-channel domains', () => {
     expect(space.state.domains.get(domain)!.get(keyAfter)!.wraps[cass.deviceKey]).toBeUndefined();
     // The space key did NOT rotate — removal was channel-scoped.
     expect(space.state.evicted.has(cass.userId)).toBe(false);
+  });
+});
+
+describe('blob purge on eviction (HARDENING §4)', () => {
+  // The byte-removal mechanics of BlobStore.drop are proven in blobs.test.ts;
+  // these prove the wiring — which refs get dropped when an evict op applies.
+  const blobId = { blockOffset: 0, blockLength: 1, byteOffset: 0, byteLength: 8 };
+  const msgFor = (userId: string, id: string) => ({
+    t: 'msg' as const,
+    message: {
+      id,
+      channelId: 'c-purge',
+      authorId: userId,
+      parentMessageId: null,
+      body: 'x',
+      createdAt: new Date().toISOString(),
+    },
+  });
+  const attFor = (messageId: string, id: string, key: string) => ({
+    t: 'att' as const,
+    attachment: { id, messageId, name: 'f.bin', mime: 'application/octet-stream', size: 8, blob: { key, id: blobId } },
+  });
+
+  it('drops the evicted author’s cached blobs — and only theirs', async () => {
+    const evictee = await admitMember();
+    const bystander = await admitMember();
+    const evicteeCore = crypto.randomBytes(32).toString('hex');
+    const bystanderCore = crypto.randomBytes(32).toString('hex');
+    await space.append(msgFor(evictee.userId, 'm-purge-1'));
+    await space.append(attFor('m-purge-1', 'att-purge-1', evicteeCore));
+    await space.append(msgFor(bystander.userId, 'm-purge-2'));
+    await space.append(attFor('m-purge-2', 'att-purge-2', bystanderCore));
+
+    const drop = vi.spyOn(space.blobs, 'drop').mockResolvedValue(undefined);
+    try {
+      await space.evictUser(evictee.userId, owner);
+      const dropped = drop.mock.calls.map(([ref]) => ref.key);
+      expect(dropped).toContain(evicteeCore);
+      expect(dropped).not.toContain(bystanderCore);
+    } finally {
+      drop.mockRestore();
+    }
+  });
+
+  it('ignores a forged evict op — no grief-purge', async () => {
+    const target = await admitMember();
+    const core = crypto.randomBytes(32).toString('hex');
+    await space.append(msgFor(target.userId, 'm-purge-3'));
+    await space.append(attFor('m-purge-3', 'att-purge-3', core));
+    const drop = vi.spyOn(space.blobs, 'drop').mockResolvedValue(undefined);
+    try {
+      await space.append({ t: 'evict', userId: target.userId, actorId: owner, sig: 'ab'.repeat(64) });
+      expect(space.state.evicted.has(target.userId)).toBe(false);
+      expect(drop).not.toHaveBeenCalled();
+    } finally {
+      drop.mockRestore();
+    }
   });
 });
 

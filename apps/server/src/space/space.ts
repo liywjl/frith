@@ -420,6 +420,11 @@ class Space {
       this.state.apply(op, writer);
       this.absorbKeys(op);
       if (op.t === 'setting' && op.key === 'name') this.syncLocalName();
+      // HARDENING §4: an evicted identity's cached blob bytes leave this disk.
+      // Runs wherever the op applies — each honest peer purges its own copy,
+      // regardless of which peer performed the eviction. The evicted-set guard
+      // matters: a forged evict op must not grief-purge anyone's cache.
+      if (op.t === 'evict' && this.state.evicted.has(op.userId)) await this.purgeEvictedBlobs(op.userId);
       if (!this.replaying) for (const listener of this.listeners) listener(op);
     }
     // Once caught up: adopt a rotated invite, rotate stale domains, and seal
@@ -428,6 +433,18 @@ class Space {
     if (!this.replaying) {
       void this.syncInviteFromLog().catch(() => {});
       void this.reconcile().catch(() => {});
+    }
+  }
+
+  /** Drop locally cached bytes for every attachment the evicted user authored.
+   *  Their uploads live on THEIR device's blob core, so for honest peers these
+   *  are remote refs `drop` can clear; the evicted node keeping its own bytes
+   *  is out of our hands. Idempotent — replays and repeat evicts are no-ops. */
+  private async purgeEvictedBlobs(userId: string): Promise<void> {
+    for (const att of this.state.attachments.values()) {
+      if (!att.blob) continue;
+      if (this.state.messages.get(att.messageId)?.authorId !== userId) continue;
+      await this.blobs.drop(att.blob).catch(() => {}); // best-effort per blob — a closed core must not stop the walk
     }
   }
 

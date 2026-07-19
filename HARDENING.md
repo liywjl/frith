@@ -49,13 +49,23 @@ envelopes). ROADMAP already flags this as "per-core serve control."
 **Acceptance:** a non-member's node never stores blocks for a private channel
 it isn't in.
 
-## 4. Blob purge on eviction
+## 4. Blob purge on eviction ✅
 
 ROADMAP §7 item 1 — evicted identities' cached blob bytes get dropped from
 honest peers' disks, not just locked going forward.
 
 **Acceptance:** after eviction, honest peers' blob stores contain none of the
 evicted-only content.
+
+**Done** — when an *applied* (signature-valid, authorized) evict op drains,
+`purgeEvictedBlobs` drops the local cache blocks of every attachment the
+evicted user authored ([space.ts](apps/server/src/space/space.ts)). It runs
+on every peer that applies the op — the purge is local, so each honest
+member clears its own disk regardless of which peer performed the eviction;
+the evicted node keeping its own bytes is out of scope. The evicted-set
+guard means a forged evict op cannot grief-purge caches. Wiring tested in
+[evict.test.ts](apps/server/test/evict.test.ts); byte-removal mechanics in
+blobs.test.ts.
 
 ## 5. Decide + surface the authorship-verification policy ✅
 
