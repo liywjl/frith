@@ -96,12 +96,23 @@ other's identity out of band.
 
 **Acceptance:** two users can compare codes and mark a contact verified.
 
-## 7. Directory curator signatures
+## 7. Directory curator signatures ✅
 
 DESIGN §15 — entries in a directory feed should be signature-verified against
 a curator key you trust, so a compromised host can't inject invite keys.
 
 **Acceptance:** an unsigned/mis-signed entry is rejected by the client.
+
+**Done** — set `FRITH_DIRECTORY_CURATOR_KEY` to a curator's ed25519 public
+key and only entries that key signed are served; unsigned, mis-signed, and
+tampered-after-signing entries are rejected outright (a bogus invite is the
+whole attack, so it never reaches the user). Each signature covers a hash of
+every displayed field in fixed order
+([directory.ts](apps/server/src/domain/directory.ts)). Curators sign feeds
+with [sign-directory.ts](apps/server/scripts/sign-directory.ts); interop is
+verified end to end. With no curator key configured the feed stays
+display-only external data, as before. Tests in
+[hardening.test.ts](apps/server/test/hardening.test.ts).
 
 ## 8. Production request-boundary regression tests ✅
 

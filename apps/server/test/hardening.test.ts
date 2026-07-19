@@ -1,8 +1,15 @@
+import crypto from 'node:crypto';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
+import hypercoreCrypto from 'hypercore-crypto';
+import b4a from 'b4a';
 import { buildApp } from '../src/api/routes.js';
 import { space } from '../src/space/space.js';
 import { CREDITS_PER_OTHER_OP, FrithState, WRITER_BURST, type Op } from '../src/space/state.js';
+import { directoryEntryMessage, getDirectory } from '../src/domain/directory.js';
 
 // The local server is reachable by any web page the user visits, so the origin
 // guard and per-viewer call filtering are the difference between "loopback" and
@@ -171,5 +178,49 @@ describe('call rosters follow channel ACL', () => {
     // Alice, a member, still sees it.
     const aliceView = await app.inject({ method: 'GET', url: '/api/calls', cookies: { uid: alice } });
     expect(aliceView.json().calls[privateChannel]).toContain(alice);
+  });
+});
+
+describe('directory curator signatures (HARDENING §7)', () => {
+  // A compromised directory host must not be able to inject invite keys:
+  // with a curator key configured, only entries that key signed are served.
+  const curator = hypercoreCrypto.keyPair(crypto.randomBytes(32));
+  const entry = (name: string, invite: string | null) => ({
+    name,
+    description: 'a place',
+    tags: ['music'],
+    invite,
+  });
+  const sign = (e: ReturnType<typeof entry>) =>
+    b4a.toString(hypercoreCrypto.sign(b4a.from(directoryEntryMessage(e)), curator.secretKey), 'hex');
+
+  const writeFeed = (entries: unknown[]) => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'frith-dir-test-'));
+    fs.writeFileSync(path.join(dir, 'directory.json'), JSON.stringify({ entries }));
+    return dir;
+  };
+
+  it('serves only curator-signed entries; tampered and unsigned are rejected', async () => {
+    const good = entry('honest space', 'frith-invite-good');
+    const signedGood = { ...good, sig: sign(good) };
+    const tampered = { ...signedGood, invite: 'frith-invite-EVIL' }; // valid sig, swapped invite
+    const unsigned = entry('injected space', 'frith-invite-injected');
+    const dir = writeFeed([signedGood, tampered, unsigned]);
+    const prevSeed = process.env.FRITH_SEED_DIR;
+    process.env.FRITH_SEED_DIR = dir;
+    process.env.FRITH_DIRECTORY_CURATOR_KEY = b4a.toString(curator.publicKey, 'hex');
+    try {
+      const feed = await getDirectory();
+      expect(feed.entries.map((e) => e.name)).toEqual(['honest space']);
+      expect(feed.entries[0]).not.toHaveProperty('sig'); // wire detail, not display data
+
+      // No curator configured: external data is display-only and stays served.
+      delete process.env.FRITH_DIRECTORY_CURATOR_KEY;
+      expect((await getDirectory()).entries).toHaveLength(3);
+    } finally {
+      delete process.env.FRITH_DIRECTORY_CURATOR_KEY;
+      if (prevSeed === undefined) delete process.env.FRITH_SEED_DIR;
+      else process.env.FRITH_SEED_DIR = prevSeed;
+    }
   });
 });
