@@ -89,12 +89,22 @@ the dev suppression ([hardening.test.ts](apps/server/test/hardening.test.ts)).
 Follow-up idea: surface §1's `flaggedWriters` through the same badge
 treatment.
 
-## 6. Fingerprint-verification UX
+## 6. Fingerprint-verification UX ✅
 
 ROADMAP §7 item 2 — short-code compare so two members can confirm each
 other's identity out of band.
 
 **Acceptance:** two users can compare codes and mark a contact verified.
+
+**Done** — a 40-digit safety code (8 spoken-size groups) derived
+order-independently from both users' root keys
+([contacts.ts](apps/server/src/domain/contacts.ts)), shown in the profile
+panel with a "Mark as verified" toggle
+([SafetyCode.tsx](apps/web/src/components/SafetyCode.tsx)). The mark is
+device-local — your judgment, never log data — and it stores the code it
+vouched for, so a contact whose root key changes silently drops back to
+unverified. Hidden for identities without roots (dev-seeded demo users).
+Tested in [evict.test.ts](apps/server/test/evict.test.ts).
 
 ## 7. Directory curator signatures ✅
 

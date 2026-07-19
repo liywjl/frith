@@ -2,6 +2,7 @@ import type { ChannelDto } from '@app/shared';
 import { Avatar } from '../components/Avatar';
 import { Icon } from '../components/Icon';
 import { Mentions } from '../components/Mentions';
+import { SafetyCode } from '../components/SafetyCode';
 import { useProfile } from '../lib/useProfile';
 import { useUserActions } from '../lib/userActions';
 import { linkIcon } from '../lib/socials';
@@ -128,6 +129,8 @@ export function ProfilePanel({
           </div>
         </div>
       )}
+
+      <SafetyCode userId={userId} />
 
       {user.team && (
         <div className="panel-card">

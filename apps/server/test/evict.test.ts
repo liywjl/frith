@@ -206,6 +206,33 @@ describe('blob purge on eviction (HARDENING §4)', () => {
   });
 });
 
+describe('fingerprint verification (HARDENING §6)', () => {
+  it('gives both sides the same code; the mark drops if the root key changes', async () => {
+    const { fingerprintCode, fingerprintFor, setContactVerified } = await import('../src/domain/contacts.js');
+    const contact = await admitMember();
+    const code = fingerprintCode(owner, contact.userId)!;
+    expect(code).toMatch(/^(\d{5} ){7}\d{5}$/); // 40 digits, spoken-size groups
+    expect(fingerprintCode(contact.userId, owner)).toBe(code); // order-independent
+
+    expect(fingerprintFor(owner, contact.userId).verified).toBe(false);
+    expect(setContactVerified(owner, contact.userId, true).verified).toBe(true);
+    expect(fingerprintFor(owner, contact.userId).verified).toBe(true);
+
+    // A re-rooted contact is a different identity: the stored mark vouched
+    // for the old code, so verification silently drops. (Roots are immutable
+    // through ops — mutate the map directly to simulate.)
+    const oldRoot = space.state.roots.get(contact.userId)!;
+    space.state.roots.set(contact.userId, 'ff'.repeat(32));
+    expect(fingerprintFor(owner, contact.userId).verified).toBe(false);
+    space.state.roots.set(contact.userId, oldRoot);
+
+    // Served over the API for the signed-in viewer.
+    const res = await app.inject({ method: 'GET', url: `/api/contacts/${contact.userId}/fingerprint`, ...as(owner) });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().code).toBe(code);
+  });
+});
+
 describe('content encryption end-to-end', () => {
   it('stores scheduled messages encrypted and lists them decrypted', async () => {
     const channel = (

@@ -57,6 +57,7 @@ import {
 } from '../domain/store.js';
 import { ask } from '../domain/ask.js';
 import { getDirectory } from '../domain/directory.js';
+import { fingerprintFor, setContactVerified } from '../domain/contacts.js';
 import { autoFetchAttachments, fetchAttachmentBytes } from '../domain/attachments.js';
 import { onlineUserIds, publish, register, sendToUser, setOnUserOffline } from './realtime.js';
 import { activeCallsFor, joinCall, leaveAllCalls, leaveCall, setRecording, shareActiveCall } from '../domain/calls.js';
@@ -318,6 +319,20 @@ export async function buildApp() {
       return reply.code(403).send({ error: err instanceof Error ? err.message : 'cannot revoke' });
     }
     return { ok: true };
+  });
+
+  // ——— Fingerprint verification (HARDENING §6): compare codes out of band ———
+
+  app.get('/api/contacts/:id/fingerprint', async (req) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+    return fingerprintFor(req.userId, id);
+  });
+
+  // The mark is device-local (your judgment, not log data) — see contacts.ts.
+  app.post('/api/contacts/:id/verified', async (req) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+    const { on } = z.object({ on: z.boolean() }).parse(req.body);
+    return setContactVerified(req.userId, id, on);
   });
 
   app.get('/api/me', async (req) => getMe(req.userId));
