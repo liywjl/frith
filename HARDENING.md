@@ -57,7 +57,7 @@ honest peers' disks, not just locked going forward.
 **Acceptance:** after eviction, honest peers' blob stores contain none of the
 evicted-only content.
 
-## 5. Decide + surface the authorship-verification policy
+## 5. Decide + surface the authorship-verification policy ✅
 
 `verified` is computed ([state.ts](apps/server/src/space/state.ts)) —
 confirm the client actually renders the unverified/unknown states distinctly,
@@ -66,13 +66,18 @@ and decide whether any op types should upgrade from flag to reject.
 **Acceptance:** a message from an unbound/mismatched writer is visibly
 distinct in the UI.
 
-**Confirmed gap (2026-07-19):** the message DTO drops `verified` and no web
-component reads it — the flag currently dies inside the reducer. Wrinkle to
-resolve first: in dev, one writer device appends for many seeded users, so
-`verified` is false for almost everything; rendering it naively would flag
-the whole demo. The policy decision (when to badge, whether dev suppresses
-it) has to come before the UI work. `state.flaggedWriters` from §1 should
-surface through the same treatment.
+**Done — policy: flag, don't reject.** History must converge on every peer,
+so bad authorship marks a message rather than dropping it (rejection would
+also let anyone censor by forging). The DTO sets `unverified` only on a
+*provable* mismatch (`verified === false`) and only in production — dev's
+one-writer-many-users setup makes authorship unknowable there, not
+suspicious, and `undefined` (legacy pre-envelope ops) is never treated as an
+accusation. The web client renders an "unverified" badge on flagged
+messages ([Message.tsx](apps/web/src/components/Message.tsx)). Tests cover
+all three states in prod ([prod.test.ts](apps/server/test/prod.test.ts)) and
+the dev suppression ([hardening.test.ts](apps/server/test/hardening.test.ts)).
+Follow-up idea: surface §1's `flaggedWriters` through the same badge
+treatment.
 
 ## 6. Fingerprint-verification UX
 

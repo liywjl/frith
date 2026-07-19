@@ -411,6 +411,11 @@ export function toMessageDto(row: MessageRow, viewerId: string): MessageDto {
     reactions: reactionsFor(row.id, viewerId),
     attachments: attachmentDtos(row.id),
     ...(clear === null ? { locked: true } : {}),
+    // Authorship policy (HARDENING §5): flag, don't reject — history must
+    // converge on every peer, so bad authorship marks the message rather
+    // than dropping it. Only a provable mismatch surfaces, and only in
+    // production: dev's one-writer-many-users setup would flag everything.
+    ...(row.verified === false && process.env.FRITH_MODE === 'production' ? { unverified: true } : {}),
   };
 }
 

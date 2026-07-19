@@ -137,6 +137,22 @@ describe('per-writer append budget (HARDENING §1)', () => {
   });
 });
 
+describe('authorship policy in dev (HARDENING §5)', () => {
+  it('never flags unverified — one dev writer speaks for many seeded users by design', async () => {
+    const { toMessageDto } = await import('../src/domain/store.js');
+    const row = {
+      id: 'm-authorship',
+      channelId: 'c-authorship',
+      authorId: alice,
+      parentMessageId: null,
+      body: '',
+      createdAt: new Date().toISOString(),
+      verified: false,
+    };
+    expect(toMessageDto(row, alice).unverified).toBeUndefined();
+  });
+});
+
 describe('call rosters follow channel ACL', () => {
   it('hides a private channel’s call from a non-member', async () => {
     // Alice (a member) opens a campfire in the private channel.

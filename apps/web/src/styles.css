@@ -598,6 +598,10 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
 .btn.danger:hover { border-color: var(--unread); }
 .body.locked { color: var(--ink-soft); font-style: italic; display: inline-flex; align-items: center; gap: 6px; }
 .body.locked svg { width: 13px; height: 13px; opacity: 0.7; }
+/* Authorship warning (HARDENING §5): the appending device provably did not
+   belong to the claimed author. Loud enough to notice, quiet enough to read past. */
+.unverified-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--unread); border: 1px solid var(--unread); border-radius: 9px; padding: 0 6px; width: fit-content; }
+.unverified-badge svg { width: 11px; height: 11px; }
 
 .group-list { display: flex; flex-direction: column; gap: 4px; max-height: 44vh; overflow-y: auto; }
 .group-row {

@@ -210,6 +210,10 @@ export interface MessageDto {
   /** True when this device lacks the content key (e.g. sent after we were
    *  removed): `body` is a placeholder, not the real text. */
   locked?: boolean;
+  /** True when the appending device provably did NOT belong to the claimed
+   *  author. Only ever set in production — in dev one writer speaks for many
+   *  seeded users, so authorship there is unknowable, not suspicious. */
+  unverified?: boolean;
 }
 
 /**

@@ -63,6 +63,28 @@ describe('production auth', () => {
   });
 });
 
+describe('authorship policy in production (HARDENING §5)', () => {
+  it('marks a provable author/device mismatch unverified — and nothing else', async () => {
+    const { toMessageDto } = await import('../src/domain/store.js');
+    const channel = await app.inject({ method: 'POST', url: '/api/channels', payload: { name: 'general', type: 'public' } });
+    const sent = await app.inject({
+      method: 'POST',
+      url: `/api/channels/${channel.json().channelId}/messages`,
+      payload: { body: 'hello from my own bound device' },
+    });
+    expect(sent.statusCode).toBe(200);
+    const row = space.state.messages.get(sent.json().id as string)!;
+
+    // Appended by the author's own bound device: verified, no badge.
+    expect(row.verified).toBe(true);
+    expect(toMessageDto(row, row.authorId).unverified).toBeUndefined();
+    // The same message with a proven mismatch gets the badge.
+    expect(toMessageDto({ ...row, verified: false }, row.authorId).unverified).toBe(true);
+    // Unknown authorship (legacy pre-envelope ops) is not an accusation.
+    expect(toMessageDto({ ...row, verified: undefined }, row.authorId).unverified).toBeUndefined();
+  });
+});
+
 describe('FRITH_TRUSTED_ORIGIN admits exactly one origin (HARDENING §8)', () => {
   const get = (headers: Record<string, string>) => app.inject({ method: 'GET', url: '/api/users', headers });
 

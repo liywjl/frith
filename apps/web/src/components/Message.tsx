@@ -135,7 +135,17 @@ export const Message = memo(function Message({
               </button>
             )}
             <span className="when">{timeFormat.format(new Date(message.createdAt))}</span>
+            {message.unverified && (
+              <span className="unverified-badge" title="Sent from a device not proven to belong to this person">
+                <Icon name="warning" /> unverified
+              </span>
+            )}
           </div>
+        )}
+        {compact && message.unverified && (
+          <span className="unverified-badge" title="Sent from a device not proven to belong to this person">
+            <Icon name="warning" /> unverified
+          </span>
         )}
         {message.locked ? (
           <div className="body bubble locked">
