@@ -24,7 +24,9 @@ const load = (): Marks => {
 };
 const save = (marks: Marks): void => {
   try {
-    fs.writeFileSync(file(), JSON.stringify(marks));
+    // Who you have verified is device-local judgment about other people —
+    // owner-only on disk, like the registry.
+    fs.writeFileSync(file(), JSON.stringify(marks), { mode: 0o600 });
   } catch {
     // best-effort — worst case the user re-verifies
   }

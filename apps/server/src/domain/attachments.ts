@@ -24,7 +24,11 @@ export async function autoFetchAttachments(
   if (tooOld || opts.blockedLocally(message.authorId)) return;
   for (const a of attachments) {
     if (!a.blob || space.blobs.isOwn(a.blob) || a.size > mb(policies.autoFetchMB)) continue;
-    const bytes = await space.blobs.get(a.blob, { wait: true, expectedHash: a.hash }).catch(() => null);
+    // `a.size` is the poster's claim, and this fetch is unprompted — so the
+    // policy, not the claim, is what actually bounds the read.
+    const bytes = await space.blobs
+      .get(a.blob, { wait: true, expectedHash: a.hash, maxBytes: mb(policies.autoFetchMB) })
+      .catch(() => null);
     if (!bytes) continue;
     opts.publish(
       { type: 'file.cached', channelId: message.channelId, messageId: message.id, attachmentId: a.id },
@@ -46,7 +50,13 @@ export async function fetchAttachmentBytes(
   publish: Publish,
 ): Promise<{ status: 'needs-fetch' } | { status: 'locked' } | { status: 'ok'; clear: Buffer }> {
   const wasCached = space.blobs.isCachedSync(attachment.blob);
-  const bytes = await space.blobs.get(attachment.blob, { wait, expectedHash: attachment.hash });
+  // An explicit "download this" may be large, but not unbounded: this device's
+  // own upload ceiling is the most it ever agreed to handle.
+  const bytes = await space.blobs.get(attachment.blob, {
+    wait,
+    expectedHash: attachment.hash,
+    maxBytes: mb(getPolicies().maxUploadMB),
+  });
   if (!bytes) return { status: 'needs-fetch' };
   if (!wasCached) {
     publish(

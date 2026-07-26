@@ -136,11 +136,15 @@ export async function updateProfile(userId: string, patch: ProfilePatch): Promis
   return toUserDto(state().users.get(userId)!);
 }
 
-/** Null out expired statuses; returns the users that changed (for fan-out). */
+/** Null out expired statuses; returns the users that changed (for fan-out).
+ *  Only for identities this device speaks for — an expired status already
+ *  reads as cleared everywhere (toUserDto hides it), so this is log hygiene,
+ *  and writing it in someone else's name is not ours to do. */
 export async function clearExpiredStatuses(): Promise<UserDto[]> {
   const now = new Date();
   const cleared: UserDto[] = [];
   for (const user of state().users.values()) {
+    if (!space.actsFor(user.id)) continue;
     if (user.statusExpiresAt !== null && new Date(user.statusExpiresAt) < now) {
       await space.append({
         t: 'user',
@@ -669,9 +673,13 @@ export async function cancelScheduled(authorId: string, id: string): Promise<boo
   return true;
 }
 
+/** Due messages THIS device should send. Every peer runs the delivery timer,
+ *  so claiming everyone's rows means a device posting in other people's names
+ *  and two online peers delivering the same message twice. Only the author's
+ *  own device sends for them. */
 export async function claimDueScheduled() {
   const now = new Date().toISOString();
-  const due = [...state().scheduled.values()].filter((s) => s.sendAt <= now);
+  const due = [...state().scheduled.values()].filter((s) => s.sendAt <= now && space.actsFor(s.authorId));
   for (const item of due) await space.append({ t: 'unsched', id: item.id });
   return due.map((d) => ({ ...d, parentMessageId: d.parentMessageId }));
 }

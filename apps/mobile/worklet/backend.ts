@@ -56,7 +56,7 @@ import {
 import { ask } from '../../server/src/domain/ask.js';
 import { autoFetchAttachments, fetchAttachmentBytes } from '../../server/src/domain/attachments.js';
 import { deliverDueScheduled } from '../../server/src/domain/scheduler.js';
-import { getPolicies, mb, setPolicies } from '../../server/src/domain/policies.js';
+import { getPolicies, mb, setPolicies, storageDto } from '../../server/src/domain/policies.js';
 import { effectiveMime } from '../../server/src/domain/files.js';
 
 export class RpcError extends Error {
@@ -465,7 +465,15 @@ export function createBackend(): Backend {
         const p = obj(params);
         const { id, channel } = await channelById(p);
         if (channel.type === 'dm') throw bad('conversations cannot be archived');
-        await requireAccess(uid, id);
+        // Read access alone isn't enough for a public channel: everyone in the
+        // space has it, so gating on it lets anyone freeze any public channel.
+        // Public channels are space-wide (managers only); private ones belong
+        // to their members. Same policy as the HTTP edge — one op, one rule.
+        if (channel.type === 'public') {
+          if (!space.canManage(uid)) throw forbidden('only owner or admins can archive this channel');
+        } else {
+          await requireAccess(uid, id);
+        }
         await setChannelArchived(id, bool(p.archived, 'archived'));
         return { ok: true };
       }
@@ -653,7 +661,7 @@ export function createBackend(): Backend {
 
       /* ——— device-local storage ——— */
       case 'storage.get':
-        return { policies: getPolicies(), usage: space.blobs.usage() };
+        return storageDto(space.blobs.usage());
       case 'storage.policies': {
         const p = obj(params);
         const patch: Partial<PoliciesDto> = {};
@@ -665,11 +673,11 @@ export function createBackend(): Backend {
         if (p.storageBudgetMB !== undefined) patch.storageBudgetMB = int(p.storageBudgetMB, 'storageBudgetMB', 0, 1_048_576);
         const policies = setPolicies(patch);
         await space.blobs.enforceBudget(mb(policies.storageBudgetMB));
-        return { policies, usage: space.blobs.usage() };
+        return storageDto(space.blobs.usage());
       }
       case 'storage.clearCache':
         await space.blobs.clearCache();
-        return { policies: getPolicies(), usage: space.blobs.usage() };
+        return storageDto(space.blobs.usage());
 
       /* ——— pins & scheduled ——— */
       case 'pins.set': {

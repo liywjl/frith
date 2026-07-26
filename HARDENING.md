@@ -41,9 +41,18 @@ flow.
 member's active log.
 
 **Status: designed, not yet implemented.** Until it lands, an evicted node's
-appends still replicate into honest members' logs (inert — no keys, no
-bindings, and §1 bounds their materialization — but they consume disk and
-replay time). Design:
+appends still replicate into honest members' logs. They are inert — §10 drops
+every content op from a revoked writer, and from any writer it went on to
+admit, so nothing they append changes an honest peer's state — but they still
+consume disk and replay time, which is what rotation fixes.
+
+(This paragraph used to claim inertness before §10 existed. It was true only of
+the signature-authorized op types: an evicted, device-revoked writer could
+still rewrite profiles, create channels, post messages, and forge reactions and
+blocks. Fixed in §10; the regression is pinned in
+[authorization.test.ts](apps/server/test/authorization.test.ts).)
+
+Design:
 
 1. **Trigger.** A manager runs `rotateLog(actorId)` — offered in the UI after
    any eviction, and advisable after key compromise.
@@ -138,7 +147,9 @@ and decide whether any op types should upgrade from flag to reject.
 **Acceptance:** a message from an unbound/mismatched writer is visibly
 distinct in the UI.
 
-**Done — policy: flag, don't reject.** History must converge on every peer,
+**Done — policy: flag, don't reject** *(for message bodies; §10 rejects
+outright where the op decides authorization rather than display)*. History must
+converge on every peer,
 so bad authorship marks a message rather than dropping it (rejection would
 also let anyone censor by forging). The DTO sets `unverified` only on a
 *provable* mismatch (`verified === false`) and only in production — dev's
@@ -150,6 +161,10 @@ all three states in prod ([prod.test.ts](apps/server/test/prod.test.ts)) and
 the dev suppression ([hardening.test.ts](apps/server/test/hardening.test.ts)).
 Follow-up idea: surface §1's `flaggedWriters` through the same badge
 treatment.
+
+**Scope, after §10:** the badge now covers only the genuinely unknowable case —
+a message whose author no device is bound to. An op claiming an author who HAS
+a bound device, from a device that isn't theirs, no longer applies at all.
 
 ## 6. Fingerprint-verification UX ✅
 
@@ -222,3 +237,142 @@ build-time only and forcing a v3→v11 major on that toolchain risks breaking
 mobile builds. **Still open:** the documented human review pass over the
 Pears stack — supply-chain trust in Holepunch's packages is currently
 assumed, not audited.
+
+## 10. Authorize content ops at the reducer ✅
+
+The reducer gated `identity`, `device`, `role`, `evict`, `setting`, `logo`,
+`epoch`, `grant` and `invite-rotate` on root signatures and applied every other
+op unconditionally. Since every peer replays every op, one admitted writer
+could forge state on all honest peers: append
+`{t:'member', channelId:<private>, userId:<self>}` and honest peers' `reconcile`
+seals that channel's content keys — the whole keychain, under the default
+`historyVisibility: 'full'` — to the forger's device. Also profile
+impersonation (`user`), destruction (`unmember`, the sticky `doc-remove`), and
+forged reactions, blocks, reads, pins and scheduled sends.
+
+**Acceptance:** an admitted writer cannot change state in another member's
+name, and an evicted one cannot change state at all.
+
+**Done** — `FrithState.permits` ([state.ts](apps/server/src/space/state.ts)).
+Content ops carry no signature, so they are authorized by *who appended them*:
+the writer key in the op envelope, resolved through verified device bindings.
+The verdict comes from the log alone, so every peer reaches it identically on a
+from-scratch replay. Three layers:
+
+1. **Inert writers.** A revoked device (theft, eviction) authors nothing — and
+   neither does any writer it went on to admit, because autobase admits whoever
+   an `add-writer` op names and an evicted node would otherwise just mint
+   itself a clean key. This is what makes eviction bite before §2 lands.
+2. **Claimable subjects.** The identity an op acts as or upon is protected once
+   some device is bound to it. Identities with no device — dev's seeded cast,
+   pre-identity spaces — are nobody's to impersonate, which is the same
+   "authorship is unknowable here" case §5 settled, and is what keeps dev's
+   one-writer-many-users setup working.
+3. **Per-op rules.** `authorId === actor` for `msg`/`att`/`react`/`read`/
+   `block`/`pin`/`pins`/`sched`/`unsched` and doc bylines; member, founder or
+   manager for `member`/`unmember`/`archive`; creator or manager for
+   `doc-remove`; managers only to freeze a public channel.
+
+`deviceOwners` became device → *set* of users along the way: a machine holding
+several root seeds (a shared dev box, or your laptop after importing a second
+identity) legitimately speaks for each, and the old one-user map would have
+called honest ops forgeries. Eviction unbinds the evicted user from every
+device and revokes outright only the ones that were theirs alone.
+
+§5's "flag, don't reject" still governs message *bodies*. It is the wrong
+policy for membership, because key eligibility follows membership
+automatically — there, an applied forgery is the breach. Legacy pre-envelope
+ops (no writer) are grandfathered.
+
+Two unsigned ops that reached signed surfaces are closed with it: `space` is
+now founding-only (renames are manager-signed `setting` ops), and `att` is
+first-write-wins so nobody swaps the bytes under a file someone already shared.
+
+Tests: [authorization.test.ts](apps/server/test/authorization.test.ts) — each
+case was a live forgery before this landed.
+
+## 11. Bound what the log can make a peer fetch and hold ✅
+
+Three ways an op could spend an honest peer's resources past what §1 bounds.
+
+**Acceptance:** a claimed size cannot make a peer read more than its policy
+allows, and op count is not the only budget.
+
+**Done:**
+
+- **Blob reads are capped.** `autoFetchAttachments` gated on `a.size` — the
+  poster's claim in the `att` op — while `blobs.get` read the whole blob into
+  one Buffer and only *then* checked `expectedHash`. A member could post an
+  attachment claiming 1 KB whose bytes are 5 GB and have every default-policy
+  peer pull it into memory. `BlobStore.get` now takes `maxBytes` and validates
+  the locator before reading: `byteLength` against the cap, and the block range
+  too, since tiny blocks would otherwise hide a huge fetch behind a small
+  `byteLength`. Auto-fetch passes the policy, explicit downloads pass this
+  device's own upload ceiling. Malformed core keys are refused rather than
+  handed to corestore. (The core key in an `att` op is still attacker-chosen —
+  the cap bounds what that costs; §3's serve control is the fuller answer.)
+- **A per-writer byte budget** sits beside §1's op budget:
+  `WRITER_BYTE_BURST` (32 MiB) with `BYTES_PER_OTHER_OP` (256 KiB) accruing on
+  the same log-position clock. The HTTP edge caps bodies (10 KB messages,
+  200 KB docs); a peer appending straight to the log never passes through it,
+  so 4096 ops of any size was not a bound.
+- **The logo signature covers the whole record**, not just the bytes' hash:
+  `mime` decides the content-type the public `/api/space/logo` route serves and
+  `key`/`id` decide which bytes it serves at all, so a replayed op with those
+  swapped used to verify. The reducer also refuses a logo mime outside
+  png/jpeg/gif/webp.
+
+Tests in [blobs.test.ts](apps/server/test/blobs.test.ts),
+[hardening.test.ts](apps/server/test/hardening.test.ts) and
+[space-settings.test.ts](apps/server/test/space-settings.test.ts).
+
+## 12. Edge hardening: framing, file serving, binding routes ✅
+
+**Acceptance:** the local client can't be framed, a served file is what its
+bytes are, and a local process can't re-point the device's identity.
+
+**Done:**
+
+- **CSP + `X-Frame-Options: DENY` on every response.** The loopback guard stops
+  a foreign page *calling* the local server; nothing stopped one *framing*
+  `http://127.0.0.1:<port>`, and a framed document's own `/api` calls carry a
+  localhost Origin and pass the guard — so privileged UI (reveal invite, evict,
+  post) was clickjackable in `dev:web` and any static deploy. Packaged Electron
+  was never exposed; this is for everything else.
+- **Serve-time mime sniffing.** `/api/files/:id` trusted `attachment.mime` from
+  the log. Upload-time `effectiveMime` rejects `image/svg+xml`, but a
+  peer-appended `att` op naming that mime with a `.png` name was served
+  `inline` — a scriptable document on the app's origin. Bytes are re-sniffed at
+  serve time and the demoted type drives both the content-type and the
+  disposition. `Content-Disposition` also uses RFC 5987 `filename*` now: a
+  CR/LF or non-latin1 name used to make Node throw on the header (500 instead
+  of a download).
+- **Binding routes leave the pre-login surface once the device is bound.**
+  `POST /api/profiles` calls `bindLocalDevice`, which sets `boundUserId` — and
+  in production `uid = space.boundUserId()`, so any local process could
+  silently change who the running app acts as. In production a second profile
+  now 409s, importing an identity with no root on the log 409s (there is
+  nothing to prove possession against), and `space/join` + `spaces/switch`
+  require a caller. Dev is unchanged: `uid` comes from the cookie there, so
+  binding does not decide who a request is, and the profile picker has to be
+  able to create profiles with no cookie in hand.
+- **Mobile matched to desktop.** The worklet archived channels on
+  `requireAccess` alone while the HTTP edge restricted public-channel archiving
+  to managers — one op, two policies. Now one.
+- **Scheduled sends are author-scoped.** `claimDueScheduled` returned every
+  member's due rows and every peer runs the timer, so a device posted messages
+  attributed to other people and two online peers double-delivered. Only the
+  author's own device sends for them (an identity with no device of its own —
+  dev's cast — still gets delivered here, since nobody else will). The same
+  scoping applies to the expired-status sweep.
+- **Smaller things:** `verified-contacts.json` and `policies.json` are written
+  0600 like the registry; profile links must match `https?://` (`startsWith('http')`
+  also admitted `httpx://`); and the desktop keychain fallback — on a Linux
+  desktop with no secret service the master key lands in a 0600 file instead of
+  the OS keychain — is surfaced in the Storage panel rather than only warned to
+  the console, since it changes the at-rest story.
+
+**Residual, stated honestly:** on the loopback boundary, any process running as
+the OS user can still act as the bound identity — that is inherent to
+"127.0.0.1 plus the OS user is the trust boundary" (DESIGN §17), and what
+changed is that it can no longer *persistently re-point* that identity.

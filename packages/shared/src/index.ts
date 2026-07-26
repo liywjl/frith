@@ -193,6 +193,11 @@ export interface StorageDto {
     cachedBytes: number;
     cachedCount: number;
   };
+  /** Where this device's master key lives. 'file' means the OS keychain was
+   *  unavailable (a Linux desktop with no secret service) and the key sits in
+   *  a 0600 file instead — a real change to the at-rest story, so it is shown
+   *  rather than just logged. */
+  keyCustody: 'os' | 'file';
 }
 
 export interface MessageDto {

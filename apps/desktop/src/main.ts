@@ -32,9 +32,14 @@ function configureEnv() {
 function configureMasterKey(home: string) {
   if (process.env.FRITH_MASTER_KEY) return;
   if (!safeStorage.isEncryptionAvailable() || safeStorage.getSelectedStorageBackend?.() === 'basic_text') {
+    // This changes the at-rest story — the master key sits in a 0600 file
+    // instead of the OS keychain — so it can't stay a console line nobody
+    // reads. The Storage panel shows it.
     console.warn('[keys] OS keychain unavailable — falling back to a key file');
+    process.env.FRITH_KEYCHAIN = 'file';
     return;
   }
+  process.env.FRITH_KEYCHAIN = 'os';
   const wrapped = path.join(home, 'master.key.safestorage');
   try {
     process.env.FRITH_MASTER_KEY = safeStorage.decryptString(fs.readFileSync(wrapped));

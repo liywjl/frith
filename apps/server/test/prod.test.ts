@@ -1,8 +1,11 @@
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
+import hypercoreCrypto from 'hypercore-crypto';
+import b4a from 'b4a';
 
 // Production posture: no dev surface, the device's bound user IS the auth.
 const scratch = path.join(os.tmpdir(), `frith-prod-${process.pid}`);
@@ -13,6 +16,7 @@ process.env.FRITH_TRUSTED_ORIGIN = 'app.frith.example';
 
 const { buildApp } = await import('../src/api/routes.js');
 const { space } = await import('../src/space/space.js');
+const { deviceBindingMessage } = await import('../src/space/state.js');
 
 let app: FastifyInstance;
 
@@ -55,11 +59,92 @@ describe('production auth', () => {
     expect(spoofed.json().id).toBe(nova);
   });
 
+  it('will not re-point a bound device at another identity', async () => {
+    // In production `boundUserId` IS the credential, so a second profile is an
+    // identity swap. The route is unauthenticated by necessity (you have to be
+    // able to create the FIRST profile), which is exactly why it has to refuse
+    // once one exists — otherwise any local process silently becomes you.
+    const second = await app.inject({
+      method: 'POST',
+      url: '/api/profiles',
+      payload: { name: 'Imposter', handle: 'imposter' },
+    });
+    expect(second.statusCode).toBe(409);
+    expect(space.state.users.size).toBe(1);
+
+    // Importing an identity proves possession of its root seed — but a row
+    // with no root on the log has nothing to prove against.
+    const rootless = space.newId();
+    await space.append({ t: 'user', id: rootless, patch: { handle: 'ghost', name: 'Ghost' } });
+    const claim = await app.inject({
+      method: 'POST',
+      url: '/api/identity/import',
+      payload: { code: `frith-id:${rootless}:${'ab'.repeat(32)}` },
+    });
+    expect(claim.statusCode).toBe(409);
+    expect(space.boundUserId()).not.toBe(rootless);
+  });
+
+  it('frames nothing and is framed by nobody', async () => {
+    const res = await app.inject({ method: 'GET', url: '/api/me' });
+    expect(res.headers['content-security-policy']).toContain("frame-ancestors 'none'");
+    expect(res.headers['x-frame-options']).toBe('DENY');
+  });
+
   it('never registered the dev surface — 404 even once authed', async () => {
     const login = await app.inject({ method: 'POST', url: '/api/dev/login', payload: { handle: 'nova' } });
     expect(login.statusCode).toBe(404);
     const debug = await app.inject({ method: 'GET', url: '/api/dev/debug' });
     expect(debug.statusCode).toBe(404);
+  });
+});
+
+describe('scheduled sends are author-scoped', () => {
+  it('leaves another member’s due message for their own device', async () => {
+    // Every peer runs the delivery timer. Claiming everyone's due rows means
+    // this device posting in other people's names, and two online peers
+    // delivering the same message twice.
+    const { scheduleMessage } = await import('../src/domain/store.js');
+    const { deliverDueScheduled } = await import('../src/domain/scheduler.js');
+    const channel = await app.inject({ method: 'POST', url: '/api/channels', payload: { name: 'plans', type: 'public' } });
+    const channelId = channel.json().channelId as string;
+
+    await scheduleMessage({
+      authorId: space.state.ownerUserId!,
+      channelId,
+      body: 'mine to send',
+      sendAt: new Date(Date.now() - 1000),
+    });
+
+    // A second member, queued while they were still deviceless, who then
+    // brings their own device online — that row is now theirs to drain.
+    const other = space.newId();
+    await space.append({ t: 'user', id: other, patch: { handle: 'remote', name: 'Remote' } });
+    await space.append({
+      t: 'sched',
+      scheduled: {
+        id: space.newId(),
+        channelId,
+        authorId: other,
+        parentMessageId: null,
+        body: 'not ours to send',
+        sendAt: new Date(Date.now() - 1000).toISOString(),
+      },
+    });
+    const pair = hypercoreCrypto.keyPair(crypto.randomBytes(32));
+    const deviceKey = crypto.randomBytes(32).toString('hex');
+    await space.append({ t: 'identity', userId: other, rootKey: b4a.toString(pair.publicKey, 'hex') });
+    await space.append({
+      t: 'device',
+      userId: other,
+      deviceKey,
+      sig: b4a.toString(hypercoreCrypto.sign(b4a.from(deviceBindingMessage(other, deviceKey)), pair.secretKey), 'hex'),
+    });
+    expect(space.state.hasBoundDevice(other)).toBe(true);
+
+    // Only the bound user's own row is delivered.
+    expect(await deliverDueScheduled()).toBe(1);
+    expect(space.state.scheduled.size).toBe(1); // theirs still queued, untouched
   });
 });
 

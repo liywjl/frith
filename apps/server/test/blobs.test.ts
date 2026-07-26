@@ -65,4 +65,32 @@ describe('BlobStore', () => {
     await blobsA.enforceBudget(0);
     expect(await blobsA.isCached(ref)).toBe(true);
   });
+
+  it('refuses a remote locator bigger than the caller’s cap, before reading it', async () => {
+    await blobsA.ready();
+    await blobsB.ready();
+    const bytes = Buffer.from('a modestly sized file');
+    const { ref, hash } = await blobsA.put(bytes);
+
+    // Under the cap: the read happens as usual.
+    expect((await blobsB.get(ref, { wait: true, timeoutMs: 5000, expectedHash: hash, maxBytes: 1024 }))?.equals(bytes)).toBe(
+      true,
+    );
+
+    // The blob id is log data, so a poster picks it. `get` materializes the
+    // whole blob in one Buffer, so an oversized range must never be read —
+    // the hash check that would catch the lie comes far too late.
+    const huge = { ...ref, id: { ...ref.id, byteLength: 5_000_000_000 } };
+    expect(await blobsB.get(huge, { wait: true, expectedHash: hash, maxBytes: 1024 })).toBeNull();
+
+    // …and a small byteLength must not smuggle a huge block range past it.
+    const manyBlocks = { ...ref, id: { ...ref.id, blockLength: 100_000 } };
+    expect(await blobsB.get(manyBlocks, { wait: true, expectedHash: hash, maxBytes: 1024 })).toBeNull();
+
+    // A malformed core key is refused rather than handed to corestore.
+    expect(await blobsB.get({ ...ref, key: 'not-a-key' }, { wait: true })).toBeNull();
+
+    // Our own uploads are ours — no cap applies to reading them back.
+    expect((await blobsA.get(ref, { expectedHash: hash, maxBytes: 1 }))?.equals(bytes)).toBe(true);
+  });
 });

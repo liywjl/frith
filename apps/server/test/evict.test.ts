@@ -33,13 +33,17 @@ afterAll(async () => {
   await space.close();
 });
 
-/** Craft a second member's root-vouched device binding and append it. */
+/** Craft a second member's root-vouched device binding and append it. Follows
+ *  the real onboarding order — profile row, then identity, then the device
+ *  binding — because once an identity has a device, only that device may write
+ *  in its name (HARDENING §10). */
 async function admitMember(): Promise<{ userId: string; deviceKey: string; enc: ReturnType<typeof deviceEncKeyPair> }> {
   const seed = crypto.randomBytes(32);
   const pair = hypercoreCrypto.keyPair(seed);
   const userId = crypto.randomUUID();
   const deviceKey = crypto.randomBytes(32).toString('hex');
   const enc = deviceEncKeyPair();
+  await space.append({ t: 'user', id: userId, patch: { handle: `h${userId.slice(0, 6)}`, name: 'Member' } });
   await space.append({ t: 'identity', userId, rootKey: b4a.toString(pair.publicKey, 'hex') });
   const sig = b4a.toString(
     hypercoreCrypto.sign(b4a.from(deviceBindingMessage(userId, deviceKey, enc.publicKey)), pair.secretKey),
@@ -127,9 +131,6 @@ describe('per-channel domains', () => {
 
   it('grants the channel key when a member joins, and rotates it away on removal', async () => {
     const cass = await admitMember();
-    // Give the crafted identity a user row so membership ops accept it.
-    await space.append({ t: 'user', id: cass.userId, patch: { handle: `h${cass.userId.slice(0, 6)}`, name: 'Cass' } });
-
     const domain = `channel:${channelId}` as const;
     const keyBefore = space.state.currentKeyId(domain)!;
 
@@ -169,19 +170,28 @@ describe('blob purge on eviction (HARDENING §4)', () => {
     attachment: { id, messageId, name: 'f.bin', mime: 'application/octet-stream', size: 8, blob: { key, id: blobId } },
   });
 
+  /** A member whose posts this device may write: no device of their own, so
+   *  nothing claims their authorship (§10's unclaimable case). What this test
+   *  is about is which blob refs an applied evict drops, not attribution. */
+  const seededMember = async (name: string): Promise<string> => {
+    const userId = crypto.randomUUID();
+    await space.append({ t: 'user', id: userId, patch: { handle: `h${userId.slice(0, 6)}`, name } });
+    return userId;
+  };
+
   it('drops the evicted author’s cached blobs — and only theirs', async () => {
-    const evictee = await admitMember();
-    const bystander = await admitMember();
+    const evictee = await seededMember('Evictee');
+    const bystander = await seededMember('Bystander');
     const evicteeCore = crypto.randomBytes(32).toString('hex');
     const bystanderCore = crypto.randomBytes(32).toString('hex');
-    await space.append(msgFor(evictee.userId, 'm-purge-1'));
+    await space.append(msgFor(evictee, 'm-purge-1'));
     await space.append(attFor('m-purge-1', 'att-purge-1', evicteeCore));
-    await space.append(msgFor(bystander.userId, 'm-purge-2'));
+    await space.append(msgFor(bystander, 'm-purge-2'));
     await space.append(attFor('m-purge-2', 'att-purge-2', bystanderCore));
 
     const drop = vi.spyOn(space.blobs, 'drop').mockResolvedValue(undefined);
     try {
-      await space.evictUser(evictee.userId, owner);
+      await space.evictUser(evictee, owner);
       const dropped = drop.mock.calls.map(([ref]) => ref.key);
       expect(dropped).toContain(evicteeCore);
       expect(dropped).not.toContain(bystanderCore);
@@ -191,14 +201,14 @@ describe('blob purge on eviction (HARDENING §4)', () => {
   });
 
   it('ignores a forged evict op — no grief-purge', async () => {
-    const target = await admitMember();
+    const target = await seededMember('Target');
     const core = crypto.randomBytes(32).toString('hex');
-    await space.append(msgFor(target.userId, 'm-purge-3'));
+    await space.append(msgFor(target, 'm-purge-3'));
     await space.append(attFor('m-purge-3', 'att-purge-3', core));
     const drop = vi.spyOn(space.blobs, 'drop').mockResolvedValue(undefined);
     try {
-      await space.append({ t: 'evict', userId: target.userId, actorId: owner, sig: 'ab'.repeat(64) });
-      expect(space.state.evicted.has(target.userId)).toBe(false);
+      await space.append({ t: 'evict', userId: target, actorId: owner, sig: 'ab'.repeat(64) });
+      expect(space.state.evicted.has(target)).toBe(false);
       expect(drop).not.toHaveBeenCalled();
     } finally {
       drop.mockRestore();

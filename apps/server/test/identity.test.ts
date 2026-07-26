@@ -39,7 +39,7 @@ const as = (userId: string) => ({ cookies: { uid: userId } });
 describe('identity: root keys certify device keys', () => {
   it('binds this device to a new profile at creation', () => {
     expect(space.state.roots.get(mika)).toMatch(/^[0-9a-f]{64}$/);
-    expect(space.state.deviceOwners.get(space.localDeviceKey())).toBe(mika);
+    expect(space.state.deviceOwners.get(space.localDeviceKey())?.has(mika)).toBe(true);
   });
 
   it('marks messages from the bound author as verified', async () => {
@@ -116,7 +116,7 @@ describe('identity: root keys certify device keys', () => {
     const stolen = 'd4'.repeat(32);
     const sig = b4a.toString(hypercoreCrypto.sign(b4a.from(deviceBindingMessage(mika, stolen)), pair.secretKey), 'hex');
     await space.append({ t: 'device', userId: mika, deviceKey: stolen, sig });
-    expect(space.state.deviceOwners.get(stolen)).toBe(mika);
+    expect(space.state.deviceOwners.get(stolen)?.has(mika)).toBe(true);
 
     // …reported stolen and revoked…
     const res = await app.inject({

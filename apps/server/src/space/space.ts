@@ -568,6 +568,16 @@ class Space {
     return this.activeConfig(this.readRegistry()).identities?.[userId] ?? null;
   }
 
+  /** Should THIS device act on a user's behalf unprompted — deliver their
+   *  scheduled sends, sweep their expired status? Only for the identity it is
+   *  bound to; every peer runs the same timers, so a looser test has each of
+   *  them writing ops in everyone else's name (and the reducer now drops
+   *  those anyway). An identity with no device of its own — dev's seeded cast
+   *  — has nobody else to do it, so this device still does. */
+  actsFor(userId: string): boolean {
+    return this.boundUserId() === userId || !this.state.hasBoundDevice(userId);
+  }
+
   /**
    * Bind this device to a user: publish the root key (first write wins) and
    * a root-signed device certification, then remember the seed — encrypted —
@@ -666,7 +676,7 @@ class Space {
    *  bytes put into a blob core; the hash is signed so peers can trust it. */
   async setLogo(logo: SpaceLogo | null, actorId: string): Promise<void> {
     if (!this.state.canManage(actorId)) throw new Error('only owner or admins can change the logo');
-    await this.append({ t: 'logo', logo, actorId, sig: this.signAsRoot(actorId, logoMessage(logo?.hash ?? null)) });
+    await this.append({ t: 'logo', logo, actorId, sig: this.signAsRoot(actorId, logoMessage(logo)) });
   }
 
   /** After a rename lands in the log, fold the new name into this device's
@@ -783,9 +793,11 @@ class Space {
   private domainDevices(domain: Domain): Map<string, string> {
     const memberFilter = domain === 'space' ? null : this.state.members.get(domain.slice('channel:'.length));
     const targets = new Map<string, string>();
-    for (const [deviceKey, userId] of this.state.deviceOwners) {
-      if (this.state.revokedDevices.has(deviceKey) || this.state.evicted.has(userId)) continue;
-      if (memberFilter && !memberFilter.has(userId)) continue;
+    for (const [deviceKey, owners] of this.state.deviceOwners) {
+      if (this.state.revokedDevices.has(deviceKey)) continue;
+      // A device is in the domain if any identity it holds belongs there.
+      const live = [...owners].filter((userId) => !this.state.evicted.has(userId));
+      if (!live.some((userId) => !memberFilter || memberFilter.has(userId))) continue;
       const encPub = this.state.deviceEncKeys.get(deviceKey);
       if (encPub) targets.set(deviceKey, encPub);
     }

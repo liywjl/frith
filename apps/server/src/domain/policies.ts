@@ -3,7 +3,7 @@
 // yours to decide; the defaults keep a laptop safe in a busy space.
 import fs from 'node:fs';
 import path from 'node:path';
-import type { PoliciesDto } from '@app/shared';
+import type { PoliciesDto, StorageDto } from '@app/shared';
 
 const DEFAULT_POLICIES: PoliciesDto = {
   /** Uploads bigger than this are rejected outright. */
@@ -35,8 +35,18 @@ export function getPolicies(): PoliciesDto {
 export function setPolicies(patch: Partial<PoliciesDto>): PoliciesDto {
   current = { ...getPolicies(), ...patch };
   fs.mkdirSync(path.dirname(policiesFile()), { recursive: true });
-  fs.writeFileSync(policiesFile(), JSON.stringify(current, null, 2));
+  fs.writeFileSync(policiesFile(), JSON.stringify(current, null, 2), { mode: 0o600 });
   return current;
 }
 
 export const mb = (n: number): number => n * 1024 * 1024;
+
+/** Where this device's master key lives. The desktop shell sets this once it
+ *  knows whether the OS keychain was usable; everywhere else (headless, dev)
+ *  the key is a 0600 file, which is the honest answer. */
+const keyCustody = (): StorageDto['keyCustody'] => (process.env.FRITH_KEYCHAIN === 'os' ? 'os' : 'file');
+
+/** The storage DTO both edges answer with — one shape, one place. */
+export function storageDto(usage: StorageDto['usage']): StorageDto {
+  return { policies: getPolicies(), usage, keyCustody: keyCustody() };
+}
