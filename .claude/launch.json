@@ -15,26 +15,20 @@
     },
     {
       "name": "peer",
-      "runtimeExecutable": "./scripts/dev-peer.sh",
-      "runtimeArgs": [],
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["scripts/dev-peer.mjs"],
       "port": 5174
     },
     {
       "name": "api-preview",
-      "runtimeExecutable": "bash",
-      "runtimeArgs": [
-        "-c",
-        "cd apps/server && FRITH_DATA=.frith-data-preview FRITH_FILES=.data/uploads-preview PORT=3210 exec pnpm exec tsx watch src/index.ts"
-      ],
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["scripts/preview.mjs", "server"],
       "port": 3210
     },
     {
       "name": "web-preview",
-      "runtimeExecutable": "bash",
-      "runtimeArgs": [
-        "-c",
-        "cd apps/web && FRITH_API_PORT=3210 exec pnpm exec vite --port 5273 --strictPort"
-      ],
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["scripts/preview.mjs", "web"],
       "port": 5273
     },
     {

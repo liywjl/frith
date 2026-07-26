@@ -3,15 +3,15 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "./scripts/dev.sh",
-    "dev:seeded": "./scripts/dev.sh --seeded",
+    "dev": "node scripts/dev.mjs",
+    "dev:seeded": "node scripts/dev.mjs --seeded",
     "seed": "pnpm --filter server seed",
     "typecheck": "pnpm -r typecheck",
     "lint": "eslint .",
     "test": "pnpm -r test",
     "deadcode": "fallow dead-code && fallow dupes",
     "check": "pnpm typecheck && pnpm lint && pnpm test && pnpm deadcode",
-    "dev:peer": "./scripts/dev-peer.sh",
+    "dev:peer": "node scripts/dev-peer.mjs",
     "desktop": "pnpm --filter desktop build && pnpm --filter desktop start",
     "dev:web": "pnpm --parallel -r dev"
   },
