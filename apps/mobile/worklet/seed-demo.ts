@@ -1,4 +1,4 @@
-// The demo, phone edition: the same three spaces scripts/demo-spaces.sh
+// The demo, phone edition: the same three spaces scripts/demo-spaces.mjs
 // seeds on desktop — Acme (work), Blade Crew (rollerblading friends),
 // Static Bloom (a band). The corpora are bundled JSON (there is no seed dir
 // inside an app sandbox), and the run ends back on Acme.
