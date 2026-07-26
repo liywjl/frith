@@ -3,6 +3,12 @@ export type ChannelType = 'public' | 'private' | 'dm';
 export const THEMES = ['ocean', 'bubbly', 'paper', 'midnight', 'forest', 'sunset', 'mono'] as const;
 export type Theme = (typeof THEMES)[number];
 
+/** A link someone put on their profile — blog, socials, photos, anywhere. */
+export interface ProfileLink {
+  label: string;
+  url: string;
+}
+
 export interface UserDto {
   id: string;
   handle: string;
@@ -16,6 +22,14 @@ export interface UserDto {
   interests: string[];
   /** What they're currently listening to / watching / into. */
   nowPlaying: string | null;
+  /** A short self-description for the profile page. */
+  bio: string | null;
+  /** Where else to find them — everything is opt-in and public-by-choice. */
+  links: ProfileLink[];
+  /** Hex color that tints their profile page; null = the space's accent. */
+  accentColor: string | null;
+  /** Where they are — free text, shown with a pin on the profile. */
+  location: string | null;
 }
 
 /** The signed-in user: profile plus personal settings. */
@@ -98,6 +112,10 @@ export interface ProfilePatch {
   statusExpiresInMinutes?: number | null;
   interests?: string[];
   nowPlaying?: string | null;
+  bio?: string | null;
+  links?: ProfileLink[];
+  accentColor?: string | null;
+  location?: string | null;
   theme?: Theme;
 }
 
@@ -175,6 +193,11 @@ export interface StorageDto {
     cachedBytes: number;
     cachedCount: number;
   };
+  /** Where this device's master key lives. 'file' means the OS keychain was
+   *  unavailable (a Linux desktop with no secret service) and the key sits in
+   *  a 0600 file instead — a real change to the at-rest story, so it is shown
+   *  rather than just logged. */
+  keyCustody: 'os' | 'file';
 }
 
 export interface MessageDto {
@@ -192,6 +215,10 @@ export interface MessageDto {
   /** True when this device lacks the content key (e.g. sent after we were
    *  removed): `body` is a placeholder, not the real text. */
   locked?: boolean;
+  /** True when the appending device provably did NOT belong to the claimed
+   *  author. Only ever set in production — in dev one writer speaks for many
+   *  seeded users, so authorship there is unknowable, not suspicious. */
+  unverified?: boolean;
 }
 
 /**
@@ -274,6 +301,76 @@ export interface ProfilePageDto {
   /** Code paths and links they keep referencing. */
   artifacts: ArtifactRef[];
   recent: MessageDto[];
+  /** Images they shared in channels the viewer can read (never DMs). */
+  photos: FileDto[];
+}
+
+/* ------------------------------- the feed ------------------------------ */
+
+/** One URL shared in chat, with its display domain. No unfurling: previews
+ *  would mean every reader's device pinging the linked site. */
+export interface FeedLinkDto {
+  url: string;
+  domain: string;
+}
+
+interface FeedItemBase {
+  id: string;
+  at: string;
+  author: UserDto;
+}
+
+/** Chat context for feed items that came from a message. */
+interface FeedMessageBase extends FeedItemBase {
+  channelId: string;
+  channelName: string;
+  messageId: string;
+  /** The message text (already snippet-length; '' adds nothing to show). */
+  body: string;
+  /** Thread replies on the post — the feed's comments. */
+  comments: number;
+  /** Total reactions on the post. */
+  reactions: number;
+}
+
+/**
+ * One entry in the space feed. Strictly chronological, never ranked — the
+ * feed is what your people shared, newest first, with a definite end.
+ */
+export type FeedItemDto =
+  | (FeedMessageBase & { kind: 'links'; links: FeedLinkDto[] })
+  | (FeedMessageBase & { kind: 'photos'; photos: AttachmentDto[] })
+  | (FeedItemBase & { kind: 'doc'; docId: string; title: string })
+  | (FeedItemBase & { kind: 'enjoying'; nowPlaying: string });
+
+export interface FeedDto {
+  items: FeedItemDto[];
+}
+
+/* --------------------------- community directory ----------------------- */
+
+/** One public community broadcasting what it's about. Directory entries are
+ *  external, curator-signed-later data: display + an invite the user may
+ *  choose to use, nothing more. */
+export interface DirectoryEntryDto {
+  name: string;
+  description: string;
+  /** Interest tags — the "broadcast your interests publicly" half. */
+  tags: string[];
+  /** Member count as reported by the directory — advisory, not verified. */
+  members?: number;
+  /** Who runs/seeds it (a hostname or a name), for the trust read. */
+  host?: string;
+  /** Invite key when the community is open-join; null = ask the host. */
+  invite: string | null;
+}
+
+export interface DirectoryDto {
+  /** Where this list came from (a URL), or null for the bundled sample. */
+  source: string | null;
+  entries: DirectoryEntryDto[];
+  /** Present when the configured directory couldn't be reached. */
+  error?: string;
 }
 
 /** A widely-engaged thread for the Home digest. */

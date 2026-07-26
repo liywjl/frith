@@ -2,12 +2,23 @@ import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['**/dist/**', '**/node_modules/**', '**/drizzle/**', 'spikes/**', 'apps/desktop/.deploy/**', 'apps/desktop/release/**', 'apps/mobile/.worklet/**', 'apps/mobile/worklet/app.bundle.mjs', 'apps/mobile/ios/**', 'apps/mobile/android/**', '.ds-sync/**', 'ds-bundle/**'] },
+  { ignores: ['**/dist/**', '**/node_modules/**', '**/drizzle/**', 'spikes/**', 'apps/desktop/.deploy/**', 'apps/desktop/release/**', 'apps/mobile/.worklet/**', 'apps/mobile/worklet/app.bundle.mjs', 'apps/mobile/ios/**', 'apps/mobile/android/**', '.ds-sync/**', 'ds-bundle/**', '.claude/worktrees/**'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
+    // Node scripts (build, dev, seeding). The globals they lean on, declared
+    // explicitly rather than pulling in a `globals` package for four names.
     files: ['**/*.mjs'],
-    languageOptions: { globals: { console: 'readonly', process: 'readonly' } },
+    languageOptions: {
+      globals: {
+        console: 'readonly',
+        process: 'readonly',
+        fetch: 'readonly',
+        AbortSignal: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+      },
+    },
   },
   {
     // CommonJS config files (Expo's loaders require CJS in an ESM package).

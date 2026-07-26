@@ -5,7 +5,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import b4a from 'b4a';
 import hypercoreCrypto from 'hypercore-crypto';
@@ -33,13 +33,17 @@ afterAll(async () => {
   await space.close();
 });
 
-/** Craft a second member's root-vouched device binding and append it. */
+/** Craft a second member's root-vouched device binding and append it. Follows
+ *  the real onboarding order — profile row, then identity, then the device
+ *  binding — because once an identity has a device, only that device may write
+ *  in its name (HARDENING §10). */
 async function admitMember(): Promise<{ userId: string; deviceKey: string; enc: ReturnType<typeof deviceEncKeyPair> }> {
   const seed = crypto.randomBytes(32);
   const pair = hypercoreCrypto.keyPair(seed);
   const userId = crypto.randomUUID();
   const deviceKey = crypto.randomBytes(32).toString('hex');
   const enc = deviceEncKeyPair();
+  await space.append({ t: 'user', id: userId, patch: { handle: `h${userId.slice(0, 6)}`, name: 'Member' } });
   await space.append({ t: 'identity', userId, rootKey: b4a.toString(pair.publicKey, 'hex') });
   const sig = b4a.toString(
     hypercoreCrypto.sign(b4a.from(deviceBindingMessage(userId, deviceKey, enc.publicKey)), pair.secretKey),
@@ -127,9 +131,6 @@ describe('per-channel domains', () => {
 
   it('grants the channel key when a member joins, and rotates it away on removal', async () => {
     const cass = await admitMember();
-    // Give the crafted identity a user row so membership ops accept it.
-    await space.append({ t: 'user', id: cass.userId, patch: { handle: `h${cass.userId.slice(0, 6)}`, name: 'Cass' } });
-
     const domain = `channel:${channelId}` as const;
     const keyBefore = space.state.currentKeyId(domain)!;
 
@@ -146,6 +147,99 @@ describe('per-channel domains', () => {
     expect(space.state.domains.get(domain)!.get(keyAfter)!.wraps[cass.deviceKey]).toBeUndefined();
     // The space key did NOT rotate — removal was channel-scoped.
     expect(space.state.evicted.has(cass.userId)).toBe(false);
+  });
+});
+
+describe('blob purge on eviction (HARDENING §4)', () => {
+  // The byte-removal mechanics of BlobStore.drop are proven in blobs.test.ts;
+  // these prove the wiring — which refs get dropped when an evict op applies.
+  const blobId = { blockOffset: 0, blockLength: 1, byteOffset: 0, byteLength: 8 };
+  const msgFor = (userId: string, id: string) => ({
+    t: 'msg' as const,
+    message: {
+      id,
+      channelId: 'c-purge',
+      authorId: userId,
+      parentMessageId: null,
+      body: 'x',
+      createdAt: new Date().toISOString(),
+    },
+  });
+  const attFor = (messageId: string, id: string, key: string) => ({
+    t: 'att' as const,
+    attachment: { id, messageId, name: 'f.bin', mime: 'application/octet-stream', size: 8, blob: { key, id: blobId } },
+  });
+
+  /** A member whose posts this device may write: no device of their own, so
+   *  nothing claims their authorship (§10's unclaimable case). What this test
+   *  is about is which blob refs an applied evict drops, not attribution. */
+  const seededMember = async (name: string): Promise<string> => {
+    const userId = crypto.randomUUID();
+    await space.append({ t: 'user', id: userId, patch: { handle: `h${userId.slice(0, 6)}`, name } });
+    return userId;
+  };
+
+  it('drops the evicted author’s cached blobs — and only theirs', async () => {
+    const evictee = await seededMember('Evictee');
+    const bystander = await seededMember('Bystander');
+    const evicteeCore = crypto.randomBytes(32).toString('hex');
+    const bystanderCore = crypto.randomBytes(32).toString('hex');
+    await space.append(msgFor(evictee, 'm-purge-1'));
+    await space.append(attFor('m-purge-1', 'att-purge-1', evicteeCore));
+    await space.append(msgFor(bystander, 'm-purge-2'));
+    await space.append(attFor('m-purge-2', 'att-purge-2', bystanderCore));
+
+    const drop = vi.spyOn(space.blobs, 'drop').mockResolvedValue(undefined);
+    try {
+      await space.evictUser(evictee, owner);
+      const dropped = drop.mock.calls.map(([ref]) => ref.key);
+      expect(dropped).toContain(evicteeCore);
+      expect(dropped).not.toContain(bystanderCore);
+    } finally {
+      drop.mockRestore();
+    }
+  });
+
+  it('ignores a forged evict op — no grief-purge', async () => {
+    const target = await seededMember('Target');
+    const core = crypto.randomBytes(32).toString('hex');
+    await space.append(msgFor(target, 'm-purge-3'));
+    await space.append(attFor('m-purge-3', 'att-purge-3', core));
+    const drop = vi.spyOn(space.blobs, 'drop').mockResolvedValue(undefined);
+    try {
+      await space.append({ t: 'evict', userId: target, actorId: owner, sig: 'ab'.repeat(64) });
+      expect(space.state.evicted.has(target)).toBe(false);
+      expect(drop).not.toHaveBeenCalled();
+    } finally {
+      drop.mockRestore();
+    }
+  });
+});
+
+describe('fingerprint verification (HARDENING §6)', () => {
+  it('gives both sides the same code; the mark drops if the root key changes', async () => {
+    const { fingerprintCode, fingerprintFor, setContactVerified } = await import('../src/domain/contacts.js');
+    const contact = await admitMember();
+    const code = fingerprintCode(owner, contact.userId)!;
+    expect(code).toMatch(/^(\d{5} ){7}\d{5}$/); // 40 digits, spoken-size groups
+    expect(fingerprintCode(contact.userId, owner)).toBe(code); // order-independent
+
+    expect(fingerprintFor(owner, contact.userId).verified).toBe(false);
+    expect(setContactVerified(owner, contact.userId, true).verified).toBe(true);
+    expect(fingerprintFor(owner, contact.userId).verified).toBe(true);
+
+    // A re-rooted contact is a different identity: the stored mark vouched
+    // for the old code, so verification silently drops. (Roots are immutable
+    // through ops — mutate the map directly to simulate.)
+    const oldRoot = space.state.roots.get(contact.userId)!;
+    space.state.roots.set(contact.userId, 'ff'.repeat(32));
+    expect(fingerprintFor(owner, contact.userId).verified).toBe(false);
+    space.state.roots.set(contact.userId, oldRoot);
+
+    // Served over the API for the signed-in viewer.
+    const res = await app.inject({ method: 'GET', url: `/api/contacts/${contact.userId}/fingerprint`, ...as(owner) });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().code).toBe(code);
   });
 });
 

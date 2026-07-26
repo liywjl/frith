@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "dev:seeded": "node scripts/dev.mjs --seeded",
+    "dev:seeded:web": "node scripts/dev.mjs --seeded --web",
     "seed": "pnpm --filter server seed",
     "typecheck": "pnpm -r typecheck",
     "lint": "eslint .",
@@ -14,6 +15,12 @@
     "dev:peer": "node scripts/dev-peer.mjs",
     "desktop": "pnpm --filter desktop build && pnpm --filter desktop start",
     "dev:web": "pnpm --parallel -r dev"
+  },
+  "pnpm": {
+    "overrides": {
+      "adm-zip@<0.6.0": ">=0.6.0",
+      "postcss@<8.5.10": ">=8.5.10"
+    }
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

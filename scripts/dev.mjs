@@ -20,7 +20,9 @@ const shutdown = teardownOnExit()
 
 // --seeded: boot on a throwaway data dir, wiped and re-seeded with the three
 // demo spaces every run — an instant disposable instance for testing.
+// --web: skip the Electron shell, just serve the web client in the browser.
 const seeded = process.argv.includes('--seeded')
+const webOnly = process.argv.includes('--web')
 
 const extraEnv = {}
 if (seeded) {
@@ -56,13 +58,21 @@ if (seeded) {
   })
 }
 
-const desktop = join(repoRoot, 'apps/desktop')
-await nodeScript('build.mjs', ['--dev'], { cwd: desktop })
+// Browser-only iteration: leave the two servers running and stay out of the
+// way. Ctrl-C tears them down through the same teardown handlers.
+if (webOnly) {
+  console.log(
+    `web: http://localhost:${webPort}  api: http://localhost:${apiPort}  (ctrl-c to stop)`,
+  )
+} else {
+  const desktop = join(repoRoot, 'apps/desktop')
+  await nodeScript('build.mjs', ['--dev'], { cwd: desktop })
 
-const electron = pnpmExec(['electron', '.'], {
-  cwd: desktop,
-  env: { ...extraEnv, FRITH_DEV_URL: `http://localhost:${webPort}` },
-})
+  const electron = pnpmExec(['electron', '.'], {
+    cwd: desktop,
+    env: { ...extraEnv, FRITH_DEV_URL: `http://localhost:${webPort}` },
+  })
 
-// Closing the window tears everything down.
-electron.on('exit', (code) => shutdown(code ?? 0))
+  // Closing the window tears everything down.
+  electron.on('exit', (code) => shutdown(code ?? 0))
+}

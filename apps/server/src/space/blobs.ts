@@ -23,6 +23,23 @@ interface CacheEntry {
 
 const cacheKeyOf = (ref: BlobRef) => `${ref.key}:${ref.id.blockOffset}`;
 
+/** Hyperblobs' default block size. A blob id is log data — attacker-chosen —
+ *  so `byteLength` alone doesn't bound the read: the block range decides how
+ *  much actually comes off the wire and into memory. */
+const BLOCK_SIZE = 65_536;
+
+/** Does this locator describe a blob that fits within `maxBytes`? Checked
+ *  BEFORE reading, because `get` materializes the whole blob in one Buffer —
+ *  a member can otherwise post a 1 KB attachment whose bytes are 5 GB and have
+ *  every default-policy peer pull it into memory before the hash check fails. */
+function withinCap(id: BlobId, maxBytes: number): boolean {
+  if (!Number.isSafeInteger(id.byteLength) || id.byteLength < 0) return false;
+  if (!Number.isSafeInteger(id.blockLength) || id.blockLength < 0) return false;
+  if (id.byteLength > maxBytes) return false;
+  // Tiny blocks would let a huge block range hide behind a small byteLength.
+  return id.blockLength * BLOCK_SIZE <= maxBytes + BLOCK_SIZE;
+}
+
 export class BlobStore {
   private store: Corestore;
   private own: Hyperblobs;
@@ -67,6 +84,9 @@ export class BlobStore {
 
   private blobsFor(ref: BlobRef): Hyperblobs {
     if (this.isOwn(ref)) return this.own;
+    // The core key comes from the log too — a malformed one must fail here,
+    // not deep inside corestore.
+    if (!/^[0-9a-f]{64}$/.test(ref.key)) throw new Error('not a blob core key');
     let blobs = this.remotes.get(ref.key);
     if (!blobs) {
       blobs = new Hyperblobs(this.store.get({ key: b4a.from(ref.key, 'hex'), encryption: this.encryption }));
@@ -98,13 +118,17 @@ export class BlobStore {
   /**
    * Read a blob. Own blobs come straight from our core; remote ones from the
    * local cache, or — when `wait` is set — from whichever peer holds them,
-   * within timeoutMs. Returns null when the bytes aren't available on those
-   * terms, or when they fail hash verification.
+   * within timeoutMs. `maxBytes` bounds what a remote locator may ask this
+   * device to pull into memory. Returns null when the bytes aren't available
+   * on those terms, when they're over the cap, or when they fail hash
+   * verification.
    */
   async get(
     ref: BlobRef,
-    opts: { wait?: boolean; timeoutMs?: number; expectedHash?: string } = {},
+    opts: { wait?: boolean; timeoutMs?: number; expectedHash?: string; maxBytes?: number } = {},
   ): Promise<Buffer | null> {
+    if (!this.isOwn(ref) && !/^[0-9a-f]{64}$/.test(ref.key)) return null;
+    if (!this.isOwn(ref) && opts.maxBytes !== undefined && !withinCap(ref.id, opts.maxBytes)) return null;
     if (!this.isOwn(ref) && !opts.wait && !(await this.isCached(ref))) return null;
     let bytes: Buffer | null;
     try {

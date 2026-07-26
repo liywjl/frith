@@ -2,7 +2,10 @@
   "entry": [
     "apps/mobile/worklet/entry.ts",
     "apps/mobile/worklet/smoke-bare.ts",
-    "apps/mobile/worklet/shims/crypto.ts"
+    "apps/mobile/worklet/shims/crypto.ts",
+    "scripts/demo-spaces.mjs",
+    "scripts/preview.mjs",
+    "scripts/seeded.mjs"
   ],
   "ignorePatterns": [
     ".ds-sync/**",

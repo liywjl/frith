@@ -1,98 +1,753 @@
 {
   "users": [
-    { "handle": "priya", "name": "Priya Sharma", "title": "Staff Engineer", "team": "Payments", "avatarEmoji": "🦉", "statusEmoji": "📝", "statusText": "updating the RFC", "interests": ["dogs", "gravel biking", "sourdough"], "nowPlaying": "Severance, season 2" },
-    { "handle": "marco", "name": "Marco Ruiz", "title": "Senior Engineer", "team": "Payments", "avatarEmoji": "🌮", "statusEmoji": "☕", "statusText": "deep work til 3", "interests": ["rollerblading", "synthwave", "cooking"], "nowPlaying": "Blade Runner OST on loop" },
-    { "handle": "amara", "name": "Amara Diallo", "title": "Site Reliability Engineer", "team": "Infrastructure", "avatarEmoji": "🛰️", "statusEmoji": "🔥", "statusText": "on call", "interests": ["hiking", "climbing", "synthwave"], "nowPlaying": "Andor" },
-    { "handle": "jonas", "name": "Jonas Weber", "title": "Product Designer", "team": "Design", "avatarEmoji": "🎨", "statusEmoji": null, "statusText": null, "interests": ["film photography", "dogs", "vinyl"], "nowPlaying": "In Rainbows, again" },
-    { "handle": "sofia", "name": "Sofia Lindqvist", "title": "Engineering Manager", "team": "Payments", "avatarEmoji": "🌱", "statusEmoji": "📅", "statusText": "in meetings", "interests": ["sailing", "board games"], "nowPlaying": "The Bear, season 3" },
-    { "handle": "tomas", "name": "Tomas Novak", "title": "Software Engineer", "team": "Payments", "avatarEmoji": "🧭", "statusEmoji": "👋", "statusText": "new here!", "interests": ["rollerblading", "board games", "dogs"], "nowPlaying": "learning-Rust playlists" },
-    { "handle": "elena", "name": "Elena Petrova", "title": "Data Scientist", "team": "Data", "avatarEmoji": "📊", "statusEmoji": null, "statusText": null, "interests": ["rollerblading", "chess", "hiking"], "nowPlaying": "lofi focus mix" },
-    { "handle": "kwame", "name": "Kwame Mensah", "title": "Backend Engineer", "team": "Payments", "avatarEmoji": "⚡", "statusEmoji": "🎧", "statusText": "focus mode", "interests": ["basketball", "synthwave", "cooking"], "nowPlaying": "Dune: Part Two" },
-    { "handle": "ingrid", "name": "Ingrid Johansson", "title": "Legal Counsel", "team": "Legal", "avatarEmoji": "⚖️", "statusEmoji": null, "statusText": null, "interests": ["dogs", "gardening", "true crime podcasts"], "nowPlaying": "Serial rewatch" },
-    { "handle": "yuki", "name": "Yuki Tanaka", "title": "Mobile Engineer", "team": "Product", "avatarEmoji": "🌸", "statusEmoji": "🏔️", "statusText": "hiking Friday", "interests": ["hiking", "film photography", "climbing"], "nowPlaying": "Studio Ghibli marathon" },
-    { "handle": "omar", "name": "Omar Haddad", "title": "Support Lead", "team": "Support", "avatarEmoji": "🎯", "statusEmoji": null, "statusText": null, "interests": ["dogs", "basketball", "grilling"], "nowPlaying": "F1 highlights" },
-    { "handle": "chloe", "name": "Chloe Martin", "title": "Product Manager", "team": "Product", "avatarEmoji": "🧩", "statusEmoji": "✈️", "statusText": "offsite next week", "interests": ["board games", "sailing", "chess"], "nowPlaying": "Wingspan strategy videos" }
+    {
+      "handle": "priya",
+      "name": "Priya Sharma",
+      "title": "Staff Engineer",
+      "team": "Payments",
+      "avatarEmoji": "🦉",
+      "statusEmoji": "📝",
+      "statusText": "updating the RFC",
+      "interests": [
+        "dogs",
+        "gravel biking",
+        "sourdough"
+      ],
+      "nowPlaying": "Severance, season 2",
+      "admin": true,
+      "bio": "Staff engineer on payments. My sourdough starter is named Brioche Fett.",
+      "links": [
+        {
+          "label": "Blog",
+          "url": "https://priyasharma.dev"
+        }
+      ],
+      "accentColor": "#1971c2",
+      "location": "Berlin, Germany"
+    },
+    {
+      "handle": "marco",
+      "name": "Marco Ruiz",
+      "title": "Senior Engineer",
+      "team": "Payments",
+      "avatarEmoji": "🌮",
+      "statusEmoji": "☕",
+      "statusText": "deep work til 3",
+      "interests": [
+        "rollerblading",
+        "synthwave",
+        "cooking"
+      ],
+      "nowPlaying": "Blade Runner OST on loop",
+      "bio": "Payments by day, synthwave by night.",
+      "links": [
+        {
+          "label": "Mixes",
+          "url": "https://soundcloud.com/marco-ruiz-mixes"
+        }
+      ],
+      "accentColor": "#6741d9",
+      "location": "Lisbon, Portugal"
+    },
+    {
+      "handle": "amara",
+      "name": "Amara Diallo",
+      "title": "Site Reliability Engineer",
+      "team": "Infrastructure",
+      "avatarEmoji": "🛰️",
+      "statusEmoji": "🔥",
+      "statusText": "on call",
+      "interests": [
+        "hiking",
+        "climbing",
+        "synthwave"
+      ],
+      "nowPlaying": "Andor",
+      "location": "Amsterdam, Netherlands"
+    },
+    {
+      "handle": "jonas",
+      "name": "Jonas Weber",
+      "title": "Product Designer",
+      "team": "Design",
+      "avatarEmoji": "🎨",
+      "statusEmoji": null,
+      "statusText": null,
+      "interests": [
+        "film photography",
+        "dogs",
+        "vinyl"
+      ],
+      "nowPlaying": "In Rainbows, again",
+      "bio": "Designer. I shoot film on weekends and think about type the rest of the time.",
+      "links": [
+        {
+          "label": "Glass",
+          "url": "https://glass.photo/jonasweber"
+        },
+        {
+          "label": "Vinyl log",
+          "url": "https://www.discogs.com/user/jonasweber"
+        }
+      ],
+      "accentColor": "#e8590c",
+      "location": "Berlin, Germany"
+    },
+    {
+      "handle": "sofia",
+      "name": "Sofia Lindqvist",
+      "title": "Engineering Manager",
+      "team": "Payments",
+      "avatarEmoji": "🌱",
+      "statusEmoji": "📅",
+      "statusText": "in meetings",
+      "interests": [
+        "sailing",
+        "board games"
+      ],
+      "nowPlaying": "The Bear, season 3",
+      "owner": true,
+      "location": "Stockholm, Sweden"
+    },
+    {
+      "handle": "tomas",
+      "name": "Tomas Novak",
+      "title": "Software Engineer",
+      "team": "Payments",
+      "avatarEmoji": "🧭",
+      "statusEmoji": "👋",
+      "statusText": "new here!",
+      "interests": [
+        "rollerblading",
+        "board games",
+        "dogs"
+      ],
+      "nowPlaying": "learning-Rust playlists",
+      "location": "Prague, Czechia",
+      "bio": "New here! Learning Rust and the coffee machine, in that order. @priya is guiding me through the payments maze."
+    },
+    {
+      "handle": "elena",
+      "name": "Elena Petrova",
+      "title": "Data Scientist",
+      "team": "Data",
+      "avatarEmoji": "📊",
+      "statusEmoji": null,
+      "statusText": null,
+      "interests": [
+        "rollerblading",
+        "chess",
+        "hiking"
+      ],
+      "nowPlaying": "lofi focus mix",
+      "location": "Warsaw, Poland"
+    },
+    {
+      "handle": "kwame",
+      "name": "Kwame Mensah",
+      "title": "Backend Engineer",
+      "team": "Payments",
+      "avatarEmoji": "⚡",
+      "statusEmoji": "🎧",
+      "statusText": "focus mode",
+      "interests": [
+        "basketball",
+        "synthwave",
+        "cooking"
+      ],
+      "nowPlaying": "Dune: Part Two",
+      "location": "Berlin, Germany"
+    },
+    {
+      "handle": "ingrid",
+      "name": "Ingrid Johansson",
+      "title": "Legal Counsel",
+      "team": "Legal",
+      "avatarEmoji": "⚖️",
+      "statusEmoji": null,
+      "statusText": null,
+      "interests": [
+        "dogs",
+        "gardening",
+        "true crime podcasts"
+      ],
+      "nowPlaying": "Serial rewatch",
+      "location": "Oslo, Norway"
+    },
+    {
+      "handle": "yuki",
+      "name": "Yuki Tanaka",
+      "title": "Mobile Engineer",
+      "team": "Product",
+      "avatarEmoji": "🌸",
+      "statusEmoji": "🏔️",
+      "statusText": "hiking Friday",
+      "interests": [
+        "hiking",
+        "film photography",
+        "climbing"
+      ],
+      "nowPlaying": "Studio Ghibli marathon",
+      "bio": "Mobile. Will trade code review for trail recommendations. Film camera comes on every hike — blame @jonas.",
+      "links": [
+        {
+          "label": "Photos",
+          "url": "https://glass.photo/yukitanaka"
+        }
+      ],
+      "accentColor": "#0c8599",
+      "location": "Munich, Germany"
+    },
+    {
+      "handle": "omar",
+      "name": "Omar Haddad",
+      "title": "Support Lead",
+      "team": "Support",
+      "avatarEmoji": "🎯",
+      "statusEmoji": null,
+      "statusText": null,
+      "interests": [
+        "dogs",
+        "basketball",
+        "grilling"
+      ],
+      "nowPlaying": "F1 highlights",
+      "location": "Madrid, Spain"
+    },
+    {
+      "handle": "chloe",
+      "name": "Chloe Martin",
+      "title": "Product Manager",
+      "team": "Product",
+      "avatarEmoji": "🧩",
+      "statusEmoji": "✈️",
+      "statusText": "offsite next week",
+      "interests": [
+        "board games",
+        "sailing",
+        "chess"
+      ],
+      "nowPlaying": "Wingspan strategy videos",
+      "location": "Copenhagen, Denmark"
+    }
   ],
   "channels": [
-    { "name": "general", "type": "public", "topic": "Company-wide announcements and chatter" },
-    { "name": "eng-payments", "type": "public", "topic": "Migration to the new billing pipeline" },
-    { "name": "incident-4021", "type": "public", "topic": "Payments provider rate-limit incident — resolved" },
-    { "name": "design", "type": "public", "topic": "Product design and critique" },
-    { "name": "leadership", "type": "private", "topic": "Managers only", "members": ["sofia", "priya"] },
-    { "name": "proj-checkout-v1", "type": "public", "topic": "The original checkout build — shipped Q1", "archived": true },
-    { "name": "dm-priya-marco", "type": "dm", "members": ["priya", "marco"] },
-    { "name": "group-payments-crew", "type": "dm", "members": ["priya", "marco", "amara"] },
-    { "name": "group-lunch", "type": "dm", "members": ["tomas", "jonas", "elena", "kwame"] }
+    {
+      "name": "general",
+      "type": "public",
+      "topic": "Company-wide announcements and chatter"
+    },
+    {
+      "name": "eng-payments",
+      "type": "public",
+      "topic": "Migration to the new billing pipeline"
+    },
+    {
+      "name": "incident-4021",
+      "type": "public",
+      "topic": "Payments provider rate-limit incident — resolved"
+    },
+    {
+      "name": "design",
+      "type": "public",
+      "topic": "Product design and critique"
+    },
+    {
+      "name": "leadership",
+      "type": "private",
+      "topic": "Managers only",
+      "members": [
+        "sofia",
+        "priya"
+      ]
+    },
+    {
+      "name": "proj-checkout-v1",
+      "type": "public",
+      "topic": "The original checkout build — shipped Q1",
+      "archived": true
+    },
+    {
+      "name": "dm-priya-marco",
+      "type": "dm",
+      "members": [
+        "priya",
+        "marco"
+      ]
+    },
+    {
+      "name": "group-payments-crew",
+      "type": "dm",
+      "members": [
+        "priya",
+        "marco",
+        "amara"
+      ]
+    },
+    {
+      "name": "group-lunch",
+      "type": "dm",
+      "members": [
+        "tomas",
+        "jonas",
+        "elena",
+        "kwame"
+      ]
+    }
   ],
   "messages": [
-    { "channel": "general", "author": "sofia", "daysAgo": 120, "body": "Welcome to the new workspace, everyone. Channels are open by default — keep decisions where people can find them later." },
-
-    { "channel": "proj-checkout-v1", "author": "jonas", "daysAgo": 160, "body": "Checkout v1 is live. Known debt: the retry state is a bare spinner and the error banner is bespoke — filed for the redesign." },
-    { "channel": "proj-checkout-v1", "author": "marco", "daysAgo": 158, "body": "Payment provider integration notes are in the runbook. The 3DS fallback path is the fragile part — do not touch without tests." },
-
-    { "id": "rfc", "channel": "eng-payments", "author": "priya", "daysAgo": 110, "body": "First draft of the payments migration RFC is up. Short version: we move billing off the nightly cron pipeline onto event-driven processing. Comments welcome on the doc." },
-    { "channel": "eng-payments", "author": "marco", "daysAgo": 110, "replyTo": "rfc", "body": "Biggest risk I see is the reconciliation job — if we replay events after a failure we could double-charge." },
-    { "channel": "eng-payments", "author": "priya", "daysAgo": 109, "replyTo": "rfc", "body": "Agreed. Proposal: idempotency keys on every charge event, reconciliation only reports, never mutates." },
-    { "channel": "eng-payments", "author": "amara", "daysAgo": 109, "replyTo": "rfc", "body": "+1 to report-only reconciliation. Also please budget for provider rate limits during replay — they bite." },
-
-    { "id": "burst", "channel": "eng-payments", "author": "marco", "daysAgo": 101, "body": "Provider sandbox keeps returning 429s when we replay a full day of events. Anyone seen this before?" },
-
-    { "id": "inc-start", "channel": "incident-4021", "author": "amara", "daysAgo": 100, "body": "Elevated 429s from the payments provider in production — checkout latency spiking. Investigating." },
-    { "channel": "incident-4021", "author": "marco", "daysAgo": 100, "body": "Root cause found: burst traffic from the migration replay is eating the provider's rate budget. Throttling the replay now." },
-    { "id": "postmortem", "channel": "incident-4021", "author": "amara", "daysAgo": 99, "body": "Postmortem drafted. Action items: exponential backoff with jitter on all provider calls, alert on 429 rate, cap replay at 40 rps." },
-    { "channel": "incident-4021", "author": "sofia", "daysAgo": 99, "body": "Nice turnaround. Let's make sure the migration plan absorbs these lessons before it restarts." },
-
-    { "channel": "eng-payments", "author": "amara", "daysAgo": 99, "replyTo": "burst", "body": "Same behaviour as incident 4021 — the provider caps bursts around 50 rps. Backoff with jitter fixed it there, see the postmortem." },
-    { "channel": "eng-payments", "author": "priya", "daysAgo": 90, "body": "Pausing migration work until the incident fallout settles and the backoff work lands. We pick this up again next quarter." },
-
-    { "channel": "design", "author": "jonas", "daysAgo": 60, "body": "New checkout flow mockups are up. Main change: the retry state now tells the user what happened instead of a spinner." },
-    { "channel": "design", "author": "tomas", "daysAgo": 3, "body": "These are great — is there a component for the inline error banner or is it bespoke?" },
-    { "channel": "design", "author": "jonas", "daysAgo": 3, "body": "It's in the shared library as AlertInline. Don't copy the old one from checkout, it's deprecated." },
-    { "channel": "design", "author": "jonas", "daysAgo": 2, "body": "Reminder: design critique is Thursdays at 14:00. Bring the checkout retry states, we still owe the payments team a decision there." },
-    { "channel": "general", "author": "jonas", "daysAgo": 2, "body": "Welcome Tomas! Ping me if you need a design pass on anything payments-related." },
-
-    { "id": "restart", "channel": "eng-payments", "author": "priya", "daysAgo": 20, "body": "The migration is back on. RFC updated with the incident-4021 lessons: replay batches at 40 rps with jittered backoff, reconciliation is report-only." },
-    { "id": "flag", "channel": "eng-payments", "author": "marco", "daysAgo": 20, "body": "Summary from today's call: rollout is gated behind a feature flag (payments_v2_rollout). I own the flag config by Friday; Priya updates the RFC with the new cutover date." },
-    { "channel": "eng-payments", "author": "sofia", "daysAgo": 19, "replyTo": "flag", "body": "Good call. One open item: the EU accounts cutover date still needs finance sign-off." },
-    { "channel": "eng-payments", "author": "amara", "daysAgo": 18, "replyTo": "flag", "body": "I'll wire the payments_v2_rollout flag into the 429-rate alert so we catch regressions the moment the flag opens." },
-    { "channel": "eng-payments", "author": "priya", "daysAgo": 17, "body": "For anyone joining late: the payments-migration RFC lives in Notion under /engineering, and the reconciliation code is in payments-service under reconcile/. Start with reconcile/report.ts." },
-    { "channel": "incident-4021", "author": "amara", "daysAgo": 95, "body": "The backoff utility landed in libs/retry.ts — use withBackoff() for every provider call from now on. Direct fetch calls to the provider will fail code review." },
-
-    { "channel": "general", "author": "tomas", "daysAgo": 2, "body": "Hi everyone — Tomas, joining the payments team this week. Excited to be here!" },
-    { "channel": "general", "author": "priya", "daysAgo": 2, "body": "Welcome Tomas! You'll mostly live in #eng-payments — the migration RFC is the best starting point." },
-    { "id": "tomas-q", "channel": "eng-payments", "author": "tomas", "daysAgo": 1, "body": "Reading the RFC now. Where should I start on the reconciliation job?" },
-    { "channel": "eng-payments", "author": "priya", "daysAgo": 1, "replyTo": "tomas-q", "body": "Start with reconcile/report.ts — it's report-only so you can't break billing. Elena's sandbox run is the reference dataset." },
-    { "channel": "eng-payments", "author": "kwame", "daysAgo": 1, "replyTo": "tomas-q", "body": "And run the replay locally with the 40 rps cap, the sandbox provider throttles the same way production does." },
-
-    { "channel": "leadership", "author": "sofia", "daysAgo": 40, "body": "Compensation review numbers for the eng team are in the shared sheet — keep discussion in this channel please." },
-    { "channel": "leadership", "author": "priya", "daysAgo": 39, "body": "Will do. Separate topic: we should discuss Marco's promotion case before the cycle closes." },
-
-    { "channel": "dm-priya-marco", "author": "marco", "daysAgo": 15, "body": "Between us — the flag rollout timeline feels tight. I don't want to say it in the channel yet." },
-    { "channel": "dm-priya-marco", "author": "priya", "daysAgo": 15, "body": "Yeah, I feel it too. Let's raise it Monday with real numbers instead of vibes." },
-
-    { "channel": "general", "author": "chloe", "daysAgo": 12, "body": "Roadmap review moved to Tuesday. Payments cutover is the headline item — bring your open questions." },
-    { "channel": "general", "author": "ingrid", "daysAgo": 10, "body": "Reminder from legal: EU customer data must stay in EU regions after the migration. Flag anything that moves data across regions to me before it ships." },
-    { "channel": "incident-4021", "author": "omar", "daysAgo": 98, "body": "Support update: checkout complaint volume is back to baseline. Closing the ticket batch from the incident." },
-    { "channel": "eng-payments", "author": "elena", "daysAgo": 16, "body": "Heads up: reconciliation report data looks clean in the sandbox — mismatch rate under 0.01% across 40k replayed events." },
-    { "channel": "eng-payments", "author": "kwame", "daysAgo": 16, "body": "Nice. I'll add elena's mismatch metric to the cutover-review dashboard next to the 429 alert." },
-    { "channel": "design", "author": "yuki", "daysAgo": 2, "body": "Mobile checkout uses the same retry states — I'll port AlertInline once the web version settles." },
-
-    { "channel": "group-payments-crew", "author": "marco", "daysAgo": 14, "body": "Prep for Thursday's cutover review — I'll bring the flag config and rollout stages." },
-    { "channel": "group-payments-crew", "author": "priya", "daysAgo": 14, "body": "I'll bring the reconciliation numbers from Elena's sandbox run." },
-    { "channel": "group-payments-crew", "author": "amara", "daysAgo": 13, "body": "429 alert is wired to the flag. If we regress, we'll know in minutes, not from support tickets." },
-
-    { "channel": "group-lunch", "author": "jonas", "daysAgo": 1, "body": "Ramen place at 12:30? They have the spicy special again." },
-    { "channel": "group-lunch", "author": "elena", "daysAgo": 1, "body": "In! Last one there pays." },
-    { "channel": "group-lunch", "author": "tomas", "daysAgo": 1, "body": "Count me in 🙌" }
+    {
+      "channel": "general",
+      "author": "sofia",
+      "daysAgo": 120,
+      "body": "Welcome to the new workspace, everyone. Channels are open by default — keep decisions where people can find them later."
+    },
+    {
+      "channel": "proj-checkout-v1",
+      "author": "jonas",
+      "daysAgo": 160,
+      "body": "Checkout v1 is live. Known debt: the retry state is a bare spinner and the error banner is bespoke — filed for the redesign."
+    },
+    {
+      "channel": "proj-checkout-v1",
+      "author": "marco",
+      "daysAgo": 158,
+      "body": "Payment provider integration notes are in the runbook. The 3DS fallback path is the fragile part — do not touch without tests."
+    },
+    {
+      "id": "rfc",
+      "channel": "eng-payments",
+      "author": "priya",
+      "daysAgo": 110,
+      "body": "First draft of the payments migration RFC is up. Short version: we move billing off the nightly cron pipeline onto event-driven processing. Comments welcome on the doc."
+    },
+    {
+      "channel": "eng-payments",
+      "author": "marco",
+      "daysAgo": 110,
+      "replyTo": "rfc",
+      "body": "Biggest risk I see is the reconciliation job — if we replay events after a failure we could double-charge."
+    },
+    {
+      "channel": "eng-payments",
+      "author": "priya",
+      "daysAgo": 109,
+      "replyTo": "rfc",
+      "body": "Agreed. Proposal: idempotency keys on every charge event, reconciliation only reports, never mutates."
+    },
+    {
+      "channel": "eng-payments",
+      "author": "amara",
+      "daysAgo": 109,
+      "replyTo": "rfc",
+      "body": "+1 to report-only reconciliation. Also please budget for provider rate limits during replay — they bite."
+    },
+    {
+      "id": "burst",
+      "channel": "eng-payments",
+      "author": "marco",
+      "daysAgo": 101,
+      "body": "Provider sandbox keeps returning 429s when we replay a full day of events. Anyone seen this before?"
+    },
+    {
+      "id": "inc-start",
+      "channel": "incident-4021",
+      "author": "amara",
+      "daysAgo": 100,
+      "body": "Elevated 429s from the payments provider in production — checkout latency spiking. Investigating."
+    },
+    {
+      "channel": "incident-4021",
+      "author": "marco",
+      "daysAgo": 100,
+      "body": "Root cause found: burst traffic from the migration replay is eating the provider's rate budget. Throttling the replay now."
+    },
+    {
+      "id": "postmortem",
+      "channel": "incident-4021",
+      "author": "amara",
+      "daysAgo": 99,
+      "body": "Postmortem drafted. Action items: exponential backoff with jitter on all provider calls, alert on 429 rate, cap replay at 40 rps."
+    },
+    {
+      "channel": "incident-4021",
+      "author": "sofia",
+      "daysAgo": 99,
+      "body": "Nice turnaround. Let's make sure the migration plan absorbs these lessons before it restarts."
+    },
+    {
+      "channel": "eng-payments",
+      "author": "amara",
+      "daysAgo": 99,
+      "replyTo": "burst",
+      "body": "Same behaviour as incident 4021 — the provider caps bursts around 50 rps. Backoff with jitter fixed it there, see the postmortem."
+    },
+    {
+      "channel": "eng-payments",
+      "author": "priya",
+      "daysAgo": 90,
+      "body": "Pausing migration work until the incident fallout settles and the backoff work lands. We pick this up again next quarter."
+    },
+    {
+      "channel": "design",
+      "author": "jonas",
+      "daysAgo": 60,
+      "body": "New checkout flow mockups are up. Main change: the retry state now tells the user what happened instead of a spinner."
+    },
+    {
+      "channel": "design",
+      "author": "tomas",
+      "daysAgo": 3,
+      "body": "These are great — is there a component for the inline error banner or is it bespoke?"
+    },
+    {
+      "channel": "design",
+      "author": "jonas",
+      "daysAgo": 3,
+      "body": "It's in the shared library as AlertInline. Don't copy the old one from checkout, it's deprecated."
+    },
+    {
+      "channel": "design",
+      "author": "jonas",
+      "daysAgo": 2,
+      "body": "Reminder: design critique is Thursdays at 14:00. Bring the checkout retry states, we still owe the payments team a decision there."
+    },
+    {
+      "channel": "general",
+      "author": "jonas",
+      "daysAgo": 2,
+      "body": "Welcome Tomas! Ping me if you need a design pass on anything payments-related."
+    },
+    {
+      "id": "restart",
+      "channel": "eng-payments",
+      "author": "priya",
+      "daysAgo": 20,
+      "body": "The migration is back on. RFC updated with the incident-4021 lessons: replay batches at 40 rps with jittered backoff, reconciliation is report-only."
+    },
+    {
+      "id": "flag",
+      "channel": "eng-payments",
+      "author": "marco",
+      "daysAgo": 20,
+      "body": "Summary from today's call: rollout is gated behind a feature flag (payments_v2_rollout). I own the flag config by Friday; Priya updates the RFC with the new cutover date."
+    },
+    {
+      "channel": "eng-payments",
+      "author": "sofia",
+      "daysAgo": 19,
+      "replyTo": "flag",
+      "body": "Good call. One open item: the EU accounts cutover date still needs finance sign-off."
+    },
+    {
+      "channel": "eng-payments",
+      "author": "amara",
+      "daysAgo": 18,
+      "replyTo": "flag",
+      "body": "I'll wire the payments_v2_rollout flag into the 429-rate alert so we catch regressions the moment the flag opens."
+    },
+    {
+      "channel": "eng-payments",
+      "author": "priya",
+      "daysAgo": 17,
+      "body": "For anyone joining late: the payments-migration RFC lives in Notion under /engineering, and the reconciliation code is in payments-service under reconcile/. Start with reconcile/report.ts."
+    },
+    {
+      "channel": "incident-4021",
+      "author": "amara",
+      "daysAgo": 95,
+      "body": "The backoff utility landed in libs/retry.ts — use withBackoff() for every provider call from now on. Direct fetch calls to the provider will fail code review."
+    },
+    {
+      "channel": "general",
+      "author": "tomas",
+      "daysAgo": 2,
+      "body": "Hi everyone — Tomas, joining the payments team this week. Excited to be here!"
+    },
+    {
+      "channel": "general",
+      "author": "priya",
+      "daysAgo": 2,
+      "body": "Welcome Tomas! You'll mostly live in #eng-payments — the migration RFC is the best starting point."
+    },
+    {
+      "id": "tomas-q",
+      "channel": "eng-payments",
+      "author": "tomas",
+      "daysAgo": 1,
+      "body": "Reading the RFC now. Where should I start on the reconciliation job?"
+    },
+    {
+      "channel": "eng-payments",
+      "author": "priya",
+      "daysAgo": 1,
+      "replyTo": "tomas-q",
+      "body": "Start with reconcile/report.ts — it's report-only so you can't break billing. Elena's sandbox run is the reference dataset."
+    },
+    {
+      "channel": "eng-payments",
+      "author": "kwame",
+      "daysAgo": 1,
+      "replyTo": "tomas-q",
+      "body": "And run the replay locally with the 40 rps cap, the sandbox provider throttles the same way production does."
+    },
+    {
+      "channel": "leadership",
+      "author": "sofia",
+      "daysAgo": 40,
+      "body": "Compensation review numbers for the eng team are in the shared sheet — keep discussion in this channel please."
+    },
+    {
+      "channel": "leadership",
+      "author": "priya",
+      "daysAgo": 39,
+      "body": "Will do. Separate topic: we should discuss Marco's promotion case before the cycle closes."
+    },
+    {
+      "channel": "dm-priya-marco",
+      "author": "marco",
+      "daysAgo": 15,
+      "body": "Between us — the flag rollout timeline feels tight. I don't want to say it in the channel yet."
+    },
+    {
+      "channel": "dm-priya-marco",
+      "author": "priya",
+      "daysAgo": 15,
+      "body": "Yeah, I feel it too. Let's raise it Monday with real numbers instead of vibes."
+    },
+    {
+      "channel": "general",
+      "author": "chloe",
+      "daysAgo": 12,
+      "body": "Roadmap review moved to Tuesday. Payments cutover is the headline item — bring your open questions."
+    },
+    {
+      "channel": "general",
+      "author": "ingrid",
+      "daysAgo": 10,
+      "body": "Reminder from legal: EU customer data must stay in EU regions after the migration. Flag anything that moves data across regions to me before it ships."
+    },
+    {
+      "channel": "incident-4021",
+      "author": "omar",
+      "daysAgo": 98,
+      "body": "Support update: checkout complaint volume is back to baseline. Closing the ticket batch from the incident."
+    },
+    {
+      "channel": "eng-payments",
+      "author": "elena",
+      "daysAgo": 16,
+      "body": "Heads up: reconciliation report data looks clean in the sandbox — mismatch rate under 0.01% across 40k replayed events."
+    },
+    {
+      "channel": "eng-payments",
+      "author": "kwame",
+      "daysAgo": 16,
+      "body": "Nice. I'll add elena's mismatch metric to the cutover-review dashboard next to the 429 alert."
+    },
+    {
+      "channel": "design",
+      "author": "yuki",
+      "daysAgo": 2,
+      "body": "Mobile checkout uses the same retry states — I'll port AlertInline once the web version settles."
+    },
+    {
+      "channel": "group-payments-crew",
+      "author": "marco",
+      "daysAgo": 14,
+      "body": "Prep for Thursday's cutover review — I'll bring the flag config and rollout stages."
+    },
+    {
+      "channel": "group-payments-crew",
+      "author": "priya",
+      "daysAgo": 14,
+      "body": "I'll bring the reconciliation numbers from Elena's sandbox run."
+    },
+    {
+      "channel": "group-payments-crew",
+      "author": "amara",
+      "daysAgo": 13,
+      "body": "429 alert is wired to the flag. If we regress, we'll know in minutes, not from support tickets."
+    },
+    {
+      "channel": "group-lunch",
+      "author": "jonas",
+      "daysAgo": 1,
+      "body": "Ramen place at 12:30? They have the spicy special again."
+    },
+    {
+      "channel": "group-lunch",
+      "author": "elena",
+      "daysAgo": 1,
+      "body": "In! Last one there pays."
+    },
+    {
+      "channel": "group-lunch",
+      "author": "tomas",
+      "daysAgo": 1,
+      "body": "Count me in 🙌"
+    },
+    {
+      "channel": "general",
+      "author": "marco",
+      "daysAgo": 2,
+      "body": "new deep-work mix is up: https://soundcloud.com/marco-ruiz-mixes/deepwork-vol-4 — 90 minutes, no drops. you're welcome"
+    },
+    {
+      "channel": "general",
+      "author": "jonas",
+      "daysAgo": 1,
+      "id": "darkroom-scans",
+      "body": "darkroom scans from the weekend — the light leak on the second one stays, that's a feature",
+      "photos": [
+        {
+          "name": "darkroom-scan-01.png"
+        },
+        {
+          "name": "darkroom-scan-02.png"
+        }
+      ]
+    },
+    {
+      "channel": "general",
+      "author": "yuki",
+      "daysAgo": 4,
+      "id": "alps-trip",
+      "body": "took the film camera up the Zugspitze this weekend — light above the clouds was unreal. @jonas the Portra did NOT disappoint",
+      "photos": [
+        {
+          "name": "zugspitze-above-clouds.png"
+        },
+        {
+          "name": "zugspitze-ridge.png"
+        }
+      ]
+    },
+    {
+      "channel": "general",
+      "author": "jonas",
+      "daysAgo": 4,
+      "replyTo": "alps-trip",
+      "body": "TOLD you. scan the rest, I need the ridge line on my wall"
+    },
+    {
+      "channel": "general",
+      "author": "amara",
+      "daysAgo": 4,
+      "replyTo": "alps-trip",
+      "body": "adding this to the list — what was the hut situation like?"
+    },
+    {
+      "channel": "general",
+      "author": "marco",
+      "daysAgo": 4,
+      "replyTo": "alps-trip",
+      "body": "this is a desktop wallpaper, thank you for your service"
+    },
+    {
+      "channel": "general",
+      "author": "yuki",
+      "daysAgo": 1,
+      "replyTo": "darkroom-scans",
+      "body": "the light leak one is art, don't let anyone tell you otherwise"
+    },
+    {
+      "channel": "general",
+      "author": "priya",
+      "daysAgo": 1,
+      "replyTo": "darkroom-scans",
+      "body": "framed print for the office please"
+    }
   ],
   "reactions": [
-    { "message": "flag", "emoji": "✅", "users": ["priya", "sofia", "amara", "kwame"] },
-    { "message": "flag", "emoji": "🎉", "users": ["tomas", "elena"] },
-    { "message": "postmortem", "emoji": "👍", "users": ["marco", "sofia", "priya"] },
-    { "message": "postmortem", "emoji": "❤️", "users": ["omar"] },
-    { "message": "rfc", "emoji": "👀", "users": ["kwame", "elena", "sofia"] },
-    { "message": "restart", "emoji": "🎉", "users": ["marco", "amara", "tomas"] },
-    { "message": "tomas-q", "emoji": "👋", "users": ["priya", "jonas"] }
+    {
+      "message": "flag",
+      "emoji": "✅",
+      "users": [
+        "priya",
+        "sofia",
+        "amara",
+        "kwame"
+      ]
+    },
+    {
+      "message": "flag",
+      "emoji": "🎉",
+      "users": [
+        "tomas",
+        "elena"
+      ]
+    },
+    {
+      "message": "postmortem",
+      "emoji": "👍",
+      "users": [
+        "marco",
+        "sofia",
+        "priya"
+      ]
+    },
+    {
+      "message": "postmortem",
+      "emoji": "❤️",
+      "users": [
+        "omar"
+      ]
+    },
+    {
+      "message": "rfc",
+      "emoji": "👀",
+      "users": [
+        "kwame",
+        "elena",
+        "sofia"
+      ]
+    },
+    {
+      "message": "restart",
+      "emoji": "🎉",
+      "users": [
+        "marco",
+        "amara",
+        "tomas"
+      ]
+    },
+    {
+      "message": "tomas-q",
+      "emoji": "👋",
+      "users": [
+        "priya",
+        "jonas"
+      ]
+    },
+    {
+      "message": "darkroom-scans",
+      "emoji": "❤️",
+      "users": [
+        "priya",
+        "yuki",
+        "sofia"
+      ]
+    },
+    {
+      "message": "alps-trip",
+      "emoji": "🏔️",
+      "users": [
+        "jonas",
+        "amara",
+        "marco",
+        "chloe",
+        "tomas"
+      ]
+    },
+    {
+      "message": "alps-trip",
+      "emoji": "❤️",
+      "users": [
+        "jonas",
+        "sofia"
+      ]
+    }
   ],
   "docs": [
     {

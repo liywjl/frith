@@ -420,6 +420,11 @@ class Space {
       this.state.apply(op, writer);
       this.absorbKeys(op);
       if (op.t === 'setting' && op.key === 'name') this.syncLocalName();
+      // HARDENING §4: an evicted identity's cached blob bytes leave this disk.
+      // Runs wherever the op applies — each honest peer purges its own copy,
+      // regardless of which peer performed the eviction. The evicted-set guard
+      // matters: a forged evict op must not grief-purge anyone's cache.
+      if (op.t === 'evict' && this.state.evicted.has(op.userId)) await this.purgeEvictedBlobs(op.userId);
       if (!this.replaying) for (const listener of this.listeners) listener(op);
     }
     // Once caught up: adopt a rotated invite, rotate stale domains, and seal
@@ -428,6 +433,18 @@ class Space {
     if (!this.replaying) {
       void this.syncInviteFromLog().catch(() => {});
       void this.reconcile().catch(() => {});
+    }
+  }
+
+  /** Drop locally cached bytes for every attachment the evicted user authored.
+   *  Their uploads live on THEIR device's blob core, so for honest peers these
+   *  are remote refs `drop` can clear; the evicted node keeping its own bytes
+   *  is out of our hands. Idempotent — replays and repeat evicts are no-ops. */
+  private async purgeEvictedBlobs(userId: string): Promise<void> {
+    for (const att of this.state.attachments.values()) {
+      if (!att.blob) continue;
+      if (this.state.messages.get(att.messageId)?.authorId !== userId) continue;
+      await this.blobs.drop(att.blob).catch(() => {}); // best-effort per blob — a closed core must not stop the walk
     }
   }
 
@@ -551,6 +568,16 @@ class Space {
     return this.activeConfig(this.readRegistry()).identities?.[userId] ?? null;
   }
 
+  /** Should THIS device act on a user's behalf unprompted — deliver their
+   *  scheduled sends, sweep their expired status? Only for the identity it is
+   *  bound to; every peer runs the same timers, so a looser test has each of
+   *  them writing ops in everyone else's name (and the reducer now drops
+   *  those anyway). An identity with no device of its own — dev's seeded cast
+   *  — has nobody else to do it, so this device still does. */
+  actsFor(userId: string): boolean {
+    return this.boundUserId() === userId || !this.state.hasBoundDevice(userId);
+  }
+
   /**
    * Bind this device to a user: publish the root key (first write wins) and
    * a root-signed device certification, then remember the seed — encrypted —
@@ -649,7 +676,7 @@ class Space {
    *  bytes put into a blob core; the hash is signed so peers can trust it. */
   async setLogo(logo: SpaceLogo | null, actorId: string): Promise<void> {
     if (!this.state.canManage(actorId)) throw new Error('only owner or admins can change the logo');
-    await this.append({ t: 'logo', logo, actorId, sig: this.signAsRoot(actorId, logoMessage(logo?.hash ?? null)) });
+    await this.append({ t: 'logo', logo, actorId, sig: this.signAsRoot(actorId, logoMessage(logo)) });
   }
 
   /** After a rename lands in the log, fold the new name into this device's
@@ -766,9 +793,11 @@ class Space {
   private domainDevices(domain: Domain): Map<string, string> {
     const memberFilter = domain === 'space' ? null : this.state.members.get(domain.slice('channel:'.length));
     const targets = new Map<string, string>();
-    for (const [deviceKey, userId] of this.state.deviceOwners) {
-      if (this.state.revokedDevices.has(deviceKey) || this.state.evicted.has(userId)) continue;
-      if (memberFilter && !memberFilter.has(userId)) continue;
+    for (const [deviceKey, owners] of this.state.deviceOwners) {
+      if (this.state.revokedDevices.has(deviceKey)) continue;
+      // A device is in the domain if any identity it holds belongs there.
+      const live = [...owners].filter((userId) => !this.state.evicted.has(userId));
+      if (!live.some((userId) => !memberFilter || memberFilter.has(userId))) continue;
       const encPub = this.state.deviceEncKeys.get(deviceKey);
       if (encPub) targets.set(deviceKey, encPub);
     }

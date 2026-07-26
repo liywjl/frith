@@ -123,6 +123,52 @@ describe('who may evict', () => {
   });
 });
 
+describe('who may archive a public channel', () => {
+  // A public channel is space-wide, so archiving it (which freezes all posting)
+  // is a manager action — not something any reader can do to grief the space.
+  let channel: string;
+
+  it('a plain member may not archive a public channel', async () => {
+    channel = (
+      await app.inject({
+        method: 'POST',
+        url: '/api/channels',
+        payload: { name: 'town-square', type: 'public' },
+        ...as(owner),
+      })
+    ).json().channelId as string;
+
+    const res = await app.inject({ method: 'POST', url: `/api/channels/${channel}/archive`, ...as(member) });
+    expect(res.statusCode).toBe(403);
+
+    // The channel still accepts posts — nothing was frozen.
+    const post = await app.inject({
+      method: 'POST',
+      url: `/api/channels/${channel}/messages`,
+      payload: { body: 'still open' },
+      ...as(member),
+    });
+    expect(post.statusCode).toBe(200);
+  });
+
+  it('the owner archives and unarchives a public channel', async () => {
+    const archived = await app.inject({ method: 'POST', url: `/api/channels/${channel}/archive`, ...as(owner) });
+    expect(archived.statusCode).toBe(200);
+
+    // Posting is frozen while archived.
+    const frozen = await app.inject({
+      method: 'POST',
+      url: `/api/channels/${channel}/messages`,
+      payload: { body: 'nope' },
+      ...as(member),
+    });
+    expect(frozen.statusCode).toBe(409);
+
+    const unarchived = await app.inject({ method: 'POST', url: `/api/channels/${channel}/unarchive`, ...as(owner) });
+    expect(unarchived.statusCode).toBe(200);
+  });
+});
+
 describe('malformed input is the caller’s fault', () => {
   it('answers 400 (never 500) to garbage bodies', async () => {
     expect(

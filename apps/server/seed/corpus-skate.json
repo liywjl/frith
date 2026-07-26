@@ -1,50 +1,639 @@
 {
   "users": [
-    { "handle": "mika", "name": "Mika Sørensen", "title": "Meetup wrangler", "team": "Blade Crew", "avatarEmoji": "🛼", "statusEmoji": "📅", "statusText": "planning Sunday", "interests": ["slalom", "coffee", "route maps"], "nowPlaying": "wheels spinning ASMR" },
-    { "handle": "dee", "name": "Dee Okafor", "title": "Park rat", "team": "Blade Crew", "avatarEmoji": "🔥", "statusEmoji": null, "statusText": null, "interests": ["bowls", "soul grinds", "video editing"], "nowPlaying": "Thrasher archives" },
-    { "handle": "ravi", "name": "Ravi Menon", "title": "Gear nerd", "team": "Blade Crew", "avatarEmoji": "🔧", "statusEmoji": "🧪", "statusText": "testing bearings", "interests": ["bearings", "3D printing", "frame setups"], "nowPlaying": "bearing spin tests" },
-    { "handle": "lena", "name": "Lena Fischer", "title": "Distance skater", "team": "Blade Crew", "avatarEmoji": "🌊", "statusEmoji": null, "statusText": null, "interests": ["marathons", "city routes", "sunrise skates"], "nowPlaying": "podcast at 1.5x" },
-    { "handle": "oscar", "name": "Oscar Lindgren", "title": "New blood", "team": "Blade Crew", "avatarEmoji": "🐣", "statusEmoji": "😅", "statusText": "still learning to stop", "interests": ["not falling", "protective gear"], "nowPlaying": "how-to-brake tutorials" },
-    { "handle": "june", "name": "June Park", "title": "Trick lab", "team": "Blade Crew", "avatarEmoji": "🎥", "statusEmoji": "🎬", "statusText": "editing Sunday's clips", "interests": ["slow motion", "gap jumps", "drone shots"], "nowPlaying": "clip render progress bar" }
+    {
+      "handle": "mika",
+      "name": "Mika Sørensen",
+      "title": "Meetup wrangler",
+      "team": "Blade Crew",
+      "avatarEmoji": "🛼",
+      "statusEmoji": "📅",
+      "statusText": "planning Sunday",
+      "interests": [
+        "slalom",
+        "coffee",
+        "route maps"
+      ],
+      "nowPlaying": "wheels spinning ASMR",
+      "owner": true,
+      "bio": "Started the Sunday roll in 2019 with three people and a thermos. Now we politely block traffic. @dee runs the bowl sessions, I run the calendar.",
+      "links": [
+        {
+          "label": "Route notes",
+          "url": "https://bladecrew.substack.com"
+        },
+        {
+          "label": "Instagram",
+          "url": "https://instagram.com/mika.rolls"
+        }
+      ],
+      "accentColor": "#e8590c",
+      "location": "Oslo, Norway"
+    },
+    {
+      "handle": "dee",
+      "name": "Dee Okafor",
+      "title": "Park rat",
+      "team": "Blade Crew",
+      "avatarEmoji": "🔥",
+      "statusEmoji": null,
+      "statusText": null,
+      "interests": [
+        "bowls",
+        "soul grinds",
+        "video editing"
+      ],
+      "nowPlaying": "Thrasher archives",
+      "admin": true,
+      "bio": "Bowl rat. If it happened and I was there, it's on film.",
+      "links": [
+        {
+          "label": "YouTube",
+          "url": "https://youtube.com/@deeokafor"
+        },
+        {
+          "label": "Instagram",
+          "url": "https://instagram.com/dee.grinds"
+        }
+      ],
+      "accentColor": "#d6336c",
+      "location": "Oslo, Norway"
+    },
+    {
+      "handle": "ravi",
+      "name": "Ravi Menon",
+      "title": "Gear nerd",
+      "team": "Blade Crew",
+      "avatarEmoji": "🔧",
+      "statusEmoji": "🧪",
+      "statusText": "testing bearings",
+      "interests": [
+        "bearings",
+        "3D printing",
+        "frame setups"
+      ],
+      "nowPlaying": "bearing spin tests",
+      "bio": "I test gear so you don't have to. Ask me about bearings — or don't, I'll tell you anyway.",
+      "links": [
+        {
+          "label": "Bearing lab",
+          "url": "https://github.com/ravimenon/bearing-lab"
+        },
+        {
+          "label": "Printables",
+          "url": "https://www.printables.com/@ravimenon"
+        }
+      ],
+      "accentColor": "#1971c2",
+      "location": "Oslo, Norway"
+    },
+    {
+      "handle": "lena",
+      "name": "Lena Fischer",
+      "title": "Distance skater",
+      "team": "Blade Crew",
+      "avatarEmoji": "🌊",
+      "statusEmoji": null,
+      "statusText": null,
+      "interests": [
+        "marathons",
+        "city routes",
+        "sunrise skates"
+      ],
+      "nowPlaying": "podcast at 1.5x",
+      "bio": "Distance skater. The city looks better at 25 km/h, before it wakes up.",
+      "links": [
+        {
+          "label": "Strava",
+          "url": "https://www.strava.com/athletes/lenafischer"
+        },
+        {
+          "label": "Sunrise skates blog",
+          "url": "https://sunriseskates.wordpress.com"
+        }
+      ],
+      "accentColor": "#0c8599",
+      "location": "Bærum, Norway"
+    },
+    {
+      "handle": "oscar",
+      "name": "Oscar Lindgren",
+      "title": "New blood",
+      "team": "Blade Crew",
+      "avatarEmoji": "🐣",
+      "statusEmoji": "😅",
+      "statusText": "still learning to stop",
+      "interests": [
+        "not falling",
+        "protective gear"
+      ],
+      "nowPlaying": "how-to-brake tutorials",
+      "bio": "Joined in March after watching one of @june's edits. Can now stop on purpose about 70% of the time. @lena says I'm ready for 28k. I am not.",
+      "location": "Oslo, Norway",
+      "links": [
+        {
+          "label": "Falling diary",
+          "url": "https://oscarfalls.bearblog.dev"
+        }
+      ],
+      "accentColor": "#f08c00"
+    },
+    {
+      "handle": "june",
+      "name": "June Park",
+      "title": "Trick lab",
+      "team": "Blade Crew",
+      "avatarEmoji": "🎥",
+      "statusEmoji": "🎬",
+      "statusText": "editing Sunday's clips",
+      "interests": [
+        "slow motion",
+        "gap jumps",
+        "drone shots"
+      ],
+      "nowPlaying": "clip render progress bar",
+      "bio": "Filming the crew since day one. Slow motion makes everyone look pro — even @oscar.",
+      "links": [
+        {
+          "label": "YouTube",
+          "url": "https://youtube.com/@junepark.films"
+        },
+        {
+          "label": "Vimeo",
+          "url": "https://vimeo.com/juneparkfilms"
+        }
+      ],
+      "accentColor": "#7048e8",
+      "location": "Oslo, Norway"
+    }
   ],
   "channels": [
-    { "name": "general", "type": "public", "topic": "Blade Crew HQ — say hi" },
-    { "name": "events", "type": "public", "topic": "Meetups, routes, and who brings the speaker" },
-    { "name": "gear", "type": "public", "topic": "Wheels, frames, bearings — reviews and deals" },
-    { "name": "tricks", "type": "public", "topic": "Clips, spots, and how-did-you-do-that" },
-    { "name": "organizers", "type": "private", "topic": "Permits, budgets, boring-but-needed", "members": ["mika", "dee"] }
+    {
+      "name": "general",
+      "type": "public",
+      "topic": "Blade Crew HQ — say hi"
+    },
+    {
+      "name": "events",
+      "type": "public",
+      "topic": "Meetups, routes, and who brings the speaker"
+    },
+    {
+      "name": "gear",
+      "type": "public",
+      "topic": "Wheels, frames, bearings — reviews and deals"
+    },
+    {
+      "name": "tricks",
+      "type": "public",
+      "topic": "Clips, spots, and how-did-you-do-that"
+    },
+    {
+      "name": "organizers",
+      "type": "private",
+      "topic": "Permits, budgets, boring-but-needed",
+      "members": [
+        "mika",
+        "dee"
+      ]
+    }
   ],
   "messages": [
-    { "channel": "general", "author": "mika", "daysAgo": 60, "body": "Welcome to the crew space! Everything lives here now — events, gear talk, and June's increasingly cinematic trick videos." },
-    { "channel": "general", "author": "oscar", "daysAgo": 45, "body": "Hi all — bought my first pair of skates (FR2s). Any advice for someone whose only trick is 'controlled panic'?" },
-    { "id": "welcome-oscar", "channel": "general", "author": "dee", "daysAgo": 45, "body": "Welcome Oscar! Rule one: bend your knees. Rule two: grass is a legitimate brake. Come Sunday, we'll get you rolling." },
-    { "channel": "general", "author": "lena", "daysAgo": 20, "body": "Sunrise skate along the harbour this morning — 22km before coffee. The path by the new bridge is finally open and it is BUTTER." },
-    { "id": "sunday-plan", "channel": "events", "author": "mika", "daysAgo": 10, "body": "Sunday session: meet 10:00 at the fountain, roll to the riverside park, picnic after. Bring water, sunscreen, and Dee brings the speaker. RSVP with a 🛼." },
-    { "channel": "events", "author": "lena", "daysAgo": 10, "replyTo": "sunday-plan", "body": "In! I'll scout the route Saturday and flag any gravel patches near the underpass." },
-    { "channel": "events", "author": "oscar", "daysAgo": 9, "replyTo": "sunday-plan", "body": "Coming — someone please stand between me and the river." },
-    { "channel": "events", "author": "june", "daysAgo": 9, "replyTo": "sunday-plan", "body": "Bringing the drone if the wind behaves. Group shot at the bridge at golden hour?" },
-    { "id": "summer-jam", "channel": "events", "author": "dee", "daysAgo": 4, "body": "Bigger idea: end-of-summer jam at the skatepark. Mini comp, BBQ, beginner clinic in the morning. We'd need the park booked and a small budget. Thoughts?" },
-    { "channel": "events", "author": "mika", "daysAgo": 4, "replyTo": "summer-jam", "body": "Love it. I'll check park availability for the last weekend of August and draft a budget in #organizers." },
-    { "channel": "events", "author": "lena", "daysAgo": 3, "replyTo": "summer-jam", "body": "I can run the beginner clinic if we do it before it gets hot. Oscar, you'd be my star pupil." },
-    { "id": "wheel-review", "channel": "gear", "author": "ravi", "daysAgo": 15, "body": "Wheel review after 300km: the 80mm Supremes wear evenly and grip well in the wet, but they're loud on rough tarmac. 8/10, would buy again at the sale price." },
-    { "channel": "gear", "author": "lena", "daysAgo": 14, "replyTo": "wheel-review", "body": "Seconding the wet grip. I did the marathon route in light rain on these and never once thought about it. That's the review." },
-    { "id": "bearing-q", "channel": "gear", "author": "oscar", "daysAgo": 7, "body": "Do I actually need ceramic bearings or is that a tax on beginners? The shop guy was VERY convincing." },
-    { "channel": "gear", "author": "ravi", "daysAgo": 7, "replyTo": "bearing-q", "body": "Tax. Clean ABEC-7s outlast dirty ceramics every time. Spend the difference on pads — see the buying checklist we're building in the Gear add-on." },
-    { "channel": "gear", "author": "dee", "daysAgo": 6, "replyTo": "bearing-q", "body": "+1. Also your frames are fine, your wheels are fine, everything is fine — skate more, shop less. (Says the person with four setups.)" },
-    { "id": "soul-grind", "channel": "tricks", "author": "dee", "daysAgo": 12, "body": "FINALLY locked the soul grind on the round rail. Three months of sliding off like a cartoon. Clip incoming once June works her magic." },
-    { "channel": "tricks", "author": "june", "daysAgo": 11, "replyTo": "soul-grind", "body": "Uploaded the raw clip to the channel — slow-mo version tonight. The lock-in at 0:14 is textbook, frame it." },
-    { "channel": "tricks", "author": "oscar", "daysAgo": 11, "replyTo": "soul-grind", "body": "Watched it five times. I understand nothing and respect everything." },
-    { "channel": "tricks", "author": "june", "daysAgo": 5, "body": "Spot alert: the new plaza by the station has perfect ledges and NOBODY there on weekday evenings. Bringing lights Thursday for a night session." },
-    { "channel": "tricks", "author": "dee", "daysAgo": 5, "body": "Thursday works. Someone tell Ravi the ledges are concrete so he can pre-review the wax situation." },
-    { "channel": "organizers", "author": "mika", "daysAgo": 3, "body": "Park quote for the jam: 120 for the morning slot incl. insurance. BBQ we can cover with a 5-per-head chip-in. I'll draft the permit form this week." },
-    { "channel": "organizers", "author": "dee", "daysAgo": 2, "body": "Works. Let's cap the comp at 20 entries and keep prizes silly — golden bearing trophy, best bail award, that kind of thing." }
+    {
+      "channel": "general",
+      "author": "mika",
+      "daysAgo": 60,
+      "body": "Welcome to the crew space! Everything lives here now — events, gear talk, and June's increasingly cinematic trick videos."
+    },
+    {
+      "channel": "general",
+      "author": "oscar",
+      "daysAgo": 45,
+      "body": "Hi all — bought my first pair of skates (FR2s). Any advice for someone whose only trick is 'controlled panic'?"
+    },
+    {
+      "id": "welcome-oscar",
+      "channel": "general",
+      "author": "dee",
+      "daysAgo": 45,
+      "body": "Welcome Oscar! Rule one: bend your knees. Rule two: grass is a legitimate brake. Come Sunday, we'll get you rolling."
+    },
+    {
+      "channel": "general",
+      "author": "lena",
+      "daysAgo": 20,
+      "body": "Sunrise skate along the harbour this morning — 22km before coffee. The path by the new bridge is finally open and it is BUTTER."
+    },
+    {
+      "id": "sunday-plan",
+      "channel": "events",
+      "author": "mika",
+      "daysAgo": 10,
+      "body": "Sunday session: meet 10:00 at the fountain, roll to the riverside park, picnic after. Bring water, sunscreen, and Dee brings the speaker. RSVP with a 🛼."
+    },
+    {
+      "channel": "events",
+      "author": "lena",
+      "daysAgo": 10,
+      "replyTo": "sunday-plan",
+      "body": "In! I'll scout the route Saturday and flag any gravel patches near the underpass."
+    },
+    {
+      "channel": "events",
+      "author": "oscar",
+      "daysAgo": 9,
+      "replyTo": "sunday-plan",
+      "body": "Coming — someone please stand between me and the river."
+    },
+    {
+      "channel": "events",
+      "author": "june",
+      "daysAgo": 9,
+      "replyTo": "sunday-plan",
+      "body": "Bringing the drone if the wind behaves. Group shot at the bridge at golden hour?"
+    },
+    {
+      "id": "summer-jam",
+      "channel": "events",
+      "author": "dee",
+      "daysAgo": 4,
+      "body": "Bigger idea: end-of-summer jam at the skatepark. Mini comp, BBQ, beginner clinic in the morning. We'd need the park booked and a small budget. Thoughts?"
+    },
+    {
+      "channel": "events",
+      "author": "mika",
+      "daysAgo": 4,
+      "replyTo": "summer-jam",
+      "body": "Love it. I'll check park availability for the last weekend of August and draft a budget in #organizers."
+    },
+    {
+      "channel": "events",
+      "author": "lena",
+      "daysAgo": 3,
+      "replyTo": "summer-jam",
+      "body": "I can run the beginner clinic if we do it before it gets hot. Oscar, you'd be my star pupil."
+    },
+    {
+      "id": "wheel-review",
+      "channel": "gear",
+      "author": "ravi",
+      "daysAgo": 15,
+      "body": "Wheel review after 300km: the 80mm Supremes wear evenly and grip well in the wet, but they're loud on rough tarmac. 8/10, would buy again at the sale price."
+    },
+    {
+      "channel": "gear",
+      "author": "lena",
+      "daysAgo": 14,
+      "replyTo": "wheel-review",
+      "body": "Seconding the wet grip. I did the marathon route in light rain on these and never once thought about it. That's the review."
+    },
+    {
+      "id": "bearing-q",
+      "channel": "gear",
+      "author": "oscar",
+      "daysAgo": 7,
+      "body": "Do I actually need ceramic bearings or is that a tax on beginners? The shop guy was VERY convincing."
+    },
+    {
+      "channel": "gear",
+      "author": "ravi",
+      "daysAgo": 7,
+      "replyTo": "bearing-q",
+      "body": "Tax. Clean ABEC-7s outlast dirty ceramics every time. Spend the difference on pads — see the buying checklist we're building in the Gear add-on."
+    },
+    {
+      "channel": "gear",
+      "author": "dee",
+      "daysAgo": 6,
+      "replyTo": "bearing-q",
+      "body": "+1. Also your frames are fine, your wheels are fine, everything is fine — skate more, shop less. (Says the person with four setups.)"
+    },
+    {
+      "id": "soul-grind",
+      "channel": "tricks",
+      "author": "dee",
+      "daysAgo": 12,
+      "body": "FINALLY locked the soul grind on the round rail. Three months of sliding off like a cartoon. Clip incoming once June works her magic."
+    },
+    {
+      "channel": "tricks",
+      "author": "june",
+      "daysAgo": 11,
+      "replyTo": "soul-grind",
+      "body": "Uploaded the raw clip to the channel — slow-mo version tonight. The lock-in at 0:14 is textbook, frame it."
+    },
+    {
+      "channel": "tricks",
+      "author": "oscar",
+      "daysAgo": 11,
+      "replyTo": "soul-grind",
+      "body": "Watched it five times. I understand nothing and respect everything."
+    },
+    {
+      "channel": "tricks",
+      "author": "june",
+      "daysAgo": 5,
+      "body": "Spot alert: the new plaza by the station has perfect ledges and NOBODY there on weekday evenings. Bringing lights Thursday for a night session."
+    },
+    {
+      "channel": "tricks",
+      "author": "dee",
+      "daysAgo": 5,
+      "body": "Thursday works. Someone tell Ravi the ledges are concrete so he can pre-review the wax situation."
+    },
+    {
+      "channel": "organizers",
+      "author": "mika",
+      "daysAgo": 3,
+      "body": "Park quote for the jam: 120 for the morning slot incl. insurance. BBQ we can cover with a 5-per-head chip-in. I'll draft the permit form this week."
+    },
+    {
+      "channel": "organizers",
+      "author": "dee",
+      "daysAgo": 2,
+      "body": "Works. Let's cap the comp at 20 entries and keep prizes silly — golden bearing trophy, best bail award, that kind of thing."
+    },
+    {
+      "channel": "general",
+      "author": "mika",
+      "daysAgo": 2,
+      "body": "city published the riverside bowl plans!! https://oslo.kommune.no/parker/riverside-bowl — public comment closes friday. GO COMMENT, this is our chance"
+    },
+    {
+      "channel": "gear",
+      "author": "ravi",
+      "daysAgo": 2,
+      "body": "bearing shootout results are in: https://github.com/ravimenon/bearing-lab/blob/main/results-q3.md — the 12€ ones beat the 40€ ones. I'm as upset as you are"
+    },
+    {
+      "channel": "events",
+      "author": "lena",
+      "daysAgo": 1,
+      "body": "saturday sunrise route, 28k, two coffee stops: https://www.komoot.com/tour/blade-loop-28k — flat as a pancake. oscar, you're ready for this one"
+    },
+    {
+      "channel": "events",
+      "author": "lena",
+      "daysAgo": 1,
+      "id": "sunrise-photo",
+      "body": "this morning, 06:12. worth it",
+      "photos": [
+        {
+          "name": "sunrise-harbour-run.png"
+        }
+      ]
+    },
+    {
+      "channel": "tricks",
+      "author": "june",
+      "daysAgo": 1,
+      "id": "sunday-edit",
+      "body": "sunday's edit is UP 🎬 https://youtube.com/watch?v=bc-sunday-cut — oscar's first clean stop at 2:14, crowd goes wild"
+    },
+    {
+      "channel": "tricks",
+      "author": "june",
+      "daysAgo": 1,
+      "id": "session-stills",
+      "body": "stills from the session while the edit renders — that light was unreal",
+      "photos": [
+        {
+          "name": "gap-jump-golden-hour.png"
+        },
+        {
+          "name": "bowl-session-dusk.png"
+        }
+      ]
+    },
+    {
+      "channel": "events",
+      "author": "mika",
+      "daysAgo": 5,
+      "id": "cph-trip",
+      "body": "CPH TRIP DUMP 🇩🇰 — three days, four parks, zero broken bones. @june's clip from Fælledparken coming soon",
+      "photos": [
+        {
+          "name": "cph-faelledparken.png"
+        },
+        {
+          "name": "cph-harbour-line.png"
+        },
+        {
+          "name": "cph-street-crew.png"
+        }
+      ]
+    },
+    {
+      "channel": "events",
+      "author": "dee",
+      "daysAgo": 5,
+      "replyTo": "cph-trip",
+      "body": "the harbour line shot is POSTER material. @june please make prints"
+    },
+    {
+      "channel": "events",
+      "author": "oscar",
+      "daysAgo": 5,
+      "replyTo": "cph-trip",
+      "body": "I was only lost twice, personal best"
+    },
+    {
+      "channel": "events",
+      "author": "lena",
+      "daysAgo": 5,
+      "replyTo": "cph-trip",
+      "body": "the hostel-to-park route was 11k of pure glide. posting it to komoot tonight"
+    },
+    {
+      "channel": "events",
+      "author": "june",
+      "daysAgo": 5,
+      "replyTo": "cph-trip",
+      "body": "prints coming. also @oscar face-planted 0.3 seconds after the third photo and I have the footage"
+    },
+    {
+      "channel": "tricks",
+      "author": "june",
+      "daysAgo": 4,
+      "id": "cph-clip",
+      "body": "the Fælledparken clip, as promised 🎬 @oscar's cameo at the end 😏",
+      "photos": [
+        {
+          "name": "faelledparken-line.gif",
+          "clip": true
+        }
+      ]
+    },
+    {
+      "channel": "tricks",
+      "author": "oscar",
+      "daysAgo": 4,
+      "replyTo": "cph-clip",
+      "body": "I DEMAND EDITING RIGHTS"
+    },
+    {
+      "channel": "tricks",
+      "author": "mika",
+      "daysAgo": 4,
+      "replyTo": "cph-clip",
+      "body": "the framing on the opening line 😙🤌"
+    },
+    {
+      "channel": "tricks",
+      "author": "dee",
+      "daysAgo": 2,
+      "id": "bowl-clip",
+      "body": "soul grind held for a full THREE seconds. clip proof:",
+      "photos": [
+        {
+          "name": "bowl-soul-grind.gif",
+          "clip": true
+        }
+      ]
+    },
+    {
+      "channel": "tricks",
+      "author": "june",
+      "daysAgo": 2,
+      "replyTo": "bowl-clip",
+      "body": "clean 🙌 sending you the slow-mo"
+    },
+    {
+      "channel": "tricks",
+      "author": "mika",
+      "daysAgo": 2,
+      "replyTo": "bowl-clip",
+      "body": "frame it"
+    },
+    {
+      "channel": "tricks",
+      "author": "lena",
+      "daysAgo": 1,
+      "replyTo": "session-stills",
+      "body": "that second one is a wallpaper"
+    },
+    {
+      "channel": "tricks",
+      "author": "ravi",
+      "daysAgo": 1,
+      "replyTo": "session-stills",
+      "body": "what lens?? the flare is perfect"
+    }
   ],
   "reactions": [
-    { "message": "sunday-plan", "emoji": "🛼", "users": ["dee", "ravi", "lena", "oscar", "june"] },
-    { "message": "summer-jam", "emoji": "🔥", "users": ["mika", "lena", "june", "ravi"] },
-    { "message": "soul-grind", "emoji": "🎉", "users": ["mika", "ravi", "lena", "oscar", "june"] },
-    { "message": "wheel-review", "emoji": "🙏", "users": ["oscar", "lena"] },
-    { "message": "welcome-oscar", "emoji": "❤️", "users": ["oscar", "mika"] }
+    {
+      "message": "sunday-plan",
+      "emoji": "🛼",
+      "users": [
+        "dee",
+        "ravi",
+        "lena",
+        "oscar",
+        "june"
+      ]
+    },
+    {
+      "message": "summer-jam",
+      "emoji": "🔥",
+      "users": [
+        "mika",
+        "lena",
+        "june",
+        "ravi"
+      ]
+    },
+    {
+      "message": "soul-grind",
+      "emoji": "🎉",
+      "users": [
+        "mika",
+        "ravi",
+        "lena",
+        "oscar",
+        "june"
+      ]
+    },
+    {
+      "message": "wheel-review",
+      "emoji": "🙏",
+      "users": [
+        "oscar",
+        "lena"
+      ]
+    },
+    {
+      "message": "welcome-oscar",
+      "emoji": "❤️",
+      "users": [
+        "oscar",
+        "mika"
+      ]
+    },
+    {
+      "message": "sunday-edit",
+      "emoji": "🔥",
+      "users": [
+        "mika",
+        "dee",
+        "oscar"
+      ]
+    },
+    {
+      "message": "session-stills",
+      "emoji": "🤩",
+      "users": [
+        "lena",
+        "mika"
+      ]
+    },
+    {
+      "message": "sunrise-photo",
+      "emoji": "🌅",
+      "users": [
+        "mika",
+        "june",
+        "oscar"
+      ]
+    },
+    {
+      "message": "cph-trip",
+      "emoji": "🛼",
+      "users": [
+        "dee",
+        "ravi",
+        "lena",
+        "oscar",
+        "june"
+      ]
+    },
+    {
+      "message": "cph-trip",
+      "emoji": "🔥",
+      "users": [
+        "dee",
+        "june"
+      ]
+    },
+    {
+      "message": "cph-clip",
+      "emoji": "🎬",
+      "users": [
+        "mika",
+        "dee",
+        "lena",
+        "oscar"
+      ]
+    },
+    {
+      "message": "bowl-clip",
+      "emoji": "🔥",
+      "users": [
+        "mika",
+        "june",
+        "ravi",
+        "oscar",
+        "lena"
+      ]
+    }
   ],
   "docs": [
     {

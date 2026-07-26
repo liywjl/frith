@@ -126,7 +126,7 @@ describe('space settings — logo', () => {
   it('lets a manager set and clear the logo', () => {
     const { state, owner } = makeSpace();
     const l = logo(owner);
-    state.apply({ t: 'logo', logo: l, actorId: owner.userId, sig: owner.sign(logoMessage(l.hash)) }, owner.deviceKey);
+    state.apply({ t: 'logo', logo: l, actorId: owner.userId, sig: owner.sign(logoMessage(l)) }, owner.deviceKey);
     expect(state.spaceLogo).toEqual(l);
     state.apply({ t: 'logo', logo: null, actorId: owner.userId, sig: owner.sign(logoMessage(null)) }, owner.deviceKey);
     expect(state.spaceLogo).toBeNull();
@@ -135,11 +135,31 @@ describe('space settings — logo', () => {
   it('ignores a logo op from a non-manager and one with a mismatched signature', () => {
     const { state, owner, plain } = makeSpace();
     const l = logo(plain);
-    state.apply({ t: 'logo', logo: l, actorId: plain.userId, sig: plain.sign(logoMessage(l.hash)) }, plain.deviceKey);
+    state.apply({ t: 'logo', logo: l, actorId: plain.userId, sig: plain.sign(logoMessage(l)) }, plain.deviceKey);
     expect(state.spaceLogo).toBeNull();
-    // Owner signs a *different* hash than the op carries → verification fails.
+    // Owner signs a *different* record than the op carries → verification fails.
     const l2 = logo(owner);
-    state.apply({ t: 'logo', logo: l2, actorId: owner.userId, sig: owner.sign(logoMessage('some-other-hash')) }, owner.deviceKey);
+    state.apply({ t: 'logo', logo: l2, actorId: owner.userId, sig: owner.sign(logoMessage(logo(owner))) }, owner.deviceKey);
+    expect(state.spaceLogo).toBeNull();
+  });
+
+  it('rejects a logo op whose mime or bytes were swapped after signing', () => {
+    // The signature covers the whole record, not just the hash: `mime` picks
+    // the content-type the public logo route serves, `key`/`id` pick the bytes.
+    const { state, owner } = makeSpace();
+    const l = logo(owner);
+    const sig = owner.sign(logoMessage(l));
+    state.apply({ t: 'logo', logo: { ...l, mime: 'image/svg+xml' }, actorId: owner.userId, sig }, owner.deviceKey);
+    expect(state.spaceLogo).toBeNull();
+    state.apply(
+      { t: 'logo', logo: { ...l, key: crypto.randomBytes(32).toString('hex') }, actorId: owner.userId, sig },
+      owner.deviceKey,
+    );
+    expect(state.spaceLogo).toBeNull();
+
+    // And a scriptable type never lands, even correctly signed for it.
+    const svg = logo(owner, { mime: 'image/svg+xml' });
+    state.apply({ t: 'logo', logo: svg, actorId: owner.userId, sig: owner.sign(logoMessage(svg)) }, owner.deviceKey);
     expect(state.spaceLogo).toBeNull();
   });
 });

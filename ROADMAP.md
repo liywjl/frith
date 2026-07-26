@@ -8,8 +8,11 @@ keep the two in sync.
 
 - `site/index.html` — static, self-contained, deployable to any static host
   (GitHub Pages / Cloudflare Pages). No backend; early-access CTA is mailto.
-- Later: opt-in **community directory** — a curated list of public spaces
-  (itself just a signed Autobase feed, no server needed).
+- **Community directory v0 — shipped (2026-07-10).** A Directory view fed by
+  `FRITH_DIRECTORY_URL` (any static JSON host; bundled sample documents the
+  format) — see DESIGN.md §15. Still open: hosting a real curated feed,
+  curator-signed entries (the original "signed Autobase feed" idea),
+  multiple directories, and a submit-your-space flow.
 
 ## 2. Storage & sharing policies — shipped (v1)
 
@@ -79,6 +82,15 @@ encrypt under per-domain content keys; removing someone from a private
 channel rotates just that channel. Privileged routes require auth; the
 pre-login surface is an enumerated list. Honest limits documented in §18
 (metadata visible to a removed-but-replicating device; collusion).
+
+Realtime + local-edge hardening (2026-07-09): the HTTP edge rejects
+cross-origin / non-localhost-Host requests so a random web page can't drive the
+loopback API (CSRF / DNS-rebinding / WebSocket hijack), and the dev cookie is
+`HttpOnly; SameSite=Strict`. Call rosters (`GET /api/calls`) now filter to
+channels the viewer may read — a private campfire is as private as its channel;
+and the WebSocket relays are ACL-checked (`call.draw` requires channel
+membership, `rtc.signal` requires a shared active call) instead of trusting the
+sender-supplied target.
 
 Next, in order:
 1. **Blob purge on eviction** — revoked identities' cached blobs evicted from

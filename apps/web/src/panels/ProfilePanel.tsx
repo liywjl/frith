@@ -1,8 +1,11 @@
 import type { ChannelDto } from '@app/shared';
 import { Avatar } from '../components/Avatar';
 import { Icon } from '../components/Icon';
+import { Mentions } from '../components/Mentions';
+import { SafetyCode } from '../components/SafetyCode';
 import { useProfile } from '../lib/useProfile';
 import { useUserActions } from '../lib/userActions';
+import { linkIcon } from '../lib/socials';
 
 const timeFormat = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' });
 
@@ -49,6 +52,25 @@ export function ProfilePanel({
           Full profile
         </button>
       </div>
+
+      {(user.bio || user.links.length > 0) && (
+        <div className="panel-card">
+          {user.bio && (
+            <span className="panel-bio">
+              <Mentions text={user.bio} />
+            </span>
+          )}
+          {user.links.length > 0 && (
+            <div className="panel-tags">
+              {user.links.map((l) => (
+                <a key={l.url} className="profile-link" href={l.url} target="_blank" rel="noreferrer" title={l.url}>
+                  <Icon name={linkIcon(l.url)} /> {l.label}
+                </a>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {(user.nowPlaying || user.interests.length > 0) && (
         <div className="panel-card">
@@ -107,6 +129,8 @@ export function ProfilePanel({
           </div>
         </div>
       )}
+
+      <SafetyCode userId={userId} />
 
       {user.team && (
         <div className="panel-card">

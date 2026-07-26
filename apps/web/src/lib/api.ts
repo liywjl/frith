@@ -3,6 +3,8 @@ import type {
   DocDto,
   DocFullDto,
   ChannelDto,
+  DirectoryDto,
+  FeedDto,
   FileDto,
   ConnectDto,
   HomeDto,
@@ -35,6 +37,9 @@ export const api = {
     request<UserDto>('/api/me', { method: 'PATCH', body: JSON.stringify(patch) }),
   users: () => request<UserDto[]>('/api/users'),
   home: () => request<HomeDto>('/api/home'),
+  feed: () => request<FeedDto>('/api/feed'),
+  userFeed: (userId: string) => request<FeedDto>(`/api/users/${userId}/feed`),
+  directory: () => request<DirectoryDto>('/api/directory'),
   connect: () => request<ConnectDto>('/api/connect'),
   space: () => request<SpaceDto | null>('/api/space'),
   createSpace: (name: string) =>
@@ -74,6 +79,13 @@ export const api = {
       method: blocked ? 'POST' : 'DELETE',
     }),
   profile: (userId: string) => request<ProfilePageDto>(`/api/users/${userId}/profile`),
+  contactFingerprint: (userId: string) =>
+    request<{ code: string | null; verified: boolean }>(`/api/contacts/${userId}/fingerprint`),
+  setContactVerified: (userId: string, on: boolean) =>
+    request<{ code: string | null; verified: boolean }>(`/api/contacts/${userId}/verified`, {
+      method: 'POST',
+      body: JSON.stringify({ on }),
+    }),
   login: (handle: string) =>
     request<UserDto>('/api/dev/login', { method: 'POST', body: JSON.stringify({ handle }) }),
   createProfile: (input: { name: string; handle: string; avatarEmoji?: string | null }) =>

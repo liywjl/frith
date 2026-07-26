@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { THEMES, type MeDto, type ProfilePatch, type Theme } from '@app/shared';
+import { THEMES, type MeDto, type ProfileLink, type ProfilePatch, type Theme } from '@app/shared';
 import { api } from '../lib/api';
 import { applyPalette } from '../lib/palette';
 import { Avatar } from '../components/Avatar';
@@ -12,6 +12,9 @@ const STATUS_DURATIONS = [
   { label: '4 hours', minutes: 240 },
   { label: 'Until tomorrow', minutes: 1440 },
 ] as const;
+
+/** Profile accent presets — the same family the seed corpora use. */
+const ACCENTS = ['#e8590c', '#d6336c', '#c2255c', '#7048e8', '#6741d9', '#1971c2', '#0c8599', '#2f9e44'];
 
 const THEME_LABELS: Record<Theme, string> = {
   ocean: 'Ocean',
@@ -40,6 +43,10 @@ function toForm(me: MeDto) {
     statusText: me.statusText ?? '',
     interests: me.interests.join(', '),
     nowPlaying: me.nowPlaying ?? '',
+    bio: me.bio ?? '',
+    accentColor: me.accentColor ?? '',
+    links: me.links,
+    location: me.location ?? '',
     theme: me.theme,
   };
 }
@@ -59,6 +66,15 @@ function toPatch(form: ReturnType<typeof toForm>, statusMinutes: number | null):
       .filter(Boolean)
       .slice(0, 12),
     nowPlaying: form.nowPlaying || null,
+    bio: form.bio.trim() || null,
+    accentColor: form.accentColor || null,
+    location: form.location.trim() || null,
+    // Half-typed rows stay local until they're a real link — the server
+    // (rightly) rejects anything that isn't an http(s) URL.
+    links: form.links
+      .map((l) => ({ label: l.label.trim(), url: l.url.trim() }))
+      .filter((l) => l.label && /^https?:\/\/\S+\.\S+/.test(l.url))
+      .slice(0, 8),
     theme: form.theme,
   };
 }
@@ -137,6 +153,15 @@ export function ProfileModal({
           </label>
         </div>
 
+        <label className="field">
+          <span>Location — city, country, van, wherever</span>
+          <input
+            value={form.location}
+            placeholder="e.g. Oslo, Norway"
+            onChange={(e) => set('location')(e.target.value)}
+          />
+        </label>
+
         <div className="field-row">
           <label className="field emoji-field">
             <span>Status</span>
@@ -189,6 +214,86 @@ export function ProfileModal({
             onChange={(e) => set('nowPlaying')(e.target.value)}
           />
         </label>
+
+        <label className="field">
+          <span>Bio — a couple of lines about you, shown on your profile</span>
+          <textarea
+            rows={3}
+            maxLength={400}
+            value={form.bio}
+            placeholder="who you are, what you're about…"
+            onChange={(e) => set('bio')(e.target.value)}
+          />
+        </label>
+
+        <div className="field">
+          <span>Links — your blog, socials, anywhere you live online</span>
+          {form.links.map((l, i) => (
+            <div className="link-row" key={i}>
+              <input
+                className="link-label"
+                value={l.label}
+                placeholder="Label"
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    links: f.links.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)),
+                  }))
+                }
+              />
+              <input
+                className="link-url"
+                value={l.url}
+                placeholder="https://…"
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    links: f.links.map((x, j) => (j === i ? { ...x, url: e.target.value } : x)),
+                  }))
+                }
+              />
+              <button
+                className="btn link-remove"
+                title="Remove link"
+                aria-label="Remove link"
+                onClick={() => setForm((f) => ({ ...f, links: f.links.filter((_, j) => j !== i) }))}
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+          {form.links.length < 8 && (
+            <button
+              className="btn link-add"
+              onClick={() => setForm((f) => ({ ...f, links: [...f.links, { label: '', url: '' } as ProfileLink] }))}
+            >
+              + Add a link
+            </button>
+          )}
+        </div>
+
+        <div className="field">
+          <span>Profile accent — tints your profile page</span>
+          <div className="accent-list">
+            <button
+              className={`accent-swatch accent-none ${form.accentColor === '' ? 'selected' : ''}`}
+              title="No accent"
+              onClick={() => setForm((f) => ({ ...f, accentColor: '' }))}
+            >
+              ✕
+            </button>
+            {ACCENTS.map((c) => (
+              <button
+                key={c}
+                className={`accent-swatch ${form.accentColor === c ? 'selected' : ''}`}
+                style={{ background: c }}
+                title={c}
+                aria-label={`Accent ${c}`}
+                onClick={() => setForm((f) => ({ ...f, accentColor: c }))}
+              />
+            ))}
+          </div>
+        </div>
 
         <div className="field">
           <span>Theme — applies as you click</span>

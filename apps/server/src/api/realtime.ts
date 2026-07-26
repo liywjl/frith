@@ -41,12 +41,21 @@ export function sendToUser(userId: string, event: ServerEvent) {
  * Audience 'all' means every workspace member (public channels); an id list
  * restricts delivery to those users (private channels, DMs) — never broadcast
  * private content wider than its channel membership.
+ *
+ * `skipRecipient` drops individual recipients even when they're in the audience
+ * — used to keep live delivery consistent with reads, which hide messages from
+ * authors the recipient has blocked. Without it, a blocked person's messages
+ * still arrive live and only disappear on refresh.
  */
-export function publish(event: ServerEvent, audience: 'all' | string[]) {
+export function publish(
+  event: ServerEvent,
+  audience: 'all' | string[],
+  skipRecipient?: (userId: string) => boolean,
+) {
   const payload = JSON.stringify(event);
   for (const [socket, userId] of sockets) {
-    if (audience === 'all' || audience.includes(userId)) {
-      socket.send(payload);
-    }
+    if (audience !== 'all' && !audience.includes(userId)) continue;
+    if (skipRecipient?.(userId)) continue;
+    socket.send(payload);
   }
 }

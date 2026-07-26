@@ -29,10 +29,12 @@ import {
   getChannel,
   getMe,
   getMessage,
+  getFeed,
   getHome,
   getOrCreateGroup,
   getProfilePage,
   getThread,
+  hasBlocked,
   getUserByHandle,
   getUserById,
   listChannelMessages,
@@ -54,10 +56,12 @@ import {
   visibleChannels,
 } from '../domain/store.js';
 import { ask } from '../domain/ask.js';
+import { getDirectory } from '../domain/directory.js';
+import { fingerprintFor, setContactVerified } from '../domain/contacts.js';
 import { autoFetchAttachments, fetchAttachmentBytes } from '../domain/attachments.js';
 import { onlineUserIds, publish, register, sendToUser, setOnUserOffline } from './realtime.js';
-import { activeCalls, joinCall, leaveAllCalls, leaveCall, setRecording } from '../domain/calls.js';
-import { getPolicies, setPolicies, mb } from '../domain/policies.js';
+import { activeCallsFor, joinCall, leaveAllCalls, leaveCall, setRecording, shareActiveCall } from '../domain/calls.js';
+import { getPolicies, setPolicies, storageDto, mb } from '../domain/policies.js';
 import { effectiveMime, isDangerousName } from '../domain/files.js';
 import { space } from '../space/space.js';
 import { seedCorpus } from '../domain/seed.js';
@@ -70,6 +74,58 @@ declare module 'fastify' {
 
 const AUTH_COOKIE = 'uid';
 
+// The dev cookie is only ever sent by the same-origin client and never read by
+// JS, so lock it down: httpOnly (no script access), sameSite=strict (a cross-
+// site page can't ride it), path-scoped. Belt-and-braces with the origin guard.
+const AUTH_COOKIE_OPTS = { path: '/', httpOnly: true, sameSite: 'strict' as const };
+
+// The server binds 127.0.0.1 and is the device's own process, but any web page
+// the user visits can still try to reach http://127.0.0.1:<port>/api — a
+// classic CSRF / DNS-rebinding / cross-site-WebSocket surface against a local
+// server. Two cheap, exact checks close it, aligned with the documented
+// loopback trust boundary (DESIGN §17):
+//   • Host must resolve to localhost — defeats DNS rebinding (attacker.com → 127.0.0.1).
+//   • Any Origin present must be localhost — defeats cross-site fetch / WS hijack.
+// A trusted deployment host (future hosted edge) can be allowed via env.
+const TRUSTED_ORIGIN = process.env.FRITH_TRUSTED_ORIGIN?.trim() || null;
+const isLocalHostname = (h: string | undefined): boolean =>
+  h === 'localhost' || h === '127.0.0.1' || h === '::1';
+function hostAllowed(host: string | undefined): boolean {
+  if (!host) return false; // a browser always sends Host; its absence is not a real client
+  const name = host.replace(/:\d+$/, '').replace(/^\[|\]$/g, '');
+  return isLocalHostname(name) || (TRUSTED_ORIGIN != null && host === TRUSTED_ORIGIN);
+}
+function originAllowed(origin: string | undefined): boolean {
+  if (!origin) return true; // no Origin header → not a cross-site browser request (native clients, tests)
+  try {
+    const { host, hostname } = new URL(origin);
+    return isLocalHostname(hostname) || (TRUSTED_ORIGIN != null && host === TRUSTED_ORIGIN);
+  } catch {
+    return false;
+  }
+}
+
+// The origin guard stops a foreign page CALLING the local server; it does not
+// stop one FRAMING it. A framed document makes its own same-origin /api calls,
+// so without this the privileged UI (reveal the invite, evict, post) is one
+// invisible iframe away from being clicked by someone else's page. The
+// packaged Electron window is unaffected either way — this is for `dev:web`
+// and any static deployment. `frame-ancestors` is the modern control;
+// X-Frame-Options covers what predates it.
+const CSP = [
+  "default-src 'self'",
+  "base-uri 'none'",
+  "object-src 'none'",
+  "frame-ancestors 'none'",
+  "form-action 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline'", // the client styles elements inline
+  "img-src 'self' data: blob:",
+  "media-src 'self' blob:",
+  "font-src 'self' data:",
+  "connect-src 'self' ws: wss:", // the websocket rides the same origin
+].join('; ');
+
 // Production (packaged desktop / deployed): no dev routes, and requests act
 // as the device's bound user — the server binds 127.0.0.1 in-process, so the
 // loopback plus the OS user is the trust boundary; a cookie adds nothing.
@@ -77,6 +133,26 @@ const AUTH_COOKIE = 'uid';
 const PROD = () => process.env.FRITH_MODE === 'production';
 
 let fanoutWired = false;
+
+/** A Content-Disposition filename that survives any name a user can type.
+ *  Node throws on a header carrying CR/LF or non-latin1, so a stripped-down
+ *  ASCII fallback carries the name and RFC 5987's `filename*` carries the
+ *  truth — the same shape the docs route already uses. */
+function dispositionFilename(name: string): string {
+  const safe = name.replace(/[^\x20-\x7e]/g, '_').replace(/["\\]/g, '') || 'file';
+  return `filename="${safe}"; filename*=UTF-8''${encodeURIComponent(name)}`;
+}
+
+/** Enough leading bytes to sniff a file type without reading the whole file. */
+function readHeader(file: string): Buffer {
+  const fd = fs.openSync(file, 'r');
+  try {
+    const buf = Buffer.alloc(64);
+    return buf.subarray(0, fs.readSync(fd, buf, 0, buf.length, 0));
+  } finally {
+    fs.closeSync(fd);
+  }
+}
 
 /** ACL guard: 403s and returns false if the user may not read the channel. */
 async function requireChannelAccess(
@@ -108,14 +184,18 @@ export async function buildApp() {
     space.onOp((op) => {
       void (async () => {
         if (op.t === 'msg') {
+          const { authorId } = op.message;
           publish(
             { type: 'message.created', message: toMessageDto(op.message, '') },
             await channelAudience(op.message.channelId),
+            (uid) => hasBlocked(uid, authorId),
           );
           void autoFetchForSockets(op.message);
         } else if (op.t === 'react') {
           const message = await getMessage(op.messageId);
           if (!message) return;
+          // Reads hide a blocked author's messages entirely, so a recipient who
+          // blocked that author must not see reactions on them either.
           publish(
             {
               type: 'reaction.changed',
@@ -126,6 +206,7 @@ export async function buildApp() {
               added: op.on,
             },
             await channelAudience(message.channelId),
+            (uid) => hasBlocked(uid, message.authorId),
           );
         } else if (op.t === 'user') {
           const user = userDtoById(op.id);
@@ -164,6 +245,16 @@ export async function buildApp() {
   const filesDir = process.env.FRITH_FILES ?? path.join('.data', 'uploads');
   fs.mkdirSync(filesDir, { recursive: true });
 
+  // Every response, client and API alike — a page that can't frame us can't
+  // clickjack us, and a referrer never carries a local path off the machine.
+  app.addHook('onSend', async (_req, reply, payload) => {
+    void reply
+      .header('content-security-policy', CSP)
+      .header('x-frame-options', 'DENY')
+      .header('referrer-policy', 'no-referrer');
+    return payload;
+  });
+
   // Dev auth: pick a seeded user by handle, get a cookie — local iteration
   // speed wins. Absent in production builds (the preHandler ignores cookies
   // there anyway; unregistering keeps the surface honest).
@@ -172,7 +263,7 @@ export async function buildApp() {
       const body = z.object({ handle: z.string() }).parse(req.body);
       const user = await getUserByHandle(body.handle);
       if (!user) return reply.code(404).send({ error: 'no such user' });
-      reply.setCookie(AUTH_COOKIE, user.id, { path: '/' });
+      reply.setCookie(AUTH_COOKIE, user.id, AUTH_COOKIE_OPTS);
       return { id: user.id, handle: user.handle, name: user.name };
     });
   }
@@ -182,6 +273,12 @@ export async function buildApp() {
   // Create a brand-new profile in this space and sign in as it — the path
   // for someone who just joined via an invite.
   app.post('/api/profiles', async (req, reply) => {
+    // In production this device IS someone, and a new profile rebinds it —
+    // so a second one is an identity swap, not onboarding. Dev's
+    // many-profiles-one-machine flow is the whole point there, so it stays.
+    if (PROD() && space.boundUserId() !== null) {
+      return reply.code(409).send({ error: 'this device already has an identity' });
+    }
     const input = z
       .object({
         name: z.string().trim().min(1).max(80),
@@ -192,7 +289,7 @@ export async function buildApp() {
     const result = await createProfile(input);
     if (result === 'invalid-handle') return reply.code(400).send({ error: 'handles are letters, numbers, and dashes' });
     if (result === 'handle-taken') return reply.code(409).send({ error: 'that handle is taken in this space' });
-    reply.setCookie(AUTH_COOKIE, result.id, { path: '/' });
+    reply.setCookie(AUTH_COOKIE, result.id, AUTH_COOKIE_OPTS);
     return { id: result.id, handle: result.handle, name: result.name };
   });
 
@@ -209,20 +306,35 @@ export async function buildApp() {
   // but privileged space routes (evict, admins, settings) always need a user.
   app.addHook('preHandler', async (req, reply) => {
     if (!req.url.startsWith('/api/')) return; // static web client — the API guards the data
+    // Reject requests a foreign web page could forge against the local server
+    // BEFORE any auth or side effect — the loopback boundary made honest.
+    if (!hostAllowed(req.headers.host)) return reply.code(403).send({ error: 'bad host' });
+    if (!originAllowed(req.headers.origin)) return reply.code(403).send({ error: 'cross-origin request blocked' });
     const path = req.url.split('?')[0]!;
+    // Routes that BIND this device (to an identity, or to a different space)
+    // are pre-login only while there is nothing to take over. In production
+    // `boundUserId` IS the credential, so once it is set, re-pointing it is
+    // not something the loopback boundary was ever meant to cover: that
+    // boundary argues about reading local data, not about silently changing
+    // who the running app acts as. Dev reads the cookie instead, so binding
+    // changes nothing about who a request is — and the profile picker needs
+    // to create profiles with no cookie in hand.
+    const bindingSurface =
+      path === '/api/profiles' ||
+      path === '/api/identity/import' ||
+      path === '/api/space/join' ||
+      path === '/api/spaces/switch';
+    const bindingOpen = !PROD() || space.boundUserId() === null;
     // Pre-login surface: pick/create a profile, link a device, see/join/create
     // a space. Everything else under /api/space* falls through to auth.
     const publicSurface =
       (!PROD() && req.url.startsWith('/api/dev/')) ||
       path === '/api/users' ||
-      path === '/api/profiles' ||
-      path === '/api/identity/import' ||
       path === '/api/logout' ||
       path === '/api/spaces' ||
       (path === '/api/space' && req.method !== 'PATCH') ||
-      path === '/api/space/logo' && req.method === 'GET' ||
-      path === '/api/space/join' ||
-      path === '/api/spaces/switch';
+      (path === '/api/space/logo' && req.method === 'GET') ||
+      (bindingSurface && bindingOpen);
     // Production: this device IS the credential — requests act as its bound
     // user. Dev: whoever the cookie says.
     const uid = PROD() ? space.boundUserId() : req.cookies[AUTH_COOKIE];
@@ -258,12 +370,19 @@ export async function buildApp() {
     if (!match) return reply.code(400).send({ error: 'that does not look like an identity code' });
     const [, userId, seed] = match;
     if (!(await getUserById(userId!))) return reply.code(404).send({ error: 'no such user in this space' });
+    // Importing proves possession of the root seed: bindLocalDevice refuses a
+    // seed that doesn't match the identity's on-log root. An identity with NO
+    // root on the log (a dev-seeded row) has nothing to prove against, so in
+    // production it must not be claimable by whoever asks first.
+    if (PROD() && !space.state.roots.has(userId!)) {
+      return reply.code(409).send({ error: 'that user has no root identity to import' });
+    }
     try {
       await space.bindLocalDevice(userId!, seed!);
     } catch (err) {
       return reply.code(400).send({ error: err instanceof Error ? err.message : 'could not bind this device' });
     }
-    reply.setCookie(AUTH_COOKIE, userId!, { path: '/' }); // dev parity; prod ignores cookies
+    reply.setCookie(AUTH_COOKIE, userId!, AUTH_COOKIE_OPTS); // dev parity; prod ignores cookies
     return { userId };
   });
 
@@ -275,6 +394,20 @@ export async function buildApp() {
       return reply.code(403).send({ error: err instanceof Error ? err.message : 'cannot revoke' });
     }
     return { ok: true };
+  });
+
+  // ——— Fingerprint verification (HARDENING §6): compare codes out of band ———
+
+  app.get('/api/contacts/:id/fingerprint', async (req) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+    return fingerprintFor(req.userId, id);
+  });
+
+  // The mark is device-local (your judgment, not log data) — see contacts.ts.
+  app.post('/api/contacts/:id/verified', async (req) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+    const { on } = z.object({ on: z.boolean() }).parse(req.body);
+    return setContactVerified(req.userId, id, on);
   });
 
   app.get('/api/me', async (req) => getMe(req.userId));
@@ -392,7 +525,10 @@ export async function buildApp() {
   app.get('/api/space/logo', async (_req, reply) => {
     const logo = space.state.spaceLogo;
     if (!logo) return reply.code(404).send({ error: 'no logo' });
-    const bytes = await space.blobs.get({ key: logo.key, id: logo.id }, { wait: true, timeoutMs: 8_000, expectedHash: logo.hash });
+    const bytes = await space.blobs.get(
+      { key: logo.key, id: logo.id },
+      { wait: true, timeoutMs: 8_000, expectedHash: logo.hash, maxBytes: mb(getPolicies().maxUploadMB) },
+    );
     if (!bytes) return reply.code(409).send({ error: 'logo is not on this device yet' });
     return reply
       .header('content-type', logo.mime)
@@ -495,6 +631,24 @@ export async function buildApp() {
         statusExpiresInMinutes: z.number().int().min(1).max(10_080).nullable().optional(),
         interests: z.array(z.string().trim().min(1).max(40)).max(12).optional(),
         nowPlaying: trimmed(120),
+        bio: trimmed(400),
+        location: trimmed(80),
+        accentColor: z
+          .string()
+          .regex(/^#[0-9a-f]{6}$/i, 'accentColor must be a #rrggbb hex color')
+          .nullable()
+          .optional(),
+        links: z
+          .array(
+            z.object({
+              label: z.string().trim().min(1).max(40),
+              // `startsWith('http')` also admits httpx:// and friends — spell
+              // the two schemes a profile link may actually use.
+              url: z.string().trim().url().max(400).regex(/^https?:\/\//i, 'links must be http(s) URLs'),
+            }),
+          )
+          .max(8)
+          .optional(),
         theme: z.enum(THEMES).optional(),
       })
       .parse(req.body);
@@ -502,6 +656,24 @@ export async function buildApp() {
   });
 
   app.get('/api/home', async (req) => getHome(req.userId));
+
+  app.get('/api/feed', async (req) => getFeed(req.userId));
+
+  app.get('/api/users/:id/feed', async (req, reply) => {
+    const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+    if (!(await getUserById(id))) return reply.code(404).send({ error: 'no such user' });
+    return getFeed(req.userId, id);
+  });
+
+  // The community directory is external data (or a bundled sample) — an
+  // unreachable or malformed feed degrades to an empty list, never a 500.
+  app.get('/api/directory', async () =>
+    getDirectory().catch((err: Error) => ({
+      source: process.env.FRITH_DIRECTORY_URL ?? null,
+      entries: [],
+      error: err.message,
+    })),
+  );
 
   app.get('/api/connect', async (req) => connectSuggestions(req.userId));
 
@@ -534,7 +706,16 @@ export async function buildApp() {
       const channel = await getChannel(id);
       if (!channel) return reply.code(404).send({ error: 'no such channel' });
       if (channel.type === 'dm') return reply.code(400).send({ error: 'conversations cannot be archived' });
-      if (!(await requireChannelAccess(req, reply, id))) return reply;
+      // Read access alone isn't enough: every space member can read a public
+      // channel, so gating on it lets anyone freeze any public channel. Public
+      // channels are space-wide, so only managers may archive them; private
+      // channels belong to their members, so membership (read access) governs.
+      if (channel.type === 'public') {
+        if (!space.canManage(req.userId))
+          return reply.code(403).send({ error: 'only owner or admins can archive this channel' });
+      } else if (!(await requireChannelAccess(req, reply, id))) {
+        return reply;
+      }
       await setChannelArchived(id, action === 'archive');
       return { ok: true };
     });
@@ -697,23 +878,26 @@ export async function buildApp() {
     if (!attachment) return reply.code(404).send({ error: 'no such file' });
     if (!(await requireChannelAccess(req, reply, attachment.channelId))) return reply;
 
-    const sendBytes = (body: Buffer | fs.ReadStream) =>
-      reply
-        .header('content-type', attachment.mime)
+    // The stored mime is log data — an `att` op appended by a peer names its
+    // own type, and upload-time sniffing never saw it. So sniff again here:
+    // `effectiveMime` demotes anything whose bytes don't match its claim to a
+    // plain download, which is what keeps `image/svg+xml` (a script document on
+    // this app's origin) out of the inline set.
+    const sendBytes = (header: Buffer, body: Buffer | fs.ReadStream) => {
+      const mime = effectiveMime(header, attachment.mime);
+      const inline = /^(image|video|audio)\//.test(mime) && !isDangerousName(attachment.name);
+      return reply
+        .header('content-type', mime)
         .header('x-content-type-options', 'nosniff')
-        .header(
-          'content-disposition',
-          // Media renders inline; everything else downloads — a spoofed or
-          // executable file never executes in the window that shows chat.
-          `${/^(image|video|audio)\//.test(attachment.mime) && !isDangerousName(attachment.name) ? 'inline' : 'attachment'}; filename="${attachment.name.replace(/"/g, '')}"`,
-        )
+        .header('content-disposition', `${inline ? 'inline' : 'attachment'}; ${dispositionFilename(attachment.name)}`)
         .send(body);
+    };
 
     if (!attachment.blob) {
       // Pre-blob attachment: bytes exist only on the uploader's disk.
       const legacy = path.join(filesDir, id);
       if (!fs.existsSync(legacy)) return reply.code(404).send({ error: 'file is not on this device' });
-      return sendBytes(fs.createReadStream(legacy));
+      return sendBytes(readHeader(legacy), fs.createReadStream(legacy));
     }
 
     const result = await fetchAttachmentBytes({ ...attachment, blob: attachment.blob }, wait === '1', publish);
@@ -725,7 +909,7 @@ export async function buildApp() {
       });
     }
     if (result.status === 'locked') return reply.code(403).send({ error: 'you no longer have access to this file' });
-    return sendBytes(result.clear);
+    return sendBytes(result.clear, result.clear);
   });
 
   // Everything shared in channels the viewer can read, newest first.
@@ -781,7 +965,7 @@ export async function buildApp() {
   });
 
   // Device-local storage policies: what this machine stores and downloads.
-  app.get('/api/storage', async () => ({ policies: getPolicies(), usage: space.blobs.usage() }));
+  app.get('/api/storage', async () => storageDto(space.blobs.usage()));
 
   app.put('/api/storage/policies', async (req) => {
     const patch = z
@@ -794,15 +978,15 @@ export async function buildApp() {
       .parse(req.body);
     const policies = setPolicies(patch);
     await space.blobs.enforceBudget(mb(policies.storageBudgetMB));
-    return { policies, usage: space.blobs.usage() };
+    return storageDto(space.blobs.usage());
   });
 
   app.delete('/api/storage/cache', async () => {
     await space.blobs.clearCache();
-    return { policies: getPolicies(), usage: space.blobs.usage() };
+    return storageDto(space.blobs.usage());
   });
 
-  app.get('/api/calls', async () => activeCalls());
+  app.get('/api/calls', async (req) => activeCallsFor(req.userId));
 
   app.post('/api/channels/:id/schedule', async (req, reply) => {
     const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
@@ -882,7 +1066,11 @@ export async function buildApp() {
           channelId?: string;
           seg?: { id?: unknown; color?: unknown; points?: unknown };
         };
+        // Relay signaling only between people actually in a call together —
+        // otherwise any member could signal (or probe the presence of) an
+        // arbitrary user by guessing their id.
         if (event.type === 'rtc.signal' && typeof event.to === 'string' && event.payload) {
+          if (!shareActiveCall(req.userId, event.to)) return;
           sendToUser(event.to, {
             type: 'rtc.signal',
             from: req.userId,
@@ -898,9 +1086,14 @@ export async function buildApp() {
           if (!Array.isArray(points) || points.length === 0 || points.length > 128) return;
           if (!points.every((p) => Array.isArray(p) && typeof p[0] === 'number' && typeof p[1] === 'number')) return;
           const channelId = event.channelId;
-          void channelAudience(channelId).then((audience) =>
-            publish({ type: 'call.draw', channelId, from: req.userId, seg: { id, color, points: points as [number, number][] } }, audience),
-          );
+          // Only a member of the channel may inject annotations into its call —
+          // the sender-supplied channelId is not a capability on its own.
+          void canReadChannel(req.userId, channelId).then((ok) => {
+            if (!ok) return;
+            return channelAudience(channelId).then((audience) =>
+              publish({ type: 'call.draw', channelId, from: req.userId, seg: { id, color, points: points as [number, number][] } }, audience),
+            );
+          });
         }
       } catch {
         // ignore malformed frames

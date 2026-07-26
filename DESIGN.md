@@ -424,6 +424,61 @@ semantic ("vinyl" ≈ "record collecting"). Principles:
 - Same trust posture as everything else: the suggestion UI says why
   ("3 of you are into rollerblading") — evidence, not vibes.
 
+### Profiles as pages + the feed (shipped 2026-07-10)
+
+The C2C turn made concrete: profiles grew a **bio**, **links** (blog,
+socials, anywhere — platform icons detected client-side from the hostname,
+purely cosmetic), an **accent color** that re-scopes the accent variable for
+that person's profile page (banner, buttons, chips — visiting a profile means
+stepping into their colour), and a **photo wall** of images they've shared in
+channels the viewer can read.
+
+**The feed** (`GET /api/feed`, Feed in the sidebar, `/feed`) is the
+anti-algorithm answer to "keep me scrolling": what your people shared —
+links, photos, doc updates, "currently enjoying" changes — strictly
+chronological, capped, with an explicit end ("you're all caught up").
+No ranking, no engagement weighting; §15's no-engagement-bait principle is
+load-bearing here. Scope mirrors profile pages: ACL-filtered, never DMs (not
+even your own), never archived channels; locked messages decrypt to '' and
+contribute nothing. Links are **not unfurled** — previews would mean every
+reader's device pinging the linked site; the poster's text plus the domain
+pill is the card. `nowPlayingAt` (stamped server-side only when the value
+changes) is what dates "enjoying" items.
+
+**Profile pages are social-first (2026-07-10):** hero (banner, bio, links),
+an intro column (interests, photos, compact stats), and a tabbed main column
+— **Feed** (their personal timeline, `GET /api/users/:id/feed`, same
+ACL/DM/locked guarantees as the space feed) is the default; the Slack-ish
+material (useful posts, recent activity, artifacts) lives one tab over in
+**Chats**, and **Groups & people** holds team + channels. Clicking a person
+leads with who they are, not their message count.
+
+### The community directory (v0 shipped 2026-07-10)
+
+The C2C growth surface: public communities broadcasting what they're about,
+so people can find their crowd. The structure that keeps it honest:
+
+- **A directory is a feed, not a service with users.** The app fetches a
+  JSON document from `FRITH_DIRECTORY_URL` (server-side, schema-validated,
+  size-capped; a bundled sample ships for dev and to document the format).
+  Anyone can host one on any static host — there is no account, no tracking,
+  and the directory never learns who you are or what spaces you're in.
+- **Entries are display + capability, nothing more:** name, description,
+  interest tags, advisory member count, host, and optionally an invite key
+  for open-join communities (otherwise "ask the host"). Joining uses the
+  normal invite flow; the space itself still syncs peer-to-peer between its
+  members. A directory can *list* a space; it cannot *see into* one.
+- **Trust is per-directory, like a package registry.** You choose which
+  curator's list to point at. Roadmap hardening: curator-signed entries
+  (the "signed Autobase feed" from the roadmap), multiple directories at
+  once, and a submit-your-space flow where listing publishes only what the
+  space's owner explicitly broadcasts.
+- **Open-join at scale is bounded by the invite model today** — an invite
+  key in a public directory admits anyone who finds it, so open communities
+  should pair with the seeder + moderation roles, and truly public
+  mega-spaces (Discord-server scale) remain future work (writer-count and
+  full-log-replication limits, ROADMAP §2).
+
 ## 16. Security & trust model (P2P era)
 
 People will not put honest work conversations into a system they don't
@@ -527,7 +582,13 @@ the roles model (next slice, with org-wide ban + channel keys).
 - **Root seed loss = identity loss.** No recovery in this slice.
 - **Loopback is the prod auth boundary.** The server runs in-process and
   binds 127.0.0.1; requests act as the device's bound user. A cookie adds
-  nothing an attacker with local access couldn't already take.
+  nothing an attacker with *local* access couldn't already take. The one
+  attacker who is *not* local but can still reach the port is any web page the
+  user visits (it can `fetch`/`WebSocket` to `http://127.0.0.1:<port>`), so the
+  API rejects requests whose `Host` isn't localhost (defeats DNS rebinding) or
+  whose `Origin` is foreign (defeats cross-site fetch and WebSocket hijacking),
+  and the dev cookie is `HttpOnly; SameSite=Strict`. A hosted edge sets
+  `FRITH_TRUSTED_ORIGIN` to add exactly one allowed origin.
 
 ### Seeder & mobile direction
 

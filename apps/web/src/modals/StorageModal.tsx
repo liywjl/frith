@@ -62,6 +62,13 @@ export function StorageModal({ onClose }: { onClose: () => void }) {
               />
             </label>
           ))}
+          {storage.keyCustody === 'file' && (
+            <p className="field-help">
+              This machine has no OS keychain available, so Frith’s master key lives in a file only your
+              user account can read — not in the system keychain. Anything that can read your files can
+              read this space’s data at rest.
+            </p>
+          )}
           <div className="storage-usage">
             Cached from peers: <b>{fmtMB(storage.usage.cachedBytes)}</b> in {storage.usage.cachedCount}{' '}
             file{storage.usage.cachedCount === 1 ? '' : 's'}

@@ -1,0 +1,52 @@
+{
+  "entries": [
+    {
+      "name": "Night Rollers Oslo",
+      "description": "City rollerblading crew — sunrise distance runs, Sunday park sessions, and route maps for anyone on eight wheels.",
+      "tags": ["rollerblading", "city routes", "slalom"],
+      "members": 84,
+      "host": "seeder.nightrollers.example",
+      "invite": "sample-invite-night-rollers"
+    },
+    {
+      "name": "Fuzz & Solder",
+      "description": "DIY guitar pedal builders. Schematics, part swaps, and gloriously broken prototypes.",
+      "tags": ["fuzz pedals", "electronics", "guitar"],
+      "members": 312,
+      "host": "fuzzandsolder.example",
+      "invite": null
+    },
+    {
+      "name": "Synthwave Basement",
+      "description": "Production feedback Fridays, gear talk, and a monthly mixtape swap. Neon optional but encouraged.",
+      "tags": ["synthwave", "production", "vinyl"],
+      "members": 540,
+      "host": "basement.example",
+      "invite": null
+    },
+    {
+      "name": "Grain & Silver",
+      "description": "Film photography and darkroom people. Scans, chemistry recipes, and the eternal Portra debate.",
+      "tags": ["film photography", "darkroom"],
+      "members": 129,
+      "host": "grainandsilver.example",
+      "invite": null
+    },
+    {
+      "name": "Board Game Thursdays",
+      "description": "Weekly online tables and a very serious Wingspan ladder. Newcomers seated first.",
+      "tags": ["board games", "strategy"],
+      "members": 67,
+      "host": "bgt.example",
+      "invite": null
+    },
+    {
+      "name": "Trail Heads",
+      "description": "Hiking and climbing plans, condition reports, and trailhead carpools.",
+      "tags": ["hiking", "climbing"],
+      "members": 203,
+      "host": "trailheads.example",
+      "invite": null
+    }
+  ]
+}
