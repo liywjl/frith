@@ -23,7 +23,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        // FRITH_API_PORT lets a second instance (scripts/dev-peer.sh) proxy
+        // FRITH_API_PORT lets a second instance (scripts/dev-peer.mjs) proxy
         // to its own server.
         target: `http://127.0.0.1:${process.env.FRITH_API_PORT ?? 3001}`,
         ws: true,

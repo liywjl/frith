@@ -2,7 +2,7 @@
 // and open the web client it serves. All data lives on this machine, under
 // the OS per-user app directory.
 //
-// Dev mode (FRITH_DEV_URL set by scripts/dev.sh): the window is just the
+// Dev mode (FRITH_DEV_URL set by scripts/dev.mjs): the window is just the
 // shell — vite serves the client with HMR and tsx watch runs the server, so
 // code changes land without restarting Electron.
 import crypto from 'node:crypto';
