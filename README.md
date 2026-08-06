@@ -84,3 +84,10 @@ Tests run against a real (scratch-dir) Autobase space. The ACL suite in
 `apps/server/test/api.test.ts` asserts a user can never read content from
 channels they can't access — search and files included. Keep it green;
 everything else is negotiable.
+
+## Contributing & license
+
+Contributions welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) to get set up
+and [SECURITY.md](SECURITY.md) for how to report vulnerabilities (and an
+honest statement of the project's security maturity). Licensed under
+[Apache-2.0](LICENSE).
