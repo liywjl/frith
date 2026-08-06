@@ -28,7 +28,6 @@
     "../../worklet/app.bundle.mjs"
   ],
   "ignoreDependencies": [
-    "uxlens",
     "autobase",
     "blind-pairing",
     "corestore",

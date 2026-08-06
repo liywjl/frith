@@ -33,15 +33,15 @@ const apiPort = process.env.FRITH_API_PORT ?? '3211'
 if (target === 'api') {
   // Throwaway by design: every boot starts from nothing, so the demo data is
   // always exactly what the seed corpus says it is.
-  for (const dir of ['.frith-data-uxlens', '.data/uploads-uxlens']) {
+  for (const dir of ['.frith-data-seeded', '.data/uploads-seeded']) {
     rmSync(join(repoRoot, 'apps/server', dir), { recursive: true, force: true })
   }
 
   pnpmExec(['tsx', 'watch', 'src/index.ts'], {
     cwd: join(repoRoot, 'apps/server'),
     env: {
-      FRITH_DATA: '.frith-data-uxlens',
-      FRITH_FILES: '.data/uploads-uxlens',
+      FRITH_DATA: '.frith-data-seeded',
+      FRITH_FILES: '.data/uploads-seeded',
       PORT: ownPort,
     },
   })
