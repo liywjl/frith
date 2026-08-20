@@ -6,6 +6,7 @@
     "dev": "node scripts/dev.mjs",
     "dev:seeded": "node scripts/dev.mjs --seeded",
     "dev:seeded:web": "node scripts/dev.mjs --seeded --web",
+    "web:standalone": "node scripts/dev.mjs --seeded --web --web-port=9485",
     "seed": "pnpm --filter server seed",
     "typecheck": "pnpm -r typecheck",
     "lint": "eslint .",

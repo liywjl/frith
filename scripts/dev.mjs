@@ -23,6 +23,12 @@ const shutdown = teardownOnExit()
 // --web: skip the Electron shell, just serve the web client in the browser.
 const seeded = process.argv.includes('--seeded')
 const webOnly = process.argv.includes('--web')
+// --web-port=N: serve the web client on exactly N (no upward sliding) so an
+// embedder (the suite panel) can rely on the address. Vite's --strictPort
+// makes a collision fail fast instead of moving.
+const fixedWebPort = process.argv
+  .find((arg) => arg.startsWith('--web-port='))
+  ?.slice('--web-port='.length)
 
 const extraEnv = {}
 if (seeded) {
@@ -36,17 +42,28 @@ if (seeded) {
 // Default ports, sliding upward when something else (another project's dev
 // server, a second Frith instance) already holds them.
 const apiPort = await pickPort(process.env.FRITH_API_PORT ?? 3001)
-const webPort = await pickPort(process.env.FRITH_WEB_PORT ?? 5173)
+const webPort = fixedWebPort
+  ? Number(fixedWebPort)
+  : await pickPort(process.env.FRITH_WEB_PORT ?? 5173)
 
 pnpmExec(['tsx', 'watch', 'src/index.ts'], {
   cwd: join(repoRoot, 'apps/server'),
   env: { ...extraEnv, PORT: String(apiPort) },
 })
 
-pnpmExec(['vite', '--port', String(webPort), '--strictPort'], {
+// With a fixed port, pin the host too: vite's default `localhost` can land on
+// ::1 alone, which an embedder addressing 127.0.0.1 can't reach. Still
+// loopback-only either way.
+const viteArgs = ['vite', '--port', String(webPort), '--strictPort']
+if (fixedWebPort) viteArgs.push('--host', '127.0.0.1')
+
+const vite = pnpmExec(viteArgs, {
   cwd: join(repoRoot, 'apps/web'),
   env: { ...extraEnv, FRITH_API_PORT: String(apiPort) },
 })
+// A strict-port collision (or any vite death) should take everything down
+// instead of leaving the api server orphaned behind a 60s http timeout.
+vite.on('exit', (code) => shutdown(code ?? 1))
 
 await waitForHttp(`http://localhost:${webPort}`)
 
