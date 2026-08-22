@@ -12,7 +12,7 @@ function spaceGlyph(name: string): string {
  * The far-left column: one icon per space on this device. Switching closes
  * the current space's log and opens the other — a different world, same app.
  */
-export function SpaceRail({ onNewSpace }: { onNewSpace?: () => void }) {
+export function SpaceRail({ onNewSpace, compact = false }: { onNewSpace?: () => void; compact?: boolean }) {
   const [list, setList] = useState<SpaceListDto | null>(null);
   const [switching, setSwitching] = useState<string | null>(null);
 
@@ -35,7 +35,7 @@ export function SpaceRail({ onNewSpace }: { onNewSpace?: () => void }) {
 
   return (
     <>
-      <nav className="rail">
+      <nav className={compact ? 'rail-compact' : 'rail'}>
         {(list?.spaces ?? []).map((s) => (
           <button
             key={s.dir}

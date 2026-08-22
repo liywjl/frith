@@ -2,23 +2,85 @@
    slate rail. Deliberately nowhere near the aubergine/white of a certain
    other chat app (see DESIGN.md, IP posture). */
 :root {
-  --paper: #f0f5f7;
-  --card: #ffffff;
-  --hover: #e4edf1;
-  --line: #c3d4dc;
-  --line-soft: #dbe6ec;
-  --ink: #22343c;
-  --ink-soft: #64808c;
-  --block: #dfeaf0;
-  --ai: #0f6bb5;
-  --ai-soft: #ddebf6;
-  --ai-hover: #cae0f2;
+  --frith-ground: #F5F5F1;
+  --frith-surface: #FCFCF9;
+  --frith-ink: #232830;
+  --frith-muted: #6A7178;
+  --frith-line: #DFE0D8;
+  --frith-accent: #47688B;
+  --frith-accent-soft: #E7EDF3;
+  --frith-gold: #A8862F;
+  --frith-good: #3E7A4E;
+  --frith-warn: #A8862F;
+  --frith-bad: #A04545;
+  --frith-code-bg: #ECEDE7;
+  --frith-chat-accent: #3D6DB2;
+  --frith-chat-accent-soft: #E3ECF8;
+  --frith-chat-accent-hover: #D2E2F4;
+  --frith-on-chat-accent: #ffffff;
+  --frith-chat-rail: #232830;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --frith-ground: #14171C;
+    --frith-surface: #1B2026;
+    --frith-ink: #E4E7EA;
+    --frith-muted: #939BA5;
+    --frith-line: #2E3540;
+    --frith-accent: #7FA6C9;
+    --frith-accent-soft: #22303E;
+    --frith-gold: #D3AC55;
+    --frith-good: #6FB07F;
+    --frith-warn: #D3AC55;
+    --frith-bad: #C97F7F;
+    --frith-code-bg: #21262E;
+    --frith-chat-accent: #6B9BDC;
+    --frith-chat-accent-soft: #223140;
+    --frith-chat-accent-hover: #2A3B4E;
+    --frith-on-chat-accent: #14171C;
+    --frith-chat-rail: #101318;
+  }
+}
+
+:root[data-theme='dark'] {
+  --frith-ground: #14171C;
+  --frith-surface: #1B2026;
+  --frith-ink: #E4E7EA;
+  --frith-muted: #939BA5;
+  --frith-line: #2E3540;
+  --frith-accent: #7FA6C9;
+  --frith-accent-soft: #22303E;
+  --frith-gold: #D3AC55;
+  --frith-good: #6FB07F;
+  --frith-warn: #D3AC55;
+  --frith-bad: #C97F7F;
+  --frith-code-bg: #21262E;
+  --frith-chat-accent: #6B9BDC;
+  --frith-chat-accent-soft: #223140;
+  --frith-chat-accent-hover: #2A3B4E;
+  --frith-on-chat-accent: #14171C;
+  --frith-chat-rail: #101318;
+}
+
+:root {
+  --paper: var(--frith-ground);
+  --card: var(--frith-surface);
+  --hover: var(--frith-code-bg);
+  --line: var(--frith-line);
+  --line-soft: color-mix(in srgb, var(--frith-line) 60%, var(--frith-ground));
+  --ink: var(--frith-ink);
+  --ink-soft: var(--frith-muted);
+  --block: var(--frith-code-bg);
+  --ai: var(--frith-chat-accent);
+  --ai-soft: var(--frith-chat-accent-soft);
+  --ai-hover: var(--frith-chat-accent-hover);
   /* Readable foreground for filled accent surfaces (primary button). White by
      default; themes with a light accent override it so text stays legible. */
-  --on-ai: #ffffff;
-  --unread: #c25a2e;
-  --side: #e5eef3;
-  --rail: #14212b;
+  --on-ai: var(--frith-on-chat-accent);
+  --unread: var(--frith-bad);
+  --side: var(--frith-surface);
+  --rail: var(--frith-chat-rail);
   --radius: 10px;
   --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   /* Serif display voice for headings — history reads like a story, not a memo. */
@@ -194,7 +256,7 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
   width: 8px; height: 8px; border-radius: 50%; flex: none;
   border: 1.5px solid var(--ink-soft); background: transparent;
 }
-.presence.on { background: #3d9a5f; border-color: #3d9a5f; }
+.presence.on { background: var(--frith-good, #3d9a5f); border-color: var(--frith-good, #3d9a5f); }
 
 .main, .thread-panel { display: flex; flex-direction: column; min-width: 0; height: 100vh; }
 /* Fixed at 360px, but yields on narrow windows so main + panel always fit. */
@@ -682,7 +744,7 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
 .profile-status small { color: var(--ink-soft); font-size: 13px; }
 .profile-id p { color: var(--ink-soft); margin-top: 3px; font-size: 14px; }
 .presence-inline { color: var(--ink-soft); }
-.presence-inline.on { color: #3d9a5f; }
+.presence-inline.on { color: var(--frith-good, #3d9a5f); }
 
 .profile-stats {
   display: flex; gap: 12px; margin-bottom: 26px; flex-wrap: wrap;
@@ -756,11 +818,12 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
 /* Ocean is the :root default; this block restates its swatch colours so a
    nested [data-theme='ocean'] preview resolves to ocean (not the page theme). */
 [data-theme='ocean'] {
-  --paper: #f0f5f7; --card: #ffffff; --hover: #e4edf1;
-  --line: #c3d4dc; --line-soft: #dbe6ec;
-  --ink: #22343c; --ink-soft: #64808c; --block: #dfeaf0;
-  --ai: #0f6bb5; --ai-soft: #ddebf6; --ai-hover: #cae0f2;
-  --unread: #c25a2e;
+  --paper: var(--frith-ground); --card: var(--frith-surface); --hover: var(--frith-code-bg);
+  --line: var(--frith-line); --line-soft: color-mix(in srgb, var(--frith-line) 60%, var(--frith-ground));
+  --ink: var(--frith-ink); --ink-soft: var(--frith-muted); --block: var(--frith-code-bg);
+  --ai: var(--frith-chat-accent); --ai-soft: var(--frith-chat-accent-soft); --ai-hover: var(--frith-chat-accent-hover);
+  --on-ai: var(--frith-on-chat-accent);
+  --unread: var(--frith-bad);
 }
 [data-theme='mono'] {
   --paper: #fbfbfb; --card: #ffffff; --hover: #f1f1f1;
@@ -1035,7 +1098,7 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
 [data-theme='midnight'] { --side: #101114; --rail: #0b0c10; --radius: 10px; }
 [data-theme='forest'] { --side: #e7efe1; --rail: #1e2619; --radius: 10px; }
 [data-theme='sunset'] { --side: #f8ecdc; --rail: #2b1d12; --radius: 10px; }
-[data-theme='ocean'] { --side: #e5eef3; --rail: #14212b; --radius: 10px; }
+[data-theme='ocean'] { --side: var(--frith-surface); --rail: var(--frith-chat-rail); --radius: 10px; }
 [data-theme='mono'] { --side: #f2f2f2; --rail: #191919; --radius: 10px; }
 .home-card, .modal, .file-tile, .ask-panel, .btn, .side-item, .att-file { border-radius: var(--radius, 10px); }
 
@@ -1067,9 +1130,23 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
   transition: border-radius 0.15s, background 0.15s;
 }
 .rail-space:hover { border-radius: 19px; background: rgba(255, 255, 255, 0.24); }
-.rail-space.active { background: var(--ai); }
+.rail-space.active { background: var(--ai); color: var(--on-ai, #fff); }
 .rail-new { font-size: 20px; font-weight: 400; opacity: 0.7; }
 .rail-new:hover { opacity: 1; }
+
+.rail-compact {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  padding: 2px 4px 8px;
+}
+.rail-compact .rail-space {
+  width: 28px; height: 28px; border-radius: 9px; font-size: 13px;
+  background: var(--block); color: var(--ink);
+}
+.rail-compact .rail-space:hover { border-radius: 9px; background: var(--line); }
+.rail-compact .rail-space.active { background: var(--ai); color: var(--on-ai, #fff); }
+.rail-compact .rail-new { font-size: 16px; }
+.login-side .rail-compact { margin-top: auto; padding: 12px 0 24px; }
+.embedded .switch-veil { inset: 0; }
 
 /* While a space opens, the CONTENT loads — the rail stays interactive-looking. */
 .switch-veil {
@@ -1083,7 +1160,7 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
   color: var(--ink-soft); font-size: 14px;
 }
 .switch-veil-glyph {
-  width: 54px; height: 54px; border-radius: 18px; background: var(--ai); color: #fff;
+  width: 54px; height: 54px; border-radius: 18px; background: var(--ai); color: var(--on-ai, #fff);
   display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 700;
   animation: veil-pulse 1s ease-in-out infinite;
 }
@@ -1203,7 +1280,7 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
 .doc-menu-text { display: flex; flex-direction: column; gap: 1px; font-size: 13.5px; }
 .doc-menu-text small { color: var(--ink-soft); font-size: 11.5px; }
 
-.sidebar { background: var(--side); border-right: none; }
+.sidebar { background: var(--side); border-right: 1px solid var(--line-soft); }
 .home-card, .panel-card, .profile-stats > div, .connect-person {
   box-shadow: 0 1px 2px rgba(16, 24, 16, 0.045);
 }

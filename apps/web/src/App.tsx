@@ -12,6 +12,7 @@ import {
   type UserDto,
 } from '@app/shared';
 import { api } from './lib/api';
+import { embedded } from './lib/embedded';
 import { useRealtime } from './lib/useRealtime';
 import { applyReaction } from './lib/updates';
 import { Sidebar } from './components/Sidebar';
@@ -80,7 +81,7 @@ export function App() {
   if (!me) {
     return (
       <div className="app">
-        <SpaceRail onNewSpace={() => setNewSpaceOpen(true)} />
+        {!embedded && <SpaceRail onNewSpace={() => setNewSpaceOpen(true)} />}
         <Login onLogin={() => void api.me().then(setMe)} />
         {newSpaceOpen && (
           <SpaceModal
@@ -252,6 +253,7 @@ function Login({ onLogin }: { onLogin: () => void }) {
             </button>
           </div>
         )}
+        {embedded && <SpaceRail compact onNewSpace={() => setSpaceOpen(true)} />}
       </aside>
 
       {!firstEver && (
@@ -774,8 +776,9 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
   return (
     <UserActionsContext.Provider value={userActions}>
     <div className="app">
-      <SpaceRail onNewSpace={() => setSpaceOpen('new')} />
+      {!embedded && <SpaceRail onNewSpace={() => setSpaceOpen('new')} />}
       <Sidebar
+        onNewSpace={() => setSpaceOpen('new')}
         me={me}
         channels={channels}
         users={users}

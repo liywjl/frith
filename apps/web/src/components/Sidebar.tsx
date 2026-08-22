@@ -4,7 +4,9 @@ import { Avatar } from './Avatar';
 import { Icon } from './Icon';
 import { Logo } from './Logo';
 import { SpaceLogo } from './SpaceLogo';
+import { SpaceRail } from './SpaceRail';
 import { StatusPopover } from './StatusPopover';
+import { embedded } from '../lib/embedded';
 import { useUserActions } from '../lib/userActions';
 
 function Presence({ online }: { online: boolean }) {
@@ -51,6 +53,7 @@ export function Sidebar({
   onSelect,
   onNewGroup,
   onNewChannel,
+  onNewSpace,
   onTogglePin,
   onReorderPins,
   onMeChange,
@@ -80,6 +83,7 @@ export function Sidebar({
   onSelect: (id: string) => void;
   onNewGroup: () => void;
   onNewChannel: () => void;
+  onNewSpace: () => void;
   onTogglePin: (channelId: string, pinned: boolean) => void;
   onReorderPins: (channelIds: string[]) => void;
   onMeChange: (me: MeDto) => void;
@@ -325,6 +329,7 @@ export function Sidebar({
 
       {/* Fixed bottom: you + the shortcuts. Clicking opens a quick status setter. */}
       <div className="side-foot">
+        {embedded && <SpaceRail compact onNewSpace={onNewSpace} />}
         <button
           className="side-me"
           title="Set your status"

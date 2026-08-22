@@ -2,7 +2,12 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { applyPalette } from './lib/palette';
+import { embedded } from './lib/embedded';
 import './styles.css';
+
+if (embedded) {
+  document.documentElement.classList.add('embedded');
+}
 
 // Clear any leftover palette-lab override so the saved [data-theme] wins.
 applyPalette(null);
