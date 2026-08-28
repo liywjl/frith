@@ -27,7 +27,16 @@ routes (§12).
   inert but still replicate into honest members' logs, consuming disk and
   replay time, until log rotation lands.
 - **Selective replication by decryptable domain (§3).** Peers currently
-  replicate ciphertext for channels they can't decrypt.
+  replicate ciphertext for channels they can't decrypt. Envelope metadata
+  (author, channel, timing, size) for private channels still reaches every
+  space member.
+- **Role-gated writer admission.** Any current member's node can append an
+  `add-writer` op, not just managers, and admissions made before a member's
+  eviction stay functional. Until log rotation (§2) lands, eviction is
+  best-effort against a writer an evicted member admitted earlier.
+- **Offline-key plaintext fallback.** A message sent before this device has
+  received the domain's content key is stored unencrypted rather than
+  dropped. The window is normally seconds wide; queueing instead is planned.
 
 **Partial:** dependency pinning + review on the P2P stack (§9).
 
