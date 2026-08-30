@@ -339,6 +339,17 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
 .msg.own { flex-direction: row-reverse; }
 .msg.own .msg-main { display: flex; flex-direction: column; align-items: flex-end; }
 .msg.own .bubble { background: var(--ai-soft); border-radius: 12px 3px 12px 12px; }
+.bubble a { color: var(--accent, #5A8FD6); word-break: break-all; }
+.bubble a.frith-link {
+  display: inline-block;
+  word-break: normal;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 600;
+}
 .msg.own .msg-meta { justify-content: flex-end; }
 .msg.own .msg-actions { right: auto; left: 8px; }
 .msg.own .when { margin-left: 0; }
@@ -697,6 +708,19 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
 .check-row { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
 .check-row input { accent-color: var(--ai); }
 .form-error { color: var(--unread); font-size: 13px; }
+.flash-error {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--unread);
+  color: #fff;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  z-index: 100;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 25%);
+}
 .archived-chip {
   font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase;
   border: 1px solid var(--ink-soft); color: var(--ink-soft); border-radius: 99px; padding: 1px 8px;

@@ -5,6 +5,7 @@ import { previewKind } from '../lib/preview';
 import { FilePreviewModal } from '../modals/FilePreviewModal';
 import { Avatar } from './Avatar';
 import { Icon } from './Icon';
+import { RichBody } from './RichBody';
 import { useUserActions } from '../lib/userActions';
 
 const fmtSize = (n: number) =>
@@ -152,7 +153,7 @@ export const Message = memo(function Message({
             <Icon name="lock" /> {message.body}
           </div>
         ) : (
-          message.body && <div className="body bubble">{message.body}</div>
+          message.body && <div className="body bubble"><RichBody text={message.body} /></div>
         )}
         {message.attachments.map((a) => (
           <Attachment key={a.id} a={a} />
