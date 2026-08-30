@@ -81,7 +81,7 @@ export function App() {
     return (
       <div className="app">
         <SpaceRail onNewSpace={() => setNewSpaceOpen(true)} />
-        <Login onLogin={() => void api.me().then(setMe)} />
+        <Login onLogin={async () => setMe(await api.me())} />
         {newSpaceOpen && (
           <SpaceModal
             mode="new"
@@ -96,7 +96,7 @@ export function App() {
   return <Workspace me={me} onMeChange={setMe} />;
 }
 
-function Login({ onLogin }: { onLogin: () => void }) {
+function Login({ onLogin }: { onLogin: () => Promise<void> }) {
   const [users, setUsers] = useState<UserDto[]>([]);
   const [space, setSpace] = useState<SpaceDto | null>(null);
   const [creating, setCreating] = useState(false);
@@ -112,9 +112,19 @@ function Login({ onLogin }: { onLogin: () => void }) {
     setError(null);
     try {
       await api.importIdentity(linkCode.trim());
-      onLogin();
+      await onLogin();
     } catch {
       setError('That code did not match anyone in this space.');
+    }
+  }
+
+  async function signIn(userHandle: string) {
+    setError(null);
+    try {
+      await api.login(userHandle);
+      await onLogin();
+    } catch {
+      setError('Signing in did not stick — the session cookie was rejected or the server is unreachable.');
     }
   }
 
@@ -257,9 +267,10 @@ function Login({ onLogin }: { onLogin: () => void }) {
       {!firstEver && (
         <div className="login-content">
           <div className="login-list-h">Sign in as (dev)</div>
+          {!creating && !linking && error && <div className="form-error">{error}</div>}
           <div className="login-list">
             {users.map((u) => (
-              <button key={u.id} onClick={() => api.login(u.handle).then(onLogin)}>
+              <button key={u.id} onClick={() => void signIn(u.handle)}>
                 <Avatar name={u.name} />
                 <span className="login-user">
                   <span className="login-name">{u.name}</span>
@@ -301,6 +312,13 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
   });
   const [channels, setChannels] = useState<ChannelDto[]>([]);
   const [users, setUsers] = useState<UserDto[]>([]);
+  const [flash, setFlash] = useState<string | null>(null);
+  const flashTimer = useRef<number | undefined>(undefined);
+  const showFlash = useCallback((message: string) => {
+    setFlash(message);
+    window.clearTimeout(flashTimer.current);
+    flashTimer.current = window.setTimeout(() => setFlash(null), 5000);
+  }, []);
   const [online, setOnline] = useState<Set<string>>(new Set());
   const [activeId, setActiveId] = useState<string | null>(() => sessionStorage.getItem('frith:activeChannel'));
   const [messages, setMessages] = useState<MessageDto[]>([]);
@@ -652,11 +670,16 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
 
   const openDm = useCallback(
     async (userId: string) => {
-      const { channelId } = await api.openDm(userId);
-      setChannels(await api.channels());
-      openChannel(channelId);
+      try {
+        const { channelId } = await api.openDm(userId);
+        setChannels(await api.channels());
+        openChannel(channelId);
+      } catch (err) {
+        console.error(err);
+        showFlash('Could not open that conversation — the server refused or is unreachable.');
+      }
     },
-    [openChannel],
+    [openChannel, showFlash],
   );
 
   const onGroupCreated = useCallback(
@@ -978,6 +1001,7 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
           onLeave={leaveCall}
         />
       )}
+      {flash && <div className="flash-error">{flash}</div>}
     </div>
     </UserActionsContext.Provider>
   );
