@@ -15,11 +15,27 @@ for the target UI.
 ![A channel in Frith: threads, reactions, photos, calls](site/channel.png)
 
 First run makes you a profile and you're in — no account, no server, no
-password. Your identity is a keypair on your device:
+password. Your identity is a keypair on your device. Not ready to commit?
+The same screen offers **a demo space**: a seeded, fictional team you can
+poke around in and wipe with one click.
 
 <p align="center">
   <img src="site/onboarding.png" width="720" alt="Frith first-run: make yourself a profile" />
 </p>
+
+## Download
+
+Grab the file for your Mac from the [latest release](https://github.com/liywjl/frith/releases/latest),
+open it, and drag Frith into Applications:
+
+| Your Mac | Download this |
+| --- | --- |
+| Apple Silicon (any Mac from 2021 on) | the `-mac-arm64.dmg` file |
+| Intel | the `-mac-x64.dmg` file |
+
+Windows and Linux builds aren't published yet — the app is plain
+Electron + Node, so both are close; see the Quickstart to run from source
+on any platform.
 
 ## Quickstart
 

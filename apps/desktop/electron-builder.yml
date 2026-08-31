@@ -7,4 +7,12 @@ asarUnpack:
   - "**/*.node"
 mac:
   icon: build/icon.icns
-  identity: null
+  category: public.app-category.productivity
+  hardenedRuntime: true
+  notarize: true
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  artifactName: "${productName}-${version}-mac-${arch}.${ext}"
+  extendInfo:
+    NSCameraUsageDescription: Frith uses your camera when you join a call with video.
+    NSMicrophoneUsageDescription: Frith uses your microphone when you join a call.

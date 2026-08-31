@@ -1,0 +1,100 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build (${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          - arch: arm64
+            runner: macos-14
+          - arch: x64
+            runner: macos-13
+    env:
+      TAG: ${{ github.ref_name }}
+      CSC_LINK: ${{ secrets.MACOS_CERT_P12 }}
+      CSC_KEY_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm check
+
+      - name: Build installers
+        run: pnpm --filter desktop run dist -- --mac --${{ matrix.arch }} --publish never
+
+      - name: Verify signature
+        if: env.CSC_LINK != ''
+        run: |
+          app=$(ls -d apps/desktop/release/*/Frith.app | head -1)
+          codesign --verify --deep --strict --verbose=2 "$app"
+          spctl --assess --type exec --verbose "$app"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: frith-${{ matrix.arch }}
+          path: |
+            apps/desktop/release/*.dmg
+            apps/desktop/release/*.zip
+          if-no-files-found: error
+
+  release:
+    name: Publish release
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.ref_name }}
+      SIGNED: ${{ secrets.MACOS_CERT_P12 != '' }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+
+      - name: Write release notes
+        run: |
+          {
+            echo "## Downloads"
+            echo ""
+            echo "| Mac | Installer | Zip |"
+            echo "| --- | --- | --- |"
+            echo "| Apple Silicon (M1 and later) | the \`-mac-arm64.dmg\` file | the \`-mac-arm64.zip\` file |"
+            echo "| Intel | the \`-mac-x64.dmg\` file | the \`-mac-x64.zip\` file |"
+            echo ""
+            if [ "$SIGNED" = "true" ]; then
+              echo "Builds are signed and notarized. Open the DMG and drag Frith into Applications."
+            else
+              echo "> [!IMPORTANT]"
+              echo "> These builds are **unsigned**, so Gatekeeper will refuse to open them after download."
+              echo "> After unzipping, run: \`xattr -dr com.apple.quarantine Frith.app\`"
+              echo "> Or build from source — see the README."
+            fi
+          } > notes.md
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$TAG" \
+            --repo "${{ github.repository }}" \
+            --title "Frith $TAG" \
+            --notes-file notes.md \
+            Frith-*.dmg Frith-*.zip
