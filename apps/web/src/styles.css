@@ -278,16 +278,6 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
 .msg.own .msg-main { display: flex; flex-direction: column; align-items: flex-end; }
 .msg.own .bubble { background: var(--ai-soft); border-radius: 12px 3px 12px 12px; }
 .bubble a { color: var(--accent, #5A8FD6); word-break: break-all; }
-.bubble a.frith-link {
-  display: inline-block;
-  word-break: normal;
-  padding: 1px 8px;
-  border-radius: 999px;
-  border: 1px solid currentColor;
-  text-decoration: none;
-  font-size: 12px;
-  font-weight: 600;
-}
 .msg.own .msg-meta { justify-content: flex-end; }
 .msg.own .msg-actions { right: auto; left: 8px; }
 .msg.own .when { margin-left: 0; }
