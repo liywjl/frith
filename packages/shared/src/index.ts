@@ -60,6 +60,8 @@ export interface SpaceDto {
    *  space, so only managers (owner + admins) receive it; null otherwise. */
   invite: string | null;
   connectedPeers: number;
+  /** Whether this is the throwaway demo space seeded with sample content. */
+  demo: boolean;
   /** userId of the space owner (author of the first identity), if known. */
   ownerUserId: string | null;
   /** userIds the owner has made admins. */

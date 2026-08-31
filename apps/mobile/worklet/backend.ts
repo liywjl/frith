@@ -173,6 +173,7 @@ export function createBackend(): Backend {
     name: space.state.spaceName ?? space.name,
     description: space.state.spaceDescription,
     logoUrl: null, // the mobile client fetches logo bytes over RPC instead
+    demo: false,
     invite: space.canManage(viewerId) ? space.invite() : null,
     connectedPeers: space.connectedPeers(),
     ownerUserId: space.state.ownerUserId,

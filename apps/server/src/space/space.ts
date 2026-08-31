@@ -60,6 +60,8 @@ interface SpaceConfig {
   encryptionKey?: string;
   /** The user this device acts as (prod auth resolves to this). */
   boundUserId?: string;
+  /** Marks the throwaway look-around space seeded from the demo corpus. */
+  demo?: boolean;
   /** Root identity seeds held on this device: userId → 32-byte seed (hex).
    *  Only ever stored inside the encrypted registry. */
   identities?: Record<string, string>;
@@ -324,7 +326,7 @@ class Space {
   }
 
   /** Create a brand new space (fresh log) and become its founding instance. */
-  async createSpace(name: string): Promise<void> {
+  async createSpace(name: string, options: { demo?: boolean } = {}): Promise<void> {
     await this.close();
     this.state = new FrithState();
     this.viewIndex = 0;
@@ -332,11 +334,54 @@ class Space {
     const registry = this.readRegistry();
     const dir = `space-${crypto.randomBytes(6).toString('hex')}`;
     // Founder mints the space's log-encryption key; joiners get it at pairing.
-    registry.spaces.push({ name, key: null, dir, encryptionKey: crypto.randomBytes(32).toString('hex') });
+    registry.spaces.push({
+      name,
+      key: null,
+      dir,
+      encryptionKey: crypto.randomBytes(32).toString('hex'),
+      ...(options.demo ? { demo: true } : {}),
+    });
     registry.active = dir;
     this.writeRegistry(registry);
     await this.open(this.dataDir);
     await this.append({ t: 'space', name });
+  }
+
+  /** The registry dir of this device's demo space, if one exists. */
+  demoSpaceDir(): string | null {
+    return this.readRegistry().spaces.find((s) => s.demo)?.dir ?? null;
+  }
+
+  /** Whether the open space is the throwaway demo space. */
+  isDemo(): boolean {
+    return this.activeConfig(this.readRegistry()).demo === true;
+  }
+
+  /** Remove a space from this device entirely: registry entry, binding, and
+   *  the on-disk log. If it was active, fall back to another space (a fresh
+   *  default one when none remain). */
+  async removeSpace(dir: string): Promise<void> {
+    const registry = this.readRegistry();
+    if (!registry.spaces.some((s) => s.dir === dir)) throw new Error('no such space on this device');
+    const wasActive = registry.active === dir;
+    if (wasActive) await this.close();
+    registry.spaces = registry.spaces.filter((s) => s.dir !== dir);
+    if (registry.spaces.length === 0) {
+      registry.spaces.push({
+        name: 'local',
+        key: null,
+        dir: 'local',
+        encryptionKey: crypto.randomBytes(32).toString('hex'),
+      });
+    }
+    if (wasActive) registry.active = registry.spaces[0]!.dir;
+    this.writeRegistry(registry);
+    fs.rmSync(path.join(this.dataDir, dir), { recursive: true, force: true });
+    if (wasActive) {
+      this.state = new FrithState();
+      this.viewIndex = 0;
+      await this.open(this.dataDir);
+    }
   }
 
   /** Join an existing space: pair with an admitting member, then sync. */

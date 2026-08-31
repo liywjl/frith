@@ -44,6 +44,8 @@ export const api = {
   space: () => request<SpaceDto | null>('/api/space'),
   createSpace: (name: string) =>
     request<SpaceDto>('/api/space', { method: 'POST', body: JSON.stringify({ name }) }),
+  demoStart: () => request<SpaceDto>('/api/demo/start', { method: 'POST' }),
+  demoReset: () => request<SpaceDto>('/api/demo/reset', { method: 'POST' }),
   joinSpace: (invite: string) =>
     request<SpaceDto>('/api/space/join', { method: 'POST', body: JSON.stringify({ invite }) }),
   patchSpace: (patch: { name?: string; description?: string }) =>

@@ -35,6 +35,7 @@ import { CallRecorder } from './lib/record';
 import type { SlashCommand } from './components/Composer';
 import { Avatar } from './components/Avatar';
 import { Icon } from './components/Icon';
+import { DemoBanner } from './components/DemoBanner';
 import { Logo } from './components/Logo';
 import { PeopleView } from './views/PeopleView';
 import { TagModal } from './modals/TagModal';
@@ -254,6 +255,12 @@ function Login({ onLogin }: { onLogin: () => Promise<void> }) {
         )}
         {firstEver && !linking && (
           <div className="login-actions">
+            <button
+              className="login-space-link"
+              onClick={() => void api.demoStart().then(() => window.location.reload())}
+            >
+              Just looking? Explore a demo space first →
+            </button>
             <button className="login-space-link" onClick={() => setLinking(true)}>
               Already use Frith on another device? Link this one →
             </button>
@@ -800,7 +807,15 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
 
   return (
     <UserActionsContext.Provider value={userActions}>
-    <div className="app">
+    {space?.demo && (
+      <DemoBanner
+        onReset={() => {
+          if (!window.confirm('Leave the demo and delete its content from this device?')) return;
+          void api.demoReset().then(() => window.location.reload());
+        }}
+      />
+    )}
+    <div className={space?.demo ? 'app app-demo' : 'app'}>
       <SpaceRail onNewSpace={() => setSpaceOpen('new')} />
       <Sidebar
         me={me}

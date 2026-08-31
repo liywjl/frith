@@ -332,6 +332,8 @@ export async function buildApp() {
       path === '/api/users' ||
       path === '/api/logout' ||
       path === '/api/spaces' ||
+      path === '/api/demo/start' ||
+      path === '/api/demo/reset' ||
       (path === '/api/space' && req.method !== 'PATCH') ||
       (path === '/api/space/logo' && req.method === 'GET') ||
       (bindingSurface && bindingOpen);
@@ -426,6 +428,7 @@ export async function buildApp() {
     // must not lend an anonymous request the owner's powers.
     invite: space.canManage(viewerId ?? null) ? space.invite() : null,
     connectedPeers: space.connectedPeers(),
+    demo: space.isDemo(),
     ownerUserId: space.state.ownerUserId,
     adminUserIds: [...space.state.admins],
     // Authorization follows the ACTING user (the request), not the device's
@@ -517,6 +520,33 @@ export async function buildApp() {
     } catch (err) {
       return reply.code(403).send({ error: err instanceof Error ? err.message : 'cannot clear logo' });
     }
+    return spaceDto(req.userId);
+  });
+
+  app.post('/api/demo/start', async (req, reply) => {
+    const existing = space.demoSpaceDir();
+    if (existing) {
+      if (space.listSpaces().active !== existing) await space.switchSpace(existing);
+    } else {
+      await space.createSpace('Demo', { demo: true });
+      await seedCorpus('acme');
+    }
+    let viewerId = PROD() ? space.boundUserId() : (req.userId ?? null);
+    if (!viewerId) {
+      const guest = await createProfile({ name: 'You', handle: 'you', avatarEmoji: '👋' });
+      if (typeof guest !== 'string') {
+        viewerId = guest.id;
+        reply.setCookie(AUTH_COOKIE, guest.id, AUTH_COOKIE_OPTS);
+      }
+    }
+    return spaceDto(viewerId ?? undefined);
+  });
+
+  app.post('/api/demo/reset', async (req, reply) => {
+    const dir = space.demoSpaceDir();
+    if (!dir) return reply.code(404).send({ error: 'no demo space on this device' });
+    await space.removeSpace(dir);
+    reply.clearCookie(AUTH_COOKIE, AUTH_COOKIE_OPTS);
     return spaceDto(req.userId);
   });
 
