@@ -91,6 +91,10 @@ async function createWindow(url: string) {
 }
 
 app.whenReady().then(async () => {
+  if (!app.isPackaged && process.platform === 'darwin') {
+    const devIcon = path.join(import.meta.dirname, '../build/icon.png');
+    if (fs.existsSync(devIcon)) app.dock?.setIcon(devIcon);
+  }
   let url = process.env.FRITH_DEV_URL;
   if (!url) {
     configureEnv();

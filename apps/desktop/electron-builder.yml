@@ -6,4 +6,5 @@ directories:
 asarUnpack:
   - "**/*.node"
 mac:
+  icon: build/icon.icns
   identity: null
