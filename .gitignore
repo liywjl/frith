@@ -21,7 +21,3 @@ apps/web/.ds-entry.tsx
 ds-bundle/
 .claude/worktrees/
 .claude/settings.local.json
-
-# ux-lens capture queue — local working state, never committed
-ux-backlog/items.jsonl
-ux-backlog/shots/
