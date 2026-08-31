@@ -40,7 +40,7 @@ jobs:
       - run: pnpm check
 
       - name: Build installers
-        run: pnpm --filter desktop run dist -- --mac --${{ matrix.arch }} --publish never
+        run: bash apps/desktop/scripts/dist.sh --mac --${{ matrix.arch }} --publish=never
 
       - name: Verify signature
         if: env.CSC_LINK != ''
