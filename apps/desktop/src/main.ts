@@ -9,6 +9,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { app, BrowserWindow, safeStorage, shell } from 'electron';
+import { updateElectronApp } from 'update-electron-app';
 import { startServer } from '../../server/src/start.js';
 
 if (!app.requestSingleInstanceLock()) app.quit();
@@ -91,6 +92,7 @@ async function createWindow(url: string) {
 }
 
 app.whenReady().then(async () => {
+  if (app.isPackaged) updateElectronApp({ updateInterval: '1 hour' });
   if (!app.isPackaged && process.platform === 'darwin') {
     const devIcon = path.join(import.meta.dirname, '../build/icon.png');
     if (fs.existsSync(devIcon)) app.dock?.setIcon(devIcon);

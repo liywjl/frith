@@ -4,6 +4,7 @@
   "description": "Frith \u2014 your team's memory, on your machines.",
   "author": "Frith",
   "private": true,
+  "repository": "https://github.com/liywjl/frith",
   "type": "module",
   "main": "dist/main.js",
   "files": [
@@ -27,6 +28,7 @@
     "corestore": "7.11.0",
     "hyperblobs": "2.12.1",
     "hypercore-crypto": "3.7.0",
-    "hyperswarm": "4.17.0"
+    "hyperswarm": "4.17.0",
+    "update-electron-app": "^3.3.0"
   }
 }
