@@ -1,10 +1,25 @@
-# Frith
+<p align="center">
+  <img src="apps/desktop/build/icon.png" width="128" alt="Frith icon" />
+</p>
+
+<h1 align="center">Frith</h1>
 
 A team chat platform where the accumulated knowledge is the product — the
 institutional memory that today lives in people's heads and dies in scrollback.
 See
 [DESIGN.md](DESIGN.md) for the full concept and [wireframes.html](wireframes.html)
 for the target UI.
+
+![Frith home: what needs you in one place — popular threads, your threads, and people who share your interests](site/home.png)
+
+![A channel in Frith: threads, reactions, photos, calls](site/channel.png)
+
+First run makes you a profile and you're in — no account, no server, no
+password. Your identity is a keypair on your device:
+
+<p align="center">
+  <img src="site/onboarding.png" width="720" alt="Frith first-run: make yourself a profile" />
+</p>
 
 ## Quickstart
 
