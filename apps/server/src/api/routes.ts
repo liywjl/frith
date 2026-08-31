@@ -889,6 +889,7 @@ export async function buildApp() {
       return reply
         .header('content-type', mime)
         .header('x-content-type-options', 'nosniff')
+        .header('cache-control', 'private, max-age=31536000, immutable')
         .header('content-disposition', `${inline ? 'inline' : 'attachment'}; ${dispositionFilename(attachment.name)}`)
         .send(body);
     };

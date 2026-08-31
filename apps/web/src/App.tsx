@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   THEMES,
   type DocDto,
@@ -470,6 +470,7 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
   useEffect(() => {
     if (!activeId) return;
     setThreadRoot(null);
+    setMessages([]);
     api.messages(activeId).then(setMessages).catch(console.error);
   }, [activeId]);
 
@@ -785,14 +786,17 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
     },
   ];
 
-  const userActions: UserActions = {
-    openDm: (userId) => void openDm(userId),
-    openProfile,
-    openTag: setOpenedTag,
-    getUser: (userId) => users.find((u) => u.id === userId),
-    userByHandle: (handle) => users.find((u) => u.handle.toLowerCase() === handle.toLowerCase()),
-    isOnline: (userId) => online.has(userId),
-  };
+  const userActions: UserActions = useMemo(
+    () => ({
+      openDm: (userId) => void openDm(userId),
+      openProfile,
+      openTag: setOpenedTag,
+      getUser: (userId) => users.find((u) => u.id === userId),
+      userByHandle: (handle) => users.find((u) => u.handle.toLowerCase() === handle.toLowerCase()),
+      isOnline: (userId) => online.has(userId),
+    }),
+    [openDm, openProfile, users, online],
+  );
 
   return (
     <UserActionsContext.Provider value={userActions}>

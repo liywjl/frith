@@ -49,5 +49,15 @@ export function useWindowedFeed<T>(feedRef: RefObject<HTMLDivElement | null>, it
     if (el && pinned.current) el.scrollTop = el.scrollHeight;
   }, [items, resetKey, feedRef]);
 
+  useLayoutEffect(() => {
+    const el = feedRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(() => {
+      if (pinned.current) el.scrollTop = el.scrollHeight;
+    });
+    for (const child of el.children) observer.observe(child);
+    return () => observer.disconnect();
+  }, [visible, feedRef]);
+
   return { visible, hiddenCount, onScroll };
 }
