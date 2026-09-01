@@ -108,6 +108,7 @@ function Login({ onLogin }: { onLogin: () => Promise<void> }) {
   const [spaceOpen, setSpaceOpen] = useState(false);
   const [linking, setLinking] = useState(false);
   const [linkCode, setLinkCode] = useState('');
+  const [pending, setPending] = useState<'demo' | 'join' | null>(null);
 
   async function link() {
     setError(null);
@@ -145,10 +146,12 @@ function Login({ onLogin }: { onLogin: () => Promise<void> }) {
   async function create() {
     if (!name.trim()) return;
     setError(null);
+    setPending('join');
     try {
       await api.createProfile({ name, handle: handle || suggestedHandle(name) });
       onLogin();
     } catch (err) {
+      setPending(null);
       setError(err instanceof Error && err.message.includes('409') ? 'That handle is taken here.' : 'Could not create the profile.');
     }
   }
@@ -207,8 +210,8 @@ function Login({ onLogin }: { onLogin: () => Promise<void> }) {
                   Back
                 </button>
               )}
-              <button className="btn primary" disabled={!name.trim()} onClick={() => void create()}>
-                Join as {name.trim() ? `@${handle || suggestedHandle(name)}` : '…'}
+              <button className="btn primary" disabled={!name.trim() || pending !== null} onClick={() => void create()}>
+                {pending === 'join' ? 'Setting up your space…' : `Join as ${name.trim() ? `@${handle || suggestedHandle(name)}` : '…'}`}
               </button>
             </div>
           </div>
@@ -257,9 +260,13 @@ function Login({ onLogin }: { onLogin: () => Promise<void> }) {
           <div className="login-actions">
             <button
               className="login-space-link"
-              onClick={() => void api.demoStart().then(() => window.location.reload())}
+              disabled={pending !== null}
+              onClick={() => {
+                setPending('demo');
+                void api.demoStart().then(() => window.location.reload());
+              }}
             >
-              Just looking? Explore a demo space first →
+              {pending === 'demo' ? 'Setting up the demo space…' : 'Just looking? Explore a demo space first →'}
             </button>
             <button className="login-space-link" onClick={() => setLinking(true)}>
               Already use Frith on another device? Link this one →

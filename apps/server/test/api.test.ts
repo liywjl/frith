@@ -55,6 +55,7 @@ beforeAll(async () => {
 afterAll(async () => {
   await app.close();
   await space.close();
+  await space.settle();
 });
 
 function as(userId: string) {

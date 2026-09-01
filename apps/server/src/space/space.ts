@@ -121,6 +121,7 @@ class Space {
   private store: Corestore | null = null;
   private base: Autobase | null = null;
   private swarm: Hyperswarm | null = null;
+  private retiredSwarms: Promise<void> = Promise.resolve();
   private pairing: BlindPairing | null = null;
   private viewIndex = 0;
   private listeners: OpListener[] = [];
@@ -313,16 +314,23 @@ class Space {
   }
 
   private startSwarm() {
-    this.swarm = new Hyperswarm();
-    this.swarm.on('connection', (socket) => {
+    const swarm = new Hyperswarm();
+    const store = this.store!;
+    swarm.on('connection', (socket) => {
+      if (this.swarm !== swarm) {
+        socket.destroy();
+        return;
+      }
       this.peers += 1;
       for (const l of this.peerListeners) l(this.peers);
       socket.on('close', () => {
+        if (this.swarm !== swarm) return;
         this.peers -= 1;
         for (const l of this.peerListeners) l(this.peers);
       });
-      this.store!.replicate(socket);
+      store.replicate(socket);
     });
+    this.swarm = swarm;
   }
 
   /** Create a brand new space (fresh log) and become its founding instance. */
@@ -574,16 +582,23 @@ class Space {
   async close(): Promise<void> {
     if (this.refreshTimer) clearInterval(this.refreshTimer);
     this.refreshTimer = null;
-    await this.pairing?.close().catch(() => {});
+    const pairing = this.pairing;
     this.pairing = null;
-    await this.swarm?.destroy().catch(() => {});
+    const swarm = this.swarm;
     this.swarm = null;
+    await pairing?.close().catch(() => {});
     await this.base?.close().catch(() => {});
     this.base = null;
     this._blobs = null; // its cores close with the corestore
     await this.store?.close().catch(() => {});
     this.store = null;
     this.peers = 0;
+    if (swarm) this.retiredSwarms = this.retiredSwarms.then(() => swarm.destroy().catch(() => {}));
+  }
+
+  /** Resolves once every swarm handed off by close() has fully shut down. */
+  settle(): Promise<void> {
+    return this.retiredSwarms;
   }
 
   get blobs(): BlobStore {

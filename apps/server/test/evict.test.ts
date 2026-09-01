@@ -31,6 +31,7 @@ beforeAll(async () => {
 afterAll(async () => {
   await app.close();
   await space.close();
+  await space.settle();
 });
 
 /** Craft a second member's root-vouched device binding and append it. Follows
