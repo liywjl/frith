@@ -459,6 +459,7 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
       setActiveId((cur) =>
         cur && cs.some((c) => c.id === cur) ? cur : (cs.find((c) => c.type === 'public')?.id ?? cs[0]?.id ?? null),
       );
+      if (cs.length === 0) setView((cur) => (cur.kind === 'channel' ? { kind: 'home' } : cur));
     });
     api.users().then((us) => {
       if (!cancelled) setUsers(us);
@@ -885,6 +886,9 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
           onOpenThread={openThread}
           onOpenAsk={() => setAskOpen(true)}
           onStartGroup={(userIds) => void api.createGroup(userIds).then(({ channelId }) => onGroupCreated(channelId))}
+          channelCount={channels.length}
+          onNewChannel={() => setCreateChannelOpen(true)}
+          onInvite={() => setSpaceOpen('share')}
         />
       )}
       {view.kind === 'profile' && (

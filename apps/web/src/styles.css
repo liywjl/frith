@@ -697,6 +697,9 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
 .home-when { font-family: var(--mono); font-size: 11px; color: var(--ink-soft); }
 .home-replies { font-size: 12px; color: var(--ai); }
 .home-empty { color: var(--ink-soft); font-size: 16px; padding: 30px 0; }
+.home-start { margin-bottom: 24px; }
+.home-start-card { cursor: pointer; }
+.home-start-note { color: var(--ink-soft); font-size: 13.5px; margin-top: 6px; }
 .who-link:hover { color: var(--ai); text-decoration: underline; }
 .home-item { margin-bottom: 4px; font-weight: 550; }
 

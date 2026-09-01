@@ -4,6 +4,7 @@ import { api } from '../lib/api';
 import { Avatar } from '../components/Avatar';
 import { ThreadCard } from '../components/ThreadCard';
 import { useUserActions } from '../lib/userActions';
+import { HomeGetStarted } from './HomeGetStarted';
 
 const timeFormat = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
@@ -25,8 +26,14 @@ export function HomeView({
   onOpenThread,
   onOpenAsk,
   onStartGroup,
+  channelCount,
+  onNewChannel,
+  onInvite,
 }: {
   me: UserDto;
+  channelCount: number;
+  onNewChannel: () => void;
+  onInvite: () => void;
   /** Bumped by the app when new activity arrives, to refetch the digest. */
   refreshTick: number;
   onOpenChannel: (channelId: string) => void;
@@ -63,7 +70,8 @@ export function HomeView({
           </button>
         </header>
 
-        {caughtUp && <div className="home-empty">You're all caught up ✨</div>}
+        {channelCount === 0 && <HomeGetStarted onNewChannel={onNewChannel} onInvite={onInvite} />}
+        {channelCount > 0 && caughtUp && <div className="home-empty">You're all caught up ✨</div>}
 
         <div className="home-columns">
         {home.unread.length > 0 && (
