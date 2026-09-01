@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import Fastify, { type FastifyReply, type FastifyRequest } from 'fastify';
@@ -523,7 +524,15 @@ export async function buildApp() {
     return spaceDto(req.userId);
   });
 
-  app.post('/api/demo/start', async (req, reply) => {
+  const demoViewerId = async (): Promise<string | null> => {
+    const bound = space.boundUserId();
+    const tomas = await getUserByHandle('tomas');
+    if (!tomas || bound === tomas.id || space.state.roots.has(tomas.id)) return bound;
+    await space.bindLocalDevice(tomas.id, crypto.randomBytes(32).toString('hex'));
+    return tomas.id;
+  };
+
+  app.post('/api/demo/start', async (_req, reply) => {
     const existing = space.demoSpaceDir();
     if (existing) {
       if (space.listSpaces().active !== existing) await space.switchSpace(existing);
@@ -531,14 +540,8 @@ export async function buildApp() {
       await space.createSpace('Demo', { demo: true });
       await seedCorpus('acme');
     }
-    let viewerId = PROD() ? space.boundUserId() : (req.userId ?? null);
-    if (!viewerId) {
-      const guest = await createProfile({ name: 'You', handle: 'you', avatarEmoji: '👋' });
-      if (typeof guest !== 'string') {
-        viewerId = guest.id;
-        reply.setCookie(AUTH_COOKIE, guest.id, AUTH_COOKIE_OPTS);
-      }
-    }
+    const viewerId = await demoViewerId();
+    if (viewerId) reply.setCookie(AUTH_COOKIE, viewerId, AUTH_COOKIE_OPTS);
     return spaceDto(viewerId ?? undefined);
   });
 
