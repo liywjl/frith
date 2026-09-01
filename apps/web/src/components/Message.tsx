@@ -5,6 +5,7 @@ import { previewKind } from '../lib/preview';
 import { FilePreviewModal } from '../modals/FilePreviewModal';
 import { Avatar } from './Avatar';
 import { Icon } from './Icon';
+import { UnverifiedBadge } from './UnverifiedBadge';
 import { RichBody } from './RichBody';
 import { useUserActions } from '../lib/userActions';
 
@@ -136,18 +137,10 @@ export const Message = memo(function Message({
               </button>
             )}
             <span className="when">{timeFormat.format(new Date(message.createdAt))}</span>
-            {message.unverified && (
-              <span className="unverified-badge" title="Sent from a device not proven to belong to this person">
-                <Icon name="warning" /> unverified
-              </span>
-            )}
+            {message.unverified && <UnverifiedBadge authorName={message.authorName} />}
           </div>
         )}
-        {compact && message.unverified && (
-          <span className="unverified-badge" title="Sent from a device not proven to belong to this person">
-            <Icon name="warning" /> unverified
-          </span>
-        )}
+        {compact && message.unverified && <UnverifiedBadge authorName={message.authorName} />}
         {message.locked ? (
           <div className="body bubble locked">
             <Icon name="lock" /> {message.body}

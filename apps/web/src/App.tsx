@@ -41,6 +41,8 @@ import { PeopleView } from './views/PeopleView';
 import { TagModal } from './modals/TagModal';
 import { UserActionsContext, type UserActions } from './lib/userActions';
 import { SpaceRail } from './components/SpaceRail';
+import { SpacePage } from './views/SpacePage';
+import { suggestedHandle } from './lib/handles';
 import { FilesView } from './views/FilesView';
 import { FeedView } from './views/FeedView';
 import { DirectoryView } from './views/DirectoryView';
@@ -54,6 +56,7 @@ type View =
   | { kind: 'files' }
   | { kind: 'doc'; docId: string }
   | { kind: 'channel' }
+  | { kind: 'new-space' }
   | { kind: 'profile'; userId: string };
 
 export function App() {
@@ -82,14 +85,10 @@ export function App() {
     return (
       <div className="app">
         <SpaceRail onNewSpace={() => setNewSpaceOpen(true)} />
-        <Login onLogin={async () => setMe(await api.me())} />
-        {newSpaceOpen && (
-          <SpaceModal
-            mode="new"
-            space={null}
-            onSpaceChange={() => window.location.reload()}
-            onClose={() => setNewSpaceOpen(false)}
-          />
+        {newSpaceOpen ? (
+          <SpacePage onBack={() => setNewSpaceOpen(false)} />
+        ) : (
+          <Login onLogin={async () => setMe(await api.me())} onNewSpace={() => setNewSpaceOpen(true)} />
         )}
       </div>
     );
@@ -97,14 +96,8 @@ export function App() {
   return <Workspace me={me} onMeChange={setMe} />;
 }
 
-function createLabel(o: { pending: 'demo' | 'join' | null; unnamed: boolean; spaceName: string; name: string; handle: string }): string {
-  if (o.pending === 'join') return 'Setting up your space…';
-  if (o.unnamed) return `Create ${o.spaceName.trim() || 'your space'}`;
-  if (!o.name.trim()) return 'Join as …';
-  return `Join as @${o.handle}`;
-}
 
-function Login({ onLogin }: { onLogin: () => Promise<void> }) {
+function Login({ onLogin, onNewSpace }: { onLogin: () => Promise<void>; onNewSpace: () => void }) {
   const [users, setUsers] = useState<UserDto[]>([]);
   const [space, setSpace] = useState<SpaceDto | null>(null);
   const [creating, setCreating] = useState(false);
@@ -112,11 +105,10 @@ function Login({ onLogin }: { onLogin: () => Promise<void> }) {
   const [handle, setHandle] = useState('');
   const [handleTouched, setHandleTouched] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [spaceOpen, setSpaceOpen] = useState(false);
   const [linking, setLinking] = useState(false);
   const [linkCode, setLinkCode] = useState('');
   const [pending, setPending] = useState<'demo' | 'join' | null>(null);
-  const [spaceName, setSpaceName] = useState('');
+  const [loaded, setLoaded] = useState(false);
 
   async function link() {
     setError(null);
@@ -139,17 +131,10 @@ function Login({ onLogin }: { onLogin: () => Promise<void> }) {
   }
 
   useEffect(() => {
-    api.users().then(setUsers).catch(console.error);
-    api.space().then(setSpace).catch(console.error);
+    Promise.all([api.users().then(setUsers), api.space().then(setSpace)])
+      .catch(console.error)
+      .finally(() => setLoaded(true));
   }, []);
-
-  const suggestedHandle = (n: string) =>
-    n
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      .slice(0, 30);
 
   async function create() {
     if (!name.trim()) return;
@@ -157,7 +142,6 @@ function Login({ onLogin }: { onLogin: () => Promise<void> }) {
     setPending('join');
     try {
       await api.createProfile({ name, handle: handle || suggestedHandle(name) });
-      if (unnamed && spaceName.trim()) await api.patchSpace({ name: spaceName.trim() });
       await onLogin();
     } catch (err) {
       setPending(null);
@@ -168,6 +152,32 @@ function Login({ onLogin }: { onLogin: () => Promise<void> }) {
   const firstEver = users.length === 0;
   const unnamed = space?.name === 'local';
 
+  if (!loaded) return null;
+  if (firstEver && unnamed && !linking) {
+    return (
+      <SpacePage
+        placeholder
+        footer={
+          <>
+            <button
+              className="login-space-link"
+              disabled={pending !== null}
+              onClick={() => {
+                setPending('demo');
+                void api.demoStart().then(() => window.location.reload());
+              }}
+            >
+              {pending === 'demo' ? 'Setting up the demo space…' : 'Just looking? Explore a demo space first →'}
+            </button>
+            <button className="login-space-link" onClick={() => setLinking(true)}>
+              Already use Frith on another device? Link this one →
+            </button>
+          </>
+        }
+      />
+    );
+  }
+
   // The left column is fixed (brand + whatever action is in flight); only
   // the account list on the right scrolls.
   return (
@@ -176,39 +186,20 @@ function Login({ onLogin }: { onLogin: () => Promise<void> }) {
         <h1 className="login-brand">
           <Logo size={40} /> Frith
         </h1>
-        {unnamed ? (
-          <p>
-            A space is a team, a crew, or a group of friends. It lives on its members' devices — nothing goes to a
-            server — and you can be a different person in each one.
-          </p>
-        ) : (
-          <p>
-            {space ? <b>{space.name}</b> : 'This space'} lives on this device — nothing goes to a server, and only
-            people with the invite can connect.
-          </p>
-        )}
+        <p>
+          {space ? <b>{space.name}</b> : 'This space'} lives on this device — nothing goes to a server, and only
+          people with the invite can connect.
+        </p>
 
         {(creating || (firstEver && !linking)) && (
           <div className="login-create">
-            {firstEver && unnamed && <p className="login-first">Start a space and make yourself a profile in it.</p>}
-            {firstEver && !unnamed && (
+            {firstEver && (
               <p className="login-first">You're the first one in {space?.name}. Make yourself a profile to get started.</p>
-            )}
-            {firstEver && unnamed && (
-              <label className="field">
-                <span>Space name</span>
-                <input
-                  autoFocus
-                  value={spaceName}
-                  placeholder="e.g. Acme, Night Rollers, The Band"
-                  onChange={(e) => setSpaceName(e.target.value)}
-                />
-              </label>
             )}
             <label className="field">
               <span>Your name</span>
               <input
-                autoFocus={!(firstEver && unnamed)}
+                autoFocus
                 value={name}
                 placeholder="e.g. Mika Sørensen"
                 onChange={(e) => {
@@ -241,12 +232,8 @@ function Login({ onLogin }: { onLogin: () => Promise<void> }) {
                   Back
                 </button>
               )}
-              <button
-                className="btn primary"
-                disabled={!name.trim() || (unnamed && !spaceName.trim()) || pending !== null}
-                onClick={() => void create()}
-              >
-                {createLabel({ pending, unnamed, spaceName, name, handle: handle || suggestedHandle(name) })}
+              <button className="btn primary" disabled={!name.trim() || pending !== null} onClick={() => void create()}>
+                {pending === 'join' ? 'Setting up your profile…' : `Join as ${name.trim() ? `@${handle || suggestedHandle(name)}` : '…'}`}
               </button>
             </div>
           </div>
@@ -286,28 +273,18 @@ function Login({ onLogin }: { onLogin: () => Promise<void> }) {
             <button className="login-space-link" onClick={() => setLinking(true)}>
               Already use Frith on another device? Link this one →
             </button>
-            <button className="login-space-link" onClick={() => setSpaceOpen(true)}>
-              {space ? 'Create or join a different space →' : 'Create or join a space →'}
+            <button className="login-space-link" onClick={onNewSpace}>
+              Join or start another space →
             </button>
           </div>
         )}
         {firstEver && !linking && (
           <div className="login-actions">
-            <button
-              className="login-space-link"
-              disabled={pending !== null}
-              onClick={() => {
-                setPending('demo');
-                void api.demoStart().then(() => window.location.reload());
-              }}
-            >
-              {pending === 'demo' ? 'Setting up the demo space…' : 'Just looking? Explore a demo space first →'}
-            </button>
             <button className="login-space-link" onClick={() => setLinking(true)}>
               Already use Frith on another device? Link this one →
             </button>
-            <button className="login-space-link" onClick={() => setSpaceOpen(true)}>
-              {space ? 'Create or join a different space →' : 'Create or join a space →'}
+            <button className="login-space-link" onClick={onNewSpace}>
+              Join or start another space →
             </button>
           </div>
         )}
@@ -334,14 +311,6 @@ function Login({ onLogin }: { onLogin: () => Promise<void> }) {
             ))}
           </div>
         </div>
-      )}
-      {spaceOpen && (
-        <SpaceModal
-          mode="new"
-          space={space}
-          onSpaceChange={() => window.location.reload()}
-          onClose={() => setSpaceOpen(false)}
-        />
       )}
     </div>
   );
@@ -382,7 +351,7 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
   const [profileEditOpen, setProfileEditOpen] = useState(false);
   const [groupOpen, setGroupOpen] = useState(false);
   const [createChannelOpen, setCreateChannelOpen] = useState(false);
-  const [spaceOpen, setSpaceOpen] = useState<false | 'share' | 'new'>(false);
+  const [spaceOpen, setSpaceOpen] = useState(false);
   const [space, setSpace] = useState<SpaceDto | null>(null);
   const [openedTag, setOpenedTag] = useState<string | null>(null);
   const [scheduled, setScheduled] = useState<ScheduledMessageDto[]>([]);
@@ -859,7 +828,7 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
       />
     )}
     <div className={space?.demo ? 'app app-demo' : 'app'}>
-      <SpaceRail onNewSpace={() => setSpaceOpen('new')} />
+      <SpaceRail onNewSpace={() => setView({ kind: 'new-space' })} />
       <Sidebar
         me={me}
         channels={channels}
@@ -889,7 +858,7 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
             openDoc(doc.id);
           });
         }}
-        onOpenSpace={() => setSpaceOpen('share')}
+        onOpenSpace={() => setSpaceOpen(true)}
         onSelect={openChannel}
         onNewGroup={() => setGroupOpen(true)}
         onNewChannel={() => setCreateChannelOpen(true)}
@@ -917,7 +886,7 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
           online={online}
           space={space}
           onToggleBlock={(userId, blocked) => void toggleBlock(userId, blocked)}
-          onInvite={() => setSpaceOpen('share')}
+          onInvite={() => setSpaceOpen(true)}
         />
       )}
       {view.kind === 'home' && (
@@ -930,7 +899,7 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
           onStartGroup={(userIds) => void api.createGroup(userIds).then(({ channelId }) => onGroupCreated(channelId))}
           channelCount={channels.length}
           onNewChannel={() => setCreateChannelOpen(true)}
-          onInvite={() => setSpaceOpen('share')}
+          onInvite={() => setSpaceOpen(true)}
         />
       )}
       {view.kind === 'profile' && (
@@ -1004,18 +973,8 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
       {createChannelOpen && (
         <CreateChannelModal onCreated={onChannelCreated} onClose={() => setCreateChannelOpen(false)} />
       )}
-      {spaceOpen && (
-        <SpaceModal
-          mode={spaceOpen || 'share'}
-          space={space}
-          onSpaceChange={(next) => {
-            setSpace(next);
-            // A created/joined space is a different world — reload into it.
-            if (spaceOpen === 'new') window.location.reload();
-          }}
-          onClose={() => setSpaceOpen(false)}
-        />
-      )}
+      {spaceOpen && space && <SpaceModal space={space} onSpaceChange={setSpace} onClose={() => setSpaceOpen(false)} />}
+      {view.kind === 'new-space' && <SpacePage overlay onBack={openHome} />}
       {storageOpen && <StorageModal onClose={() => setStorageOpen(false)} />}
       {devicesOpen && <DevicesModal onClose={() => setDevicesOpen(false)} />}
       {palettesOpen && <PaletteModal onClose={() => setPalettesOpen(false)} />}

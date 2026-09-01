@@ -125,7 +125,7 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
 mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding: 0 2px; }
 
 /* login — fixed left column (brand + actions), scrolling account list right */
-.login { display: flex; gap: 48px; height: 100vh; max-width: 900px; margin: 0 auto; padding: 0 24px; flex: 1; }
+.login { display: flex; gap: 48px; height: 100%; max-width: 900px; margin: 0 auto; padding: 0 24px; flex: 1; }
 .login-side { width: 340px; flex: none; display: flex; flex-direction: column; padding-top: 12vh; }
 .login-content { flex: 1; min-width: 0; overflow-y: auto; padding: 12vh 4px 40px; }
 .login-list-h {
@@ -157,6 +157,8 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
 #root { display: flex; flex-direction: column; height: 100vh; }
 .app { display: flex; height: 100vh; }
 .app.app-demo { height: calc(100vh - 34px); }
+:root:has(.app-demo) { --bottom-bar: 34px; }
+.sidebar { height: 100%; box-sizing: border-box; }
 .demo-banner {
   order: 1; flex: none;
   height: 34px; display: flex; align-items: center; justify-content: center; gap: 18px;
@@ -210,7 +212,7 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
 }
 .presence.on { background: #3d9a5f; border-color: #3d9a5f; }
 
-.main, .thread-panel { display: flex; flex-direction: column; min-width: 0; height: 100vh; }
+.main, .thread-panel { display: flex; flex-direction: column; min-width: 0; height: 100%; }
 /* Fixed at 360px, but yields on narrow windows so main + panel always fit. */
 .thread-panel { width: clamp(250px, 38vw, 360px); flex: none; border-left: 1px solid var(--line-soft); }
 
@@ -615,7 +617,12 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
 .body.locked svg { width: 13px; height: 13px; opacity: 0.7; }
 /* Authorship warning (HARDENING §5): the appending device provably did not
    belong to the claimed author. Loud enough to notice, quiet enough to read past. */
-.unverified-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--unread); border: 1px solid var(--unread); border-radius: 9px; padding: 0 6px; width: fit-content; }
+.unverified-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: var(--unread); border: 1px solid var(--unread); border-radius: 9px; padding: 0 6px; width: fit-content; background: none; cursor: pointer; font-family: inherit; }
+.msg-head .unverified-badge { margin-left: 10px; }
+.unverified-badge:hover { background: var(--block); }
+.space-page-overlay { position: fixed; top: 0; bottom: var(--bottom-bar, 0px); left: 56px; right: 0; z-index: 50; background: var(--paper); overflow-y: auto; }
+.device-spaces { margin-top: 28px; }
+.device-spaces .member-row { margin-top: 6px; }
 .unverified-badge svg { width: 11px; height: 11px; }
 /* Safety code (HARDENING §6): digits both people compare out of band. */
 .safety-code { font-family: ui-monospace, monospace; font-size: 13px; letter-spacing: 0.5px; line-height: 1.6; word-spacing: 4px; }
@@ -652,7 +659,7 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
 .form-error { color: var(--unread); font-size: 13px; }
 .flash-error {
   position: fixed;
-  bottom: 16px;
+  bottom: calc(16px + var(--bottom-bar, 0px));
   left: 50%;
   transform: translateX(-50%);
   background: var(--unread);
@@ -872,7 +879,7 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
 
 /* DM profile panel */
 .profile-panel {
-  width: 320px; flex: none; border-left: 1px solid var(--line-soft); height: 100vh;
+  width: 320px; flex: none; border-left: 1px solid var(--line-soft); height: 100%;
   overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px;
 }
 .panel-card {
@@ -910,7 +917,7 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
 .campfire-btn:hover { border-color: var(--ai); }
 .campfire-btn.live { border-color: var(--unread); color: var(--unread); font-weight: 600; }
 .call-panel {
-  position: fixed; right: 16px; bottom: 16px; z-index: 20; width: 300px;
+  position: fixed; right: 16px; bottom: calc(16px + var(--bottom-bar, 0px)); z-index: 20; width: 300px;
   background: var(--paper); border: 1.5px solid var(--ai); border-radius: 14px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25); padding: 12px;
   display: flex; flex-direction: column; gap: 10px;

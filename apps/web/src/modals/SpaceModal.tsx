@@ -10,18 +10,11 @@ export function SpaceModal({
   space,
   onSpaceChange,
   onClose,
-  mode = 'share',
 }: {
-  space: SpaceDto | null;
+  space: SpaceDto;
   onSpaceChange: (space: SpaceDto) => void;
   onClose: () => void;
-  /** 'share': show this space's invite. 'new': create/join another space. */
-  mode?: 'share' | 'new';
 }) {
-  const [name, setName] = useState('');
-  const [invite, setInvite] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
   const [qr, setQr] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   // Manage-panel state (share mode, managers only): editable name/description.
@@ -34,20 +27,18 @@ export function SpaceModal({
   const [people, setPeople] = useState<UserDto[]>([]);
 
   useEffect(() => {
-    if (space?.invite) QRCode.toDataURL(space.invite, { margin: 1, width: 220 }).then(setQr);
+    if (space.invite) QRCode.toDataURL(space.invite, { margin: 1, width: 220 }).then(setQr);
     else setQr(null);
   }, [space]);
 
   useEffect(() => {
-    if (space && mode === 'share' && space.canManage) api.users().then(setPeople).catch(console.error);
-  }, [space, mode]);
+    if (space.canManage) api.users().then(setPeople).catch(console.error);
+  }, [space]);
 
   useEffect(() => {
-    if (space && mode === 'share') {
-      setMName(space.name);
-      setMDesc(space.description ?? '');
-    }
-  }, [space, mode]);
+    setMName(space.name);
+    setMDesc(space.description ?? '');
+  }, [space]);
 
   async function manage(action: () => Promise<SpaceDto>) {
     setMBusy(true);
@@ -80,20 +71,7 @@ export function SpaceModal({
     }
   }
 
-  async function run(action: () => Promise<SpaceDto>) {
-    setBusy(true);
-    setError(null);
-    try {
-      onSpaceChange(await action());
-    } catch {
-      setError('That did not work — check the invite and try again.');
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  if (space && mode === 'share') {
-    const mailto = `mailto:?subject=${encodeURIComponent(`Join "${space.name}" on Frith`)}&body=${encodeURIComponent(
+  const mailto = `mailto:?subject=${encodeURIComponent(`Join "${space.name}" on Frith`)}&body=${encodeURIComponent(
       `Join my Frith space "${space.name}" — paste this invite into Frith:\n\n${space.invite ?? ''}\n\nFrith is peer-to-peer: your copy of the workspace lives on your machine.`,
     )}`;
     const dirty = mName.trim() !== space.name || mDesc.trim() !== (space.description ?? '');
@@ -279,47 +257,4 @@ export function SpaceModal({
         </div>
       </Modal>
     );
-  }
-
-  return (
-    <Modal
-      title="Spaces"
-      subtitle="A space connects people peer-to-peer — it lives on its members' devices, nowhere else. Start one, or join with an invite someone shared with you."
-      onClose={onClose}
-    >
-      <label className="field">
-        <span>Create a space</span>
-        <div className="space-row">
-          <input
-            value={name}
-            placeholder="e.g. acme-hq"
-            onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && name.trim()) void run(() => api.createSpace(name.trim()));
-            }}
-          />
-          <button className="btn primary" disabled={busy || !name.trim()} onClick={() => void run(() => api.createSpace(name.trim()))}>
-            Create
-          </button>
-        </div>
-      </label>
-      <label className="field">
-        <span>Or join with an invite</span>
-        <div className="space-row">
-          <input
-            value={invite}
-            placeholder="frith:…"
-            onChange={(e) => setInvite(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && invite.trim()) void run(() => api.joinSpace(invite.trim()));
-            }}
-          />
-          <button className="btn primary" disabled={busy || !invite.trim()} onClick={() => void run(() => api.joinSpace(invite.trim()))}>
-            Join
-          </button>
-        </div>
-      </label>
-      {error && <div className="form-error">{error}</div>}
-    </Modal>
-  );
 }

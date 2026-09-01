@@ -68,6 +68,7 @@ export const api = {
     request<SpaceDto>('/api/space/history', { method: 'POST', body: JSON.stringify({ value }) }),
   spaces: () => request<SpaceListDto>('/api/spaces'),
   removeSpace: () => request<SpaceDto>('/api/space', { method: 'DELETE' }),
+  removeSpaceDir: (dir: string) => request<SpaceListDto>(`/api/spaces/${encodeURIComponent(dir)}`, { method: 'DELETE' }),
   switchSpace: (dir: string) =>
     request<SpaceDto>('/api/spaces/switch', { method: 'POST', body: JSON.stringify({ dir }) }),
   files: () => request<FileDto[]>('/api/files'),

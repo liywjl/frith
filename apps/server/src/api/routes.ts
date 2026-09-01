@@ -335,6 +335,7 @@ export async function buildApp() {
       path === '/api/spaces' ||
       path === '/api/demo/start' ||
       path === '/api/demo/reset' ||
+      (path.startsWith('/api/spaces/') && req.method === 'DELETE') ||
       (path === '/api/space' && req.method !== 'PATCH') ||
       (path === '/api/space/logo' && req.method === 'GET') ||
       (bindingSurface && bindingOpen);
@@ -582,6 +583,17 @@ export async function buildApp() {
       return reply.code(404).send({ error: err instanceof Error ? err.message : 'no such space' });
     }
     return spaceDto(req.userId);
+  });
+
+  app.delete('/api/spaces/:dir', async (req, reply) => {
+    const { dir } = z.object({ dir: z.string().min(1).max(120) }).parse(req.params);
+    try {
+      await space.removeSpace(dir);
+    } catch (err) {
+      return reply.code(404).send({ error: err instanceof Error ? err.message : 'no such space' });
+    }
+    reply.clearCookie(AUTH_COOKIE, AUTH_COOKIE_OPTS);
+    return space.listSpaces();
   });
 
   app.delete('/api/space', async (req, reply) => {
