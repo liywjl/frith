@@ -4,6 +4,11 @@
 
 <h1 align="center">Frith</h1>
 
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="Apache-2.0 license" /></a>
+  <a href="https://buymeacoffee.com/willlacf"><img src="https://img.shields.io/badge/Buy%20Me%20A%20Coffee-support%20this%20project-FFDD00?logo=buymeacoffee&logoColor=black" alt="Buy Me A Coffee" /></a>
+</p>
+
 A team chat platform where the accumulated knowledge is the product — the
 institutional memory that today lives in people's heads and dies in scrollback.
 See
@@ -17,7 +22,8 @@ for the target UI.
 First run makes you a profile and you're in — no account, no server, no
 password. Your identity is a keypair on your device. Not ready to commit?
 The same screen offers **a demo space**: a seeded, fictional team you can
-poke around in and wipe with one click.
+poke around in and wipe with one click. You arrive as Tomas, the new hire,
+with unread threads waiting and a buddy already showing him around.
 
 <p align="center">
   <img src="site/onboarding.png" width="720" alt="Frith first-run: make yourself a profile" />
@@ -116,9 +122,11 @@ Tests run against a real (scratch-dir) Autobase space. The ACL suite in
 channels they can't access — search and files included. Keep it green;
 everything else is negotiable.
 
-## Contributing & license
+## Contributing, support & license
 
 Contributions welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) to get set up
 and [SECURITY.md](SECURITY.md) for how to report vulnerabilities (and an
-honest statement of the project's security maturity). Licensed under
-[Apache-2.0](LICENSE).
+honest statement of the project's security maturity). If Frith is useful to
+you, you can [buy me a coffee](https://buymeacoffee.com/willlacf). ☕
+
+Licensed under [Apache-2.0](LICENSE).

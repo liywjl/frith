@@ -2,9 +2,10 @@
 
 ## Reporting a vulnerability
 
-Email **contact@thabotech.com** with a description and reproduction steps.
-Please don't open a public issue for anything exploitable — give us a chance
-to fix it first. You'll get an acknowledgement within a few days.
+Use GitHub's private reporting: **Security tab → Report a vulnerability**,
+with a description and reproduction steps. Please don't open a public issue
+for anything exploitable — give us a chance to fix it first. Anything
+non-sensitive is welcome as a regular [issue](https://github.com/liywjl/frith/issues).
 
 ## Threat model & maturity
 
