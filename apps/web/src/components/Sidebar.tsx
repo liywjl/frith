@@ -25,6 +25,18 @@ function Status({ user }: { user: UserDto }) {
   );
 }
 
+function spaceRowLabel(space: SpaceDto | null): string {
+  if (!space) return 'Join a space';
+  if (space.canManage) return 'Add someone';
+  return 'This space';
+}
+
+function spaceRowTitle(space: SpaceDto | null): string {
+  if (!space) return 'Join a space';
+  if (space.canManage) return `Add someone to “${space.name}” — invites & settings`;
+  return `“${space.name}” — members and this device`;
+}
+
 export function Sidebar({
   me,
   channels,
@@ -211,18 +223,12 @@ export function Sidebar({
         {/* Opening this row leads straight to the invite/share panel, which only
             managers can act on — so surface it to them alone. When there's no
             space yet, it's the "join a space" entry and everyone needs it. */}
-        {(!space || space.canManage) && (
-          <button
-            className="side-item home-item"
-            title={space ? `Add someone to “${space.name}” — invites & settings` : 'Join a space'}
-            onClick={onOpenSpace}
-          >
-            <span className="side-label">
-              {space ? <SpaceLogo space={space} /> : <Icon name="globe" />} {space ? 'Add someone' : 'Join a space'}
-            </span>
-            {space && space.connectedPeers > 0 && <span className="peer-badge">{space.connectedPeers} ⇄</span>}
-          </button>
-        )}
+        <button className="side-item home-item" title={spaceRowTitle(space)} onClick={onOpenSpace}>
+          <span className="side-label">
+            {space ? <SpaceLogo space={space} /> : <Icon name="globe" />} {spaceRowLabel(space)}
+          </span>
+          {space && space.connectedPeers > 0 && <span className="peer-badge">{space.connectedPeers} ⇄</span>}
+        </button>
 
         <div className="side-h side-h-action">
           <button className="side-h-toggle" onClick={() => toggle('docs')} aria-expanded={!collapsed.has('docs')}>

@@ -181,6 +181,7 @@ export function createBackend(): Backend {
     canManage: space.canManage(viewerId),
     isOwner: space.isOwner(viewerId),
     historyVisibility: space.state.historyVisibility,
+    devAuth: false,
   });
 
   /** Everything the UI needs to route on launch (and after space switches). */

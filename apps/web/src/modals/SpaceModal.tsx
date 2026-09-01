@@ -256,6 +256,27 @@ export function SpaceModal({
             {mErr && <div className="form-error">{mErr}</div>}
           </div>
         )}
+
+        <div className="space-manage">
+          <div className="space-manage-h">This device</div>
+          <p className="space-hint">
+            Removing the space deletes its copy from this device only — other members keep theirs, and an invite
+            brings you back.
+          </p>
+          <div className="space-actions">
+            <button
+              className="btn danger"
+              disabled={mBusy}
+              onClick={() => {
+                if (!window.confirm(`Remove "${space.name}" from this device? Its messages and files here will be deleted.`)) return;
+                setMBusy(true);
+                void api.removeSpace().then(() => window.location.reload());
+              }}
+            >
+              Remove from this device
+            </button>
+          </div>
+        </div>
       </Modal>
     );
   }

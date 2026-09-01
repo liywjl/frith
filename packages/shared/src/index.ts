@@ -72,6 +72,8 @@ export interface SpaceDto {
   isOwner: boolean;
   /** Whether newcomers can read history sent before they joined. */
   historyVisibility: 'full' | 'join-forward';
+  /** Dev builds let you pick any profile without a password; packaged builds bind the device to one identity. */
+  devAuth: boolean;
 }
 
 /** All spaces on this device — one is open at a time. */

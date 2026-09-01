@@ -154,9 +154,11 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
 .hint { color: var(--ink-soft); }
 
 /* shell */
+#root { display: flex; flex-direction: column; height: 100vh; }
 .app { display: flex; height: 100vh; }
 .app.app-demo { height: calc(100vh - 34px); }
 .demo-banner {
+  order: 1; flex: none;
   height: 34px; display: flex; align-items: center; justify-content: center; gap: 18px;
   background: var(--ai); color: var(--on-ai); font-size: 13px; padding: 0 14px;
 }
@@ -698,6 +700,8 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
 .home-replies { font-size: 12px; color: var(--ai); }
 .home-empty { color: var(--ink-soft); font-size: 16px; padding: 30px 0; }
 .home-start { margin-bottom: 24px; }
+.dir-sample { margin-bottom: 18px; }
+.dir-sample textarea { width: 100%; min-height: 120px; font-family: var(--mono); font-size: 12px; }
 .home-start-card { cursor: pointer; }
 .home-start-note { color: var(--ink-soft); font-size: 13.5px; margin-top: 6px; }
 .who-link:hover { color: var(--ai); text-decoration: underline; }
@@ -840,7 +844,8 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
 /* In the sidebar's space button the logo rides the text line like the other
  * row icons: 1em-ish box, baseline-tucked, same gap as .icon. */
 .side-label .space-logo {
-  width: 16px; height: 16px; border-radius: 4px; font-size: 7px;
+  display: inline-block; width: 14px; height: 14px; line-height: 14px; text-align: center;
+  border-radius: 4px; font-size: 6.5px; overflow: hidden;
   vertical-align: -0.2em; margin-right: 2px;
 }
 .modal-head .space-logo { width: 40px; height: 40px; border-radius: 11px; font-size: 15px; }

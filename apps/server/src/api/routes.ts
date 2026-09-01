@@ -437,6 +437,7 @@ export async function buildApp() {
     canManage: space.canManage(viewerId ?? null),
     isOwner: space.isOwner(viewerId ?? null),
     historyVisibility: space.state.historyVisibility,
+    devAuth: !PROD(),
   });
 
   app.get('/api/space', async (req) => spaceDto(req.userId));
@@ -580,6 +581,12 @@ export async function buildApp() {
     } catch (err) {
       return reply.code(404).send({ error: err instanceof Error ? err.message : 'no such space' });
     }
+    return spaceDto(req.userId);
+  });
+
+  app.delete('/api/space', async (req, reply) => {
+    await space.removeSpace(space.listSpaces().active);
+    reply.clearCookie(AUTH_COOKIE, AUTH_COOKIE_OPTS);
     return spaceDto(req.userId);
   });
 

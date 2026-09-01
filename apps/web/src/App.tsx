@@ -97,6 +97,13 @@ export function App() {
   return <Workspace me={me} onMeChange={setMe} />;
 }
 
+function createLabel(o: { pending: 'demo' | 'join' | null; unnamed: boolean; spaceName: string; name: string; handle: string }): string {
+  if (o.pending === 'join') return 'Setting up your space…';
+  if (o.unnamed) return `Create ${o.spaceName.trim() || 'your space'}`;
+  if (!o.name.trim()) return 'Join as …';
+  return `Join as @${o.handle}`;
+}
+
 function Login({ onLogin }: { onLogin: () => Promise<void> }) {
   const [users, setUsers] = useState<UserDto[]>([]);
   const [space, setSpace] = useState<SpaceDto | null>(null);
@@ -109,6 +116,7 @@ function Login({ onLogin }: { onLogin: () => Promise<void> }) {
   const [linking, setLinking] = useState(false);
   const [linkCode, setLinkCode] = useState('');
   const [pending, setPending] = useState<'demo' | 'join' | null>(null);
+  const [spaceName, setSpaceName] = useState('');
 
   async function link() {
     setError(null);
@@ -149,7 +157,8 @@ function Login({ onLogin }: { onLogin: () => Promise<void> }) {
     setPending('join');
     try {
       await api.createProfile({ name, handle: handle || suggestedHandle(name) });
-      onLogin();
+      if (unnamed && spaceName.trim()) await api.patchSpace({ name: spaceName.trim() });
+      await onLogin();
     } catch (err) {
       setPending(null);
       setError(err instanceof Error && err.message.includes('409') ? 'That handle is taken here.' : 'Could not create the profile.');
@@ -157,6 +166,7 @@ function Login({ onLogin }: { onLogin: () => Promise<void> }) {
   }
 
   const firstEver = users.length === 0;
+  const unnamed = space?.name === 'local';
 
   // The left column is fixed (brand + whatever action is in flight); only
   // the account list on the right scrolls.
@@ -166,18 +176,39 @@ function Login({ onLogin }: { onLogin: () => Promise<void> }) {
         <h1 className="login-brand">
           <Logo size={40} /> Frith
         </h1>
-        <p>
-          {space ? <b>{space.name}</b> : 'This space'} lives on this device — nothing goes to a server, and only
-          people with the invite can connect.
-        </p>
+        {unnamed ? (
+          <p>
+            A space is a team, a crew, or a group of friends. It lives on its members' devices — nothing goes to a
+            server — and you can be a different person in each one.
+          </p>
+        ) : (
+          <p>
+            {space ? <b>{space.name}</b> : 'This space'} lives on this device — nothing goes to a server, and only
+            people with the invite can connect.
+          </p>
+        )}
 
         {(creating || (firstEver && !linking)) && (
           <div className="login-create">
-            {firstEver && <p className="login-first">You're the first one here. Make yourself a profile to get started.</p>}
+            {firstEver && unnamed && <p className="login-first">Start a space and make yourself a profile in it.</p>}
+            {firstEver && !unnamed && (
+              <p className="login-first">You're the first one in {space?.name}. Make yourself a profile to get started.</p>
+            )}
+            {firstEver && unnamed && (
+              <label className="field">
+                <span>Space name</span>
+                <input
+                  autoFocus
+                  value={spaceName}
+                  placeholder="e.g. Acme, Night Rollers, The Band"
+                  onChange={(e) => setSpaceName(e.target.value)}
+                />
+              </label>
+            )}
             <label className="field">
               <span>Your name</span>
               <input
-                autoFocus
+                autoFocus={!(firstEver && unnamed)}
                 value={name}
                 placeholder="e.g. Mika Sørensen"
                 onChange={(e) => {
@@ -210,8 +241,12 @@ function Login({ onLogin }: { onLogin: () => Promise<void> }) {
                   Back
                 </button>
               )}
-              <button className="btn primary" disabled={!name.trim() || pending !== null} onClick={() => void create()}>
-                {pending === 'join' ? 'Setting up your space…' : `Join as ${name.trim() ? `@${handle || suggestedHandle(name)}` : '…'}`}
+              <button
+                className="btn primary"
+                disabled={!name.trim() || (unnamed && !spaceName.trim()) || pending !== null}
+                onClick={() => void create()}
+              >
+                {createLabel({ pending, unnamed, spaceName, name, handle: handle || suggestedHandle(name) })}
               </button>
             </div>
           </div>
@@ -278,7 +313,7 @@ function Login({ onLogin }: { onLogin: () => Promise<void> }) {
         )}
       </aside>
 
-      {!firstEver && (
+      {!firstEver && space?.devAuth && (
         <div className="login-content">
           <div className="login-list-h">Sign in as (dev)</div>
           {!creating && !linking && error && <div className="form-error">{error}</div>}

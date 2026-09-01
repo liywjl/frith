@@ -5,10 +5,12 @@ import { useEffect, useMemo, useState } from 'react';
 import type { DirectoryDto, DirectoryEntryDto } from '@app/shared';
 import { api } from '../lib/api';
 import { Icon } from '../components/Icon';
+import { DirectoryListing } from './DirectoryListing';
 
-function JoinButton({ entry }: { entry: DirectoryEntryDto }) {
+function JoinButton({ entry, sample }: { entry: DirectoryEntryDto; sample: boolean }) {
   const [state, setState] = useState<'idle' | 'joining' | 'failed'>('idle');
 
+  if (sample) return <span className="dir-host">sample</span>;
   if (!entry.invite) {
     return (
       <span className="dir-host" title="This community hands out invites itself — reach out to its host.">
@@ -71,6 +73,8 @@ export function DirectoryView() {
           />
         </header>
 
+        {dir && dir.source === null && <DirectoryListing />}
+
         {dir?.error && (
           <p className="profile-privacy">
             Couldn't reach the configured directory ({dir.error}) — showing nothing rather than something stale.
@@ -83,7 +87,7 @@ export function DirectoryView() {
               <b className="dir-name">{e.name}</b>
               {typeof e.members === 'number' && <span className="dir-members">{e.members} members</span>}
               <span className="dir-join">
-                <JoinButton entry={e} />
+                <JoinButton entry={e} sample={dir?.source === null} />
               </span>
             </div>
             {e.description && <p className="feed-body">{e.description}</p>}
