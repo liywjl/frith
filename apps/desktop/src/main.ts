@@ -12,6 +12,7 @@ import { app, BrowserWindow, safeStorage, shell } from 'electron';
 import { updateElectronApp } from 'update-electron-app';
 import { startServer } from '../../server/src/start.js';
 
+if (!app.isPackaged) app.setName('Frith Dev');
 if (!app.requestSingleInstanceLock()) app.quit();
 
 function configureEnv() {

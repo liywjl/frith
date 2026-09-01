@@ -1,7 +1,8 @@
 {
   "name": "desktop",
+  "productName": "Frith",
   "version": "0.1.1",
-  "description": "Frith \u2014 your team's memory, on your machines.",
+  "description": "Frith — your team's memory, on your machines.",
   "author": "Frith",
   "private": true,
   "repository": "https://github.com/liywjl/frith",
@@ -21,7 +22,7 @@
     "electron-builder": "^26.15.3",
     "esbuild": "^0.28.1"
   },
-  "// dependencies": "esbuild externals \u2014 the bundled server resolves these (native N-API prebuilds) from node_modules at runtime",
+  "// dependencies": "esbuild externals — the bundled server resolves these (native N-API prebuilds) from node_modules at runtime",
   "dependencies": {
     "autobase": "7.28.1",
     "blind-pairing": "2.3.1",
