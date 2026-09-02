@@ -900,7 +900,6 @@ export async function getFeed(viewerId: string, authorId?: string): Promise<Feed
     const photos = attachmentDtos(m.id).filter((a) => a.kind === 'image' && !a.dangerous);
     const clear = clearBody(m);
     const urls = [...new Set(clear.match(FEED_URL_RE) ?? [])];
-    if (photos.length === 0 && urls.length === 0) continue;
     const base = {
       at: m.createdAt,
       author,
@@ -914,7 +913,8 @@ export async function getFeed(viewerId: string, authorId?: string): Promise<Feed
     // A message with both photos and links shows as photos — the image is the
     // share; its links stay readable in the body text.
     if (photos.length > 0) items.push({ kind: 'photos', id: `photos:${m.id}`, ...base, photos });
-    else items.push({ kind: 'links', id: `links:${m.id}`, ...base, links: urls.slice(0, 3).map(feedLink) });
+    else if (urls.length > 0) items.push({ kind: 'links', id: `links:${m.id}`, ...base, links: urls.slice(0, 3).map(feedLink) });
+    else items.push({ kind: 'message', id: `message:${m.id}`, ...base });
   }
 
   for (const doc of state().docs.values()) {

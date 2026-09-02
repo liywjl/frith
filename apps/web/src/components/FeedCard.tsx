@@ -116,6 +116,25 @@ function FeedCard({
     </div>
   );
 
+  if (item.kind === 'message') {
+    return (
+      <div className="feed-card">
+        <div className="feed-card-top">
+          {who}
+          <span className="feed-verb">posted in</span>
+          {channel}
+          {when}
+        </div>
+        {item.body && (
+          <p className="feed-body">
+            <Mentions text={item.body} />
+          </p>
+        )}
+        {meta}
+      </div>
+    );
+  }
+
   if (item.kind === 'photos') {
     const clips = item.photos.filter((p) => p.mime === 'image/gif').length;
     const noun = clips > 0 ? (item.photos.length > 1 ? 'clips' : 'a clip') : item.photos.length > 1 ? `${item.photos.length} photos` : 'a photo';

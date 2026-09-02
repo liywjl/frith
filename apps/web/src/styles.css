@@ -202,6 +202,10 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
 .side-item.has-unread .side-label { font-weight: 650; }
 .side-item.muted { color: var(--ink-soft); }
 .side-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.side-lead { width: 16px; flex: none; display: inline-flex; align-items: center; justify-content: center; }
+.side-hash { font-weight: 600; color: var(--ink-soft); }
+.side-item.active .side-hash, .side-item.has-unread .side-hash { color: var(--ink); }
+.side-hints a { color: inherit; text-decoration: underline; }
 .side-item .lock { font-size: 11px; }
 .unread-badge {
   margin-left: auto; background: var(--unread); color: #fff;
@@ -313,7 +317,7 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
 .thread-pill:hover { color: var(--ai); border-color: var(--ai); }
 
 .msg-actions {
-  position: absolute; top: -14px; right: 8px; display: none; gap: 2px;
+  position: absolute; top: 2px; right: 8px; display: none; gap: 2px;
   background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 2px 4px;
   box-shadow: 0 1px 4px rgba(58, 56, 51, 0.08);
 }
@@ -851,7 +855,7 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
 .space-logo-lg { width: 56px; height: 56px; border-radius: 13px; font-size: 19px; vertical-align: middle; }
 /* In the sidebar's space button the logo rides the text line like the other
  * row icons: 1em-ish box, baseline-tucked, same gap as .icon. */
-.side-label .space-logo {
+.side-lead .space-logo {
   display: inline-block; width: 14px; height: 14px; line-height: 14px; text-align: center;
   border-radius: 4px; font-size: 6.5px; overflow: hidden;
   vertical-align: -0.2em; margin-right: 2px;
@@ -1104,6 +1108,7 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
 }
 .rail-space {
   width: 38px; height: 38px; border-radius: 13px; border: none; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
   background: rgba(255, 255, 255, 0.13);
   color: #fff; font-size: 16px; font-weight: 700; flex: none;
   transition: border-radius 0.15s, background 0.15s;

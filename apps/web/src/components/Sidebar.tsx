@@ -25,6 +25,12 @@ function Status({ user }: { user: UserDto }) {
   );
 }
 
+function channelLead(c: ChannelDto, isGroup: boolean, partnerOnline: boolean) {
+  if (c.type !== 'dm') return <span className="side-hash">#</span>;
+  if (isGroup) return <span className="group-icon">{(c.dmPartnerIds?.length ?? 0) + 1}</span>;
+  return <Presence online={partnerOnline} />;
+}
+
 function spaceRowLabel(space: SpaceDto | null): string {
   if (!space) return 'Join a space';
   if (space.canManage) return 'Add someone';
@@ -150,7 +156,7 @@ export function Sidebar({
     const partnerIds = c.dmPartnerIds ?? [];
     const isGroup = c.type === 'dm' && partnerIds.length > 1;
     const solo = c.type === 'dm' && !isGroup ? byId.get(partnerIds[0] ?? '') : undefined;
-    const label = c.type === 'dm' ? (c.dmPartnerNames?.join(', ') ?? c.name) : `# ${c.name}`;
+    const label = c.type === 'dm' ? (c.dmPartnerNames?.join(', ') ?? c.name) : c.name;
     const isPinned = c.pinned !== null;
     return (
       <div
@@ -173,13 +179,7 @@ export function Sidebar({
           className={`side-item ${c.id === activeId ? 'active' : ''} ${c.unreadCount > 0 ? 'has-unread' : ''}`}
           onClick={() => onSelect(c.id)}
         >
-          {c.type === 'dm' ? (
-            isGroup ? (
-              <span className="group-icon">{partnerIds.length + 1}</span>
-            ) : (
-              <Presence online={partnerIds.some((id) => online.has(id))} />
-            )
-          ) : null}
+          <span className="side-lead">{channelLead(c, isGroup, partnerIds.some((id) => online.has(id)))}</span>
           <span className="side-label">{label}</span>
           {liveCalls.has(c.id) && <span className="live-flame" title="Campfire burning"><Icon name="flame" /></span>}
           {c.type === 'private' && <span className="lock" title="Private channel"><Icon name="lock" /></span>}
@@ -206,27 +206,26 @@ export function Sidebar({
         </div>
 
         <button className={`side-item home-item ${homeActive ? 'active' : ''}`} onClick={onHome}>
-          <span className="side-label"><Icon name="home" /> Home</span>
+          <span className="side-lead"><Icon name="home" /></span><span className="side-label">Home</span>
         </button>
         <button className={`side-item home-item ${feedActive ? 'active' : ''}`} onClick={onFeed}>
-          <span className="side-label"><Icon name="activity" /> Feed</span>
+          <span className="side-lead"><Icon name="activity" /></span><span className="side-label">Feed</span>
         </button>
         <button className={`side-item home-item ${peopleActive ? 'active' : ''}`} onClick={onPeople}>
-          <span className="side-label"><Icon name="people" /> People</span>
+          <span className="side-lead"><Icon name="people" /></span><span className="side-label">People</span>
         </button>
         <button className={`side-item home-item ${filesActive ? 'active' : ''}`} onClick={onFiles}>
-          <span className="side-label"><Icon name="folder" /> Files</span>
+          <span className="side-lead"><Icon name="folder" /></span><span className="side-label">Files</span>
         </button>
         <button className={`side-item home-item ${directoryActive ? 'active' : ''}`} onClick={onDirectory}>
-          <span className="side-label"><Icon name="globe" /> Directory</span>
+          <span className="side-lead"><Icon name="globe" /></span><span className="side-label">Directory</span>
         </button>
         {/* Opening this row leads straight to the invite/share panel, which only
             managers can act on — so surface it to them alone. When there's no
             space yet, it's the "join a space" entry and everyone needs it. */}
         <button className="side-item home-item" title={spaceRowTitle(space)} onClick={onOpenSpace}>
-          <span className="side-label">
-            {space ? <SpaceLogo space={space} /> : <Icon name="globe" />} {spaceRowLabel(space)}
-          </span>
+          <span className="side-lead">{space ? <SpaceLogo space={space} /> : <Icon name="globe" />}</span>
+          <span className="side-label">{spaceRowLabel(space)}</span>
           {space && space.connectedPeers > 0 && <span className="peer-badge">{space.connectedPeers} ⇄</span>}
         </button>
 
@@ -245,9 +244,8 @@ export function Sidebar({
               className={`side-item ${d.id === activeDocId ? 'active' : ''}`}
               onClick={() => onDoc(d.id)}
             >
-              <span className="side-label">
-                <Icon name="doc" /> {d.title}
-              </span>
+              <span className="side-lead"><Icon name="doc" /></span>
+              <span className="side-label">{d.title}</span>
             </button>
           ))}
 
@@ -291,7 +289,8 @@ export function Sidebar({
                         className={`side-item muted ${c.id === activeId ? 'active' : ''}`}
                         onClick={() => onSelect(c.id)}
                       >
-                        <span className="side-label"><Icon name="archive" /> {c.name}</span>
+                        <span className="side-lead"><Icon name="archive" /></span>
+                        <span className="side-label">{c.name}</span>
                       </button>
                     ))}
                 </>
@@ -320,7 +319,7 @@ export function Sidebar({
                   title={`Message ${entry.user.name}`}
                   onClick={() => openDm(entry.user.id)}
                 >
-                  <Presence online={online.has(entry.user.id)} />
+                  <span className="side-lead"><Presence online={online.has(entry.user.id)} /></span>
                   <span className="side-label">{entry.user.name}</span>
                   <Status user={entry.user} />
                 </button>
@@ -346,7 +345,12 @@ export function Sidebar({
             </span>
           </span>
         </button>
-        <div className="side-hints">⌘K jump · ⌘J ask · / actions</div>
+        <div className="side-hints">
+          ⌘K jump · ⌘J ask · / actions ·{' '}
+          <a href="https://github.com/liywjl/frith/issues/new" target="_blank" rel="noreferrer">
+            suggest a feature
+          </a>
+        </div>
       </div>
       {statusAnchor && (
         <StatusPopover

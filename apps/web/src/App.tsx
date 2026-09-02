@@ -553,6 +553,11 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
     [closeOverlays],
   );
 
+  const archiveChannel = useCallback(async (channelId: string) => {
+    await api.setArchived(channelId, true);
+    setChannels(await api.channels());
+  }, []);
+
   const togglePin = useCallback(async (channelId: string, pinned: boolean) => {
     await api.setPinned(channelId, pinned);
     setChannels(await api.channels());
@@ -800,9 +805,14 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
     { name: 'palettes', hint: 'Try on colour combos, live', run: () => setPalettesOpen(true) },
     { name: 'logout', hint: 'Back to the profile picker', run: () => void api.logout().then(() => window.location.reload()) },
     {
+      name: 'feedback',
+      hint: 'Suggest a feature or report a bug on GitHub',
+      run: () => window.open('https://github.com/liywjl/frith/issues/new', '_blank', 'noopener'),
+    },
+    {
       name: 'archive',
       hint: 'Archive this channel (stays searchable)',
-      run: () => active && active.type !== 'dm' && void api.setArchived(active.id, true),
+      run: () => active && active.type !== 'dm' && void archiveChannel(active.id),
     },
   ];
 
@@ -925,6 +935,7 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
           callRecording={(callRecorders[active.id] ?? []).length > 0}
           inCall={myCall?.channelId === active.id}
           onStartCall={(withVideo) => void startCall(active.id, withVideo)}
+          onArchive={() => void archiveChannel(active.id)}
           commands={slashCommands}
           scheduled={scheduled.filter((s) => s.channelId === active.id)}
           onCancelScheduled={(id) =>

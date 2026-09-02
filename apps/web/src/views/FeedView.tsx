@@ -31,7 +31,7 @@ export function FeedView({
       <div className="home-scroll feed-scroll">
         <header className="home-head">
           <h1>Feed</h1>
-          <p>What your people shared — newest first, no algorithm, no ranking. Just time.</p>
+          <p>Everything happening in this space — posts, photos, links, pages — newest first, no algorithm, no ranking.</p>
         </header>
 
         <FeedTimeline items={feed.items} onOpenChannel={onOpenChannel} onOpenDoc={onOpenDoc} onOpenThread={onOpenThread} />

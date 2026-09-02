@@ -342,6 +342,7 @@ interface FeedMessageBase extends FeedItemBase {
  * feed is what your people shared, newest first, with a definite end.
  */
 export type FeedItemDto =
+  | (FeedMessageBase & { kind: 'message' })
   | (FeedMessageBase & { kind: 'links'; links: FeedLinkDto[] })
   | (FeedMessageBase & { kind: 'photos'; photos: AttachmentDto[] })
   | (FeedItemBase & { kind: 'doc'; docId: string; title: string })

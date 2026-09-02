@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { SpaceListDto } from '@app/shared';
 import { api } from '../lib/api';
+import { Icon } from './Icon';
 import { isPlaceholderSpace } from '../lib/spaces';
 
 /** Emoji for a space, from its name; falls back to the first letter. */
@@ -63,7 +64,7 @@ export function SpaceRail({
         ))}
         {onNewSpace && (
           <button className={`rail-space rail-new ${plusLit ? 'active' : ''}`} title="Start or join a space" onClick={onNewSpace}>
-            +
+            <Icon name="plus" size={18} />
           </button>
         )}
       </nav>

@@ -37,6 +37,7 @@ export function ChannelView({
   onOpenAsk,
   meId,
   onLeft,
+  onArchive,
 }: {
   channel: ChannelDto;
   messages: MessageDto[];
@@ -53,6 +54,7 @@ export function ChannelView({
   meId: string;
   /** After leaving a private channel/group — it's gone for this user. */
   onLeft: () => void;
+  onArchive: () => void;
 }) {
   const { getUser } = useUserActions();
   const feedRef = useRef<HTMLDivElement>(null);
@@ -154,7 +156,7 @@ export function ChannelView({
           <button
             className="archive-btn"
             title="Archive this channel — it becomes read-only but stays searchable"
-            onClick={() => void api.setArchived(channel.id, true)}
+            onClick={onArchive}
           >
             <Icon name="archive" />
           </button>
