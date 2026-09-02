@@ -125,7 +125,7 @@ button { font: inherit; color: inherit; background: none; border: none; cursor: 
 mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding: 0 2px; }
 
 /* login — fixed left column (brand + actions), scrolling account list right */
-.login { display: flex; gap: 48px; height: 100%; max-width: 900px; margin: 0 auto; padding: 0 24px; flex: 1; }
+.login { display: flex; gap: 48px; height: 100%; overflow-y: auto; max-width: 900px; margin: 0 auto; padding: 0 24px; flex: 1; }
 .login-side { width: 340px; flex: none; display: flex; flex-direction: column; padding-top: 12vh; }
 .login-content { flex: 1; min-width: 0; overflow-y: auto; padding: 12vh 4px 40px; }
 .login-list-h {
