@@ -26,19 +26,22 @@ export function JoinSpaceForm({ onDone }: { onDone: () => void }) {
         Paste the invite someone shared with you. Your copy of their space syncs peer-to-peer, and you'll pick a
         name for yourself there.
       </p>
-      <div className="space-row">
-        <input
-          value={invite}
-          placeholder="frith:…"
-          onChange={(e) => setInvite(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') void join();
-          }}
-        />
-        <button className="btn primary" disabled={!invite.trim() || pending} onClick={() => void join()}>
-          {pending ? 'Joining…' : 'Join'}
-        </button>
-      </div>
+      <label className="field">
+        <span>Invite</span>
+        <div className="space-row">
+          <input
+            value={invite}
+            placeholder="frith:…"
+            onChange={(e) => setInvite(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') void join();
+            }}
+          />
+          <button className="btn primary" disabled={!invite.trim() || pending} onClick={() => void join()}>
+            {pending ? 'Joining…' : 'Join'}
+          </button>
+        </div>
+      </label>
       {error && <div className="form-error">{error}</div>}
     </section>
   );

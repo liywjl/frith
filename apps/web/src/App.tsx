@@ -84,7 +84,7 @@ export function App() {
   if (!me) {
     return (
       <div className="app">
-        <SpaceRail onNewSpace={() => setNewSpaceOpen(true)} />
+        <SpaceRail onNewSpace={() => setNewSpaceOpen(true)} newActive={newSpaceOpen} onCurrent={() => setNewSpaceOpen(false)} />
         {newSpaceOpen ? (
           <SpacePage onBack={() => setNewSpaceOpen(false)} />
         ) : (
@@ -482,7 +482,8 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
 
   // Refresh keeps your place (the other half lives in the view initializer).
   useEffect(() => {
-    sessionStorage.setItem('frith:view', JSON.stringify(view));
+    const placeToKeep = view.kind === 'new-space' ? { kind: 'home' } : view;
+    sessionStorage.setItem('frith:view', JSON.stringify(placeToKeep));
     if (activeId) sessionStorage.setItem('frith:activeChannel', activeId);
   }, [view, activeId]);
 
@@ -828,7 +829,7 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
       />
     )}
     <div className={space?.demo ? 'app app-demo' : 'app'}>
-      <SpaceRail onNewSpace={() => setView({ kind: 'new-space' })} />
+      <SpaceRail onNewSpace={() => setView({ kind: 'new-space' })} newActive={view.kind === 'new-space'} onCurrent={openHome} />
       <Sidebar
         me={me}
         channels={channels}

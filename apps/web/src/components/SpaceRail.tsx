@@ -12,7 +12,15 @@ function spaceGlyph(name: string): string {
  * The far-left column: one icon per space on this device. Switching closes
  * the current space's log and opens the other — a different world, same app.
  */
-export function SpaceRail({ onNewSpace }: { onNewSpace?: () => void }) {
+export function SpaceRail({
+  onNewSpace,
+  newActive = false,
+  onCurrent,
+}: {
+  onNewSpace?: () => void;
+  newActive?: boolean;
+  onCurrent?: () => void;
+}) {
   const [list, setList] = useState<SpaceListDto | null>(null);
   const [switching, setSwitching] = useState<string | null>(null);
 
@@ -21,7 +29,11 @@ export function SpaceRail({ onNewSpace }: { onNewSpace?: () => void }) {
   }, []);
 
   function switchTo(dir: string) {
-    if (!list || dir === list.active || switching) return;
+    if (!list || switching) return;
+    if (dir === list.active) {
+      onCurrent?.();
+      return;
+    }
     setSwitching(dir); // ring moves instantly; the content area shows the load
     api
       .switchSpace(dir)
@@ -39,7 +51,7 @@ export function SpaceRail({ onNewSpace }: { onNewSpace?: () => void }) {
         {(list?.spaces ?? []).map((s) => (
           <button
             key={s.dir}
-            className={`rail-space ${s.dir === activeDir ? 'active' : ''}`}
+            className={`rail-space ${s.dir === activeDir && !newActive ? 'active' : ''}`}
             title={s.name}
             onClick={() => switchTo(s.dir)}
           >
@@ -47,7 +59,7 @@ export function SpaceRail({ onNewSpace }: { onNewSpace?: () => void }) {
           </button>
         ))}
         {onNewSpace && (
-          <button className="rail-space rail-new" title="Create or join a space" onClick={onNewSpace}>
+          <button className={`rail-space rail-new ${newActive ? 'active' : ''}`} title="Start or join a space" onClick={onNewSpace}>
             +
           </button>
         )}
