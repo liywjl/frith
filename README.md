@@ -5,7 +5,7 @@
 <h1 align="center">Frith</h1>
 
 <p align="center">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="Apache-2.0 license" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license" /></a>
   <a href="https://buymeacoffee.com/willlacf"><img src="https://img.shields.io/badge/Buy%20Me%20A%20Coffee-support%20this%20project-FFDD00?logo=buymeacoffee&logoColor=black" alt="Buy Me A Coffee" /></a>
 </p>
 
@@ -129,4 +129,4 @@ and [SECURITY.md](SECURITY.md) for how to report vulnerabilities (and an
 honest statement of the project's security maturity). If Frith is useful to
 you, you can [buy me a coffee](https://buymeacoffee.com/willlacf). ☕
 
-Licensed under [Apache-2.0](LICENSE).
+Licensed under [MIT](LICENSE).
