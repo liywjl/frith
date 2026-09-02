@@ -1124,10 +1124,14 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
 .rail-spacer { flex: 1; }
 .rail-about { width: 38px; height: 38px; border: none; background: none; cursor: pointer; opacity: 0.55; display: inline-flex; align-items: center; justify-content: center; border-radius: 13px; flex: none; }
 .rail-about:hover { opacity: 1; background: rgba(255, 255, 255, 0.13); }
-.about-pop { left: 64px; bottom: 12px; width: 260px; }
+.about-pop { width: 270px; }
 .about-head { display: flex; align-items: center; gap: 10px; }
-.about-head b { font-size: 15px; }
-.about-version { font-family: var(--mono); font-size: 11px; color: var(--ink-soft); }
+.about-head b { font-size: 16px; }
+.about-version {
+  margin-left: auto; font-family: var(--mono); font-size: 13px; font-weight: 650;
+  color: var(--on-ai); background: var(--ai); border-radius: 999px; padding: 3px 10px;
+}
+.about-running { font-size: 12px; color: var(--ink-soft); margin-top: -2px; }
 .about-link { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--ink); text-decoration: none; padding: 4px 0; }
 .about-link:hover { color: var(--ai); }
 .rail-new { font-size: 20px; font-weight: 400; opacity: 0.7; }

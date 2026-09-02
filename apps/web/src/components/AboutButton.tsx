@@ -5,7 +5,7 @@ import { Icon } from './Icon';
 import { Logo } from './Logo';
 
 export function AboutButton() {
-  const [open, setOpen] = useState(false);
+  const [anchor, setAnchor] = useState<{ left: number; bottom: number } | null>(null);
   const [about, setAbout] = useState<AboutDto | null>(null);
 
   useEffect(() => {
@@ -15,20 +15,26 @@ export function AboutButton() {
   const repo = about?.repoUrl ?? 'https://github.com/liywjl/frith';
   return (
     <>
-      <button className="rail-about" title="About Frith" onClick={() => setOpen(true)}>
+      <button
+        className="rail-about"
+        title="About Frith"
+        onClick={(e) => {
+          const r = e.currentTarget.getBoundingClientRect();
+          setAnchor({ left: r.right + 10, bottom: window.innerHeight - r.bottom });
+        }}
+      >
         <Logo size={18} />
       </button>
-      {open && (
+      {anchor && (
         <>
-          <div className="status-pop-backdrop" onClick={() => setOpen(false)} />
-          <div className="status-pop about-pop">
+          <div className="status-pop-backdrop" onClick={() => setAnchor(null)} />
+          <div className="status-pop about-pop" style={anchor}>
             <div className="about-head">
               <Logo size={28} />
-              <div>
-                <b>Frith</b>
-                <div className="about-version">{about ? `v${about.version}` : ''}</div>
-              </div>
+              <b>Frith</b>
+              <span className="about-version">{about ? `v${about.version}` : '…'}</span>
             </div>
+            <div className="about-running">This is the version running on this device.</div>
             <p className="space-hint">Peer-to-peer team chat. Updates install themselves; you'll be asked to restart when one is ready.</p>
             <a className="about-link" href={repo} target="_blank" rel="noreferrer">
               <Icon name="github" /> Source on GitHub
