@@ -39,8 +39,8 @@ function spaceRowLabel(space: SpaceDto | null): string {
 
 function spaceRowTitle(space: SpaceDto | null): string {
   if (!space) return 'Join a space';
-  if (space.canManage) return `Add someone to “${space.name}” — invites & settings`;
-  return `“${space.name}” — members and this device`;
+  if (space.canManage) return `Add someone to ${space.name} — invites & settings`;
+  return `${space.name} — members and this device`;
 }
 
 export function Sidebar({
@@ -229,26 +229,6 @@ export function Sidebar({
           {space && space.connectedPeers > 0 && <span className="peer-badge">{space.connectedPeers} ⇄</span>}
         </button>
 
-        <div className="side-h side-h-action">
-          <button className="side-h-toggle" onClick={() => toggle('docs')} aria-expanded={!collapsed.has('docs')}>
-            <Caret id="docs" /> Docs
-          </button>
-          <button className="side-add" title="New shared doc" onClick={onNewDoc}>
-            <Icon name="plus" />
-          </button>
-        </div>
-        {!collapsed.has('docs') &&
-          docs.map((d) => (
-            <button
-              key={d.id}
-              className={`side-item ${d.id === activeDocId ? 'active' : ''}`}
-              onClick={() => onDoc(d.id)}
-            >
-              <span className="side-lead"><Icon name="doc" /></span>
-              <span className="side-label">{d.title}</span>
-            </button>
-          ))}
-
         {pinnedChannels.length > 0 && (
           <>
             <div className="side-h" title="Drag to reorder">★ Favourites</div>
@@ -261,6 +241,27 @@ export function Sidebar({
 
       {/* Channels and DMs scroll independently between the fixed ends. */}
       <div className="side-scrolls">
+        <div className={`side-block ${collapsed.has('docs') ? 'collapsed' : ''}`}>
+          <div className="side-h side-h-action">
+            <button className="side-h-toggle" onClick={() => toggle('docs')} aria-expanded={!collapsed.has('docs')}>
+              <Caret id="docs" /> Docs
+            </button>
+            <button className="side-add" title="New shared doc" onClick={onNewDoc}>
+              <Icon name="plus" />
+            </button>
+          </div>
+          {!collapsed.has('docs') &&
+            docs.map((d) => (
+              <button
+                key={d.id}
+                className={`side-item ${d.id === activeDocId ? 'active' : ''}`}
+                onClick={() => onDoc(d.id)}
+              >
+                <span className="side-lead"><Icon name="doc" /></span>
+                <span className="side-label">{d.title}</span>
+              </button>
+            ))}
+        </div>
         <div className={`side-block ${collapsed.has('channels') ? 'collapsed' : ''}`}>
           <div className="side-h side-h-action">
             <button className="side-h-toggle" onClick={() => toggle('channels')} aria-expanded={!collapsed.has('channels')}>

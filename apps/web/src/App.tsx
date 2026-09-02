@@ -86,7 +86,7 @@ export function App() {
       <div className="app">
         <SpaceRail onNewSpace={() => setNewSpaceOpen(true)} newActive={newSpaceOpen} onCurrent={() => setNewSpaceOpen(false)} />
         {newSpaceOpen ? (
-          <SpacePage onBack={() => setNewSpaceOpen(false)} />
+          <SpacePage />
         ) : (
           <Login onLogin={async () => setMe(await api.me())} onNewSpace={() => setNewSpaceOpen(true)} />
         )}
@@ -107,7 +107,7 @@ function Login({ onLogin, onNewSpace }: { onLogin: () => Promise<void>; onNewSpa
   const [error, setError] = useState<string | null>(null);
   const [linking, setLinking] = useState(false);
   const [linkCode, setLinkCode] = useState('');
-  const [pending, setPending] = useState<'demo' | 'join' | null>(null);
+  const [pending, setPending] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
   async function link() {
@@ -139,12 +139,12 @@ function Login({ onLogin, onNewSpace }: { onLogin: () => Promise<void>; onNewSpa
   async function create() {
     if (!name.trim()) return;
     setError(null);
-    setPending('join');
+    setPending(true);
     try {
       await api.createProfile({ name, handle: handle || suggestedHandle(name) });
       await onLogin();
     } catch (err) {
-      setPending(null);
+      setPending(false);
       setError(err instanceof Error && err.message.includes('409') ? 'That handle is taken here.' : 'Could not create the profile.');
     }
   }
@@ -158,21 +158,9 @@ function Login({ onLogin, onNewSpace }: { onLogin: () => Promise<void>; onNewSpa
       <SpacePage
         placeholder
         footer={
-          <>
-            <button
-              className="login-space-link"
-              disabled={pending !== null}
-              onClick={() => {
-                setPending('demo');
-                void api.demoStart().then(() => window.location.reload());
-              }}
-            >
-              {pending === 'demo' ? 'Setting up the demo space…' : 'Just looking? Explore a demo space first →'}
-            </button>
-            <button className="login-space-link" onClick={() => setLinking(true)}>
-              Already use Frith on another device? Link this one →
-            </button>
-          </>
+          <button className="login-space-link" onClick={() => setLinking(true)}>
+            Already use Frith on another device? Link this one →
+          </button>
         }
       />
     );
@@ -232,8 +220,8 @@ function Login({ onLogin, onNewSpace }: { onLogin: () => Promise<void>; onNewSpa
                   Back
                 </button>
               )}
-              <button className="btn primary" disabled={!name.trim() || pending !== null} onClick={() => void create()}>
-                {pending === 'join' ? 'Setting up your profile…' : `Join as ${name.trim() ? `@${handle || suggestedHandle(name)}` : '…'}`}
+              <button className="btn primary" disabled={!name.trim() || pending} onClick={() => void create()}>
+                {pending ? 'Setting up your profile…' : `Join as ${name.trim() ? `@${handle || suggestedHandle(name)}` : '…'}`}
               </button>
             </div>
           </div>
@@ -994,7 +982,7 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
         <CreateChannelModal onCreated={onChannelCreated} onClose={() => setCreateChannelOpen(false)} />
       )}
       {spaceOpen && space && <SpaceModal space={space} onSpaceChange={setSpace} onClose={() => setSpaceOpen(false)} />}
-      {view.kind === 'new-space' && <SpacePage overlay onBack={openHome} />}
+      {view.kind === 'new-space' && <SpacePage overlay />}
       {storageOpen && <StorageModal onClose={() => setStorageOpen(false)} />}
       {devicesOpen && <DevicesModal onClose={() => setDevicesOpen(false)} />}
       {palettesOpen && <PaletteModal onClose={() => setPalettesOpen(false)} />}

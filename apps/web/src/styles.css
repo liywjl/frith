@@ -137,7 +137,6 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
 .login-create { display: flex; flex-direction: column; gap: 10px; }
 .login-first { color: var(--ink); font-weight: 600; }
 .login-create-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
-.login-create-actions .login-back { margin-right: auto; }
 .login-actions { display: flex; flex-direction: column; gap: 4px; }
 .login-new { width: 100%; margin-bottom: 12px; padding: 10px; }
 .login-space-link {
@@ -188,8 +187,8 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
 }
 .side-top { flex: none; display: flex; flex-direction: column; gap: 2px; }
 /* Channels and DMs are their own scroll blocks between the fixed ends. */
-.side-scrolls { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-.side-block { flex: 0 1 auto; min-height: 90px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
+.side-scrolls { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow-y: auto; }
+.side-block { flex: 0 1 auto; min-height: 64px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
 .side-block .side-h { position: sticky; top: 0; background: var(--side); z-index: 1; padding-bottom: 3px; }
 /* Collapsed: shrink to just the header — no reserved list height, no empty gap. */
 .side-block.collapsed { min-height: 0; flex: none; overflow: visible; }

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { api } from '../lib/api';
 import { suggestedHandle } from '../lib/handles';
 
-export function StartSpaceForm({ placeholder, onDone, onBack }: { placeholder: boolean; onDone: () => void; onBack?: () => void }) {
+export function StartSpaceForm({ placeholder, onDone }: { placeholder: boolean; onDone: () => void }) {
   const [spaceName, setSpaceName] = useState('');
   const [name, setName] = useState('');
   const [handle, setHandle] = useState('');
@@ -68,11 +68,6 @@ export function StartSpaceForm({ placeholder, onDone, onBack }: { placeholder: b
       </label>
       {error && <div className="form-error">{error}</div>}
       <div className="login-create-actions">
-        {onBack && (
-          <button className="btn login-back" onClick={onBack}>
-            ← Back
-          </button>
-        )}
         <button className="btn primary" disabled={!ready} onClick={() => void create()}>
           {pending ? 'Setting up your space…' : `Create ${spaceName.trim() || 'your space'}`}
         </button>
