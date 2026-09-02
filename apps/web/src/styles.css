@@ -1506,3 +1506,4 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
 .feed-hearts { color: var(--ink-soft); font-size: 13px; }
 .profile-location { color: var(--ink-soft); white-space: nowrap; }
 .profile-location .icon { vertical-align: -0.12em; }
+.archive-btn:disabled { opacity: 0.4; cursor: not-allowed; }

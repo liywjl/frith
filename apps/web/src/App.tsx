@@ -553,10 +553,17 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
     [closeOverlays],
   );
 
-  const archiveChannel = useCallback(async (channelId: string) => {
-    await api.setArchived(channelId, true);
-    setChannels(await api.channels());
-  }, []);
+  const archiveChannel = useCallback(
+    async (channelId: string) => {
+      try {
+        await api.setArchived(channelId, true);
+        setChannels(await api.channels());
+      } catch (err) {
+        showFlash(err instanceof Error ? err.message.replace(/^\d+\s*\{"error":"(.*)"\}$/, '$1') : 'Could not archive that channel.');
+      }
+    },
+    [showFlash],
+  );
 
   const togglePin = useCallback(async (channelId: string, pinned: boolean) => {
     await api.setPinned(channelId, pinned);
@@ -936,6 +943,7 @@ function Workspace({ me, onMeChange }: { me: MeDto; onMeChange: (me: MeDto) => v
           inCall={myCall?.channelId === active.id}
           onStartCall={(withVideo) => void startCall(active.id, withVideo)}
           onArchive={() => void archiveChannel(active.id)}
+          canArchive={active.type === 'private' || (space?.canManage ?? false)}
           commands={slashCommands}
           scheduled={scheduled.filter((s) => s.channelId === active.id)}
           onCancelScheduled={(id) =>

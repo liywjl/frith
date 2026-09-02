@@ -38,6 +38,7 @@ export function ChannelView({
   meId,
   onLeft,
   onArchive,
+  canArchive,
 }: {
   channel: ChannelDto;
   messages: MessageDto[];
@@ -55,6 +56,7 @@ export function ChannelView({
   /** After leaving a private channel/group — it's gone for this user. */
   onLeft: () => void;
   onArchive: () => void;
+  canArchive: boolean;
 }) {
   const { getUser } = useUserActions();
   const feedRef = useRef<HTMLDivElement>(null);
@@ -155,7 +157,12 @@ export function ChannelView({
         {channel.type !== 'dm' && !channel.archivedAt && (
           <button
             className="archive-btn"
-            title="Archive this channel — it becomes read-only but stays searchable"
+            disabled={!canArchive}
+            title={
+              canArchive
+                ? 'Archive this channel — it becomes read-only but stays searchable'
+                : 'Only the space owner or admins can archive a public channel'
+            }
             onClick={onArchive}
           >
             <Icon name="archive" />
