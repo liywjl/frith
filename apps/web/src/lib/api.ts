@@ -1,4 +1,5 @@
 import type {
+  AboutDto,
   AskResponse,
   DocDto,
   DocFullDto,
@@ -40,6 +41,7 @@ export const api = {
   feed: () => request<FeedDto>('/api/feed'),
   userFeed: (userId: string) => request<FeedDto>(`/api/users/${userId}/feed`),
   directory: () => request<DirectoryDto>('/api/directory'),
+  about: () => request<AboutDto>('/api/about'),
   connect: () => request<ConnectDto>('/api/connect'),
   space: () => request<SpaceDto | null>('/api/space'),
   createSpace: (name: string) =>

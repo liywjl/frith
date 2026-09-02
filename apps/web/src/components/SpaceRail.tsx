@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { SpaceListDto } from '@app/shared';
 import { api } from '../lib/api';
 import { Icon } from './Icon';
+import { AboutButton } from './AboutButton';
 import { isPlaceholderSpace } from '../lib/spaces';
 
 /** Emoji for a space, from its name; falls back to the first letter. */
@@ -67,6 +68,8 @@ export function SpaceRail({
             <Icon name="plus" size={18} />
           </button>
         )}
+        <div className="rail-spacer" />
+        <AboutButton />
       </nav>
       {switchingTo && (
         <div className="switch-veil">

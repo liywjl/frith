@@ -24,6 +24,7 @@ function configureEnv() {
   process.env.FRITH_SEED_DIR ??= path.join(import.meta.dirname, 'seed');
   // Packaged app = production posture: no dev auth, device-bound identity.
   process.env.FRITH_MODE ??= app.isPackaged ? 'production' : 'dev';
+  process.env.FRITH_VERSION ??= app.getVersion();
   configureMasterKey(home);
 }
 

@@ -25,6 +25,25 @@ function Status({ user }: { user: UserDto }) {
   );
 }
 
+const COLLAPSED_KEY = 'frith:collapsed';
+
+function readCollapsed(): string[] {
+  try {
+    const raw = localStorage.getItem(COLLAPSED_KEY);
+    return raw ? (JSON.parse(raw) as string[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeCollapsed(keys: string[]) {
+  try {
+    localStorage.setItem(COLLAPSED_KEY, JSON.stringify(keys));
+  } catch {
+    return;
+  }
+}
+
 function channelLead(c: ChannelDto, isGroup: boolean, partnerOnline: boolean) {
   if (c.type !== 'dm') return <span className="side-hash">#</span>;
   if (isGroup) return <span className="group-icon">{(c.dmPartnerIds?.length ?? 0) + 1}</span>;
@@ -106,11 +125,12 @@ export function Sidebar({
   const [showArchived, setShowArchived] = useState(false);
   const [dragId, setDragId] = useState<string | null>(null);
   const [statusAnchor, setStatusAnchor] = useState<{ left: number; top: number } | null>(null);
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set(readCollapsed()));
   const toggle = (key: string) =>
     setCollapsed((s) => {
       const next = new Set(s);
       if (!next.delete(key)) next.add(key);
+      writeCollapsed([...next]);
       return next;
     });
   const Caret = ({ id }: { id: string }) => (
@@ -205,6 +225,13 @@ export function Sidebar({
           <Logo /> Frith {space && <span className="ws-sub">{space.name}</span>}
         </div>
 
+        <div className="side-h side-h-action">
+          <button className="side-h-toggle" onClick={() => toggle('nav')} aria-expanded={!collapsed.has('nav')}>
+            <Caret id="nav" /> Overview
+          </button>
+        </div>
+        {!collapsed.has('nav') && (
+        <>
         <button className={`side-item home-item ${homeActive ? 'active' : ''}`} onClick={onHome}>
           <span className="side-lead"><Icon name="home" /></span><span className="side-label">Home</span>
         </button>
@@ -228,6 +255,8 @@ export function Sidebar({
           <span className="side-label">{spaceRowLabel(space)}</span>
           {space && space.connectedPeers > 0 && <span className="peer-badge">{space.connectedPeers} ⇄</span>}
         </button>
+        </>
+        )}
 
         {pinnedChannels.length > 0 && (
           <>

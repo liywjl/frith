@@ -33,6 +33,11 @@ export interface UserDto {
 }
 
 /** The signed-in user: profile plus personal settings. */
+export interface AboutDto {
+  version: string;
+  repoUrl: string;
+}
+
 export interface MeDto extends UserDto {
   theme: Theme;
   /** When the current status auto-clears (null = keeps until changed). */

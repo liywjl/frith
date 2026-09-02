@@ -1121,6 +1121,15 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
 }
 .rail-space:hover { border-radius: 19px; background: rgba(255, 255, 255, 0.24); }
 .rail-space.active { background: var(--ai); }
+.rail-spacer { flex: 1; }
+.rail-about { width: 38px; height: 38px; border: none; background: none; cursor: pointer; opacity: 0.55; display: inline-flex; align-items: center; justify-content: center; border-radius: 13px; flex: none; }
+.rail-about:hover { opacity: 1; background: rgba(255, 255, 255, 0.13); }
+.about-pop { left: 64px; bottom: 12px; width: 260px; }
+.about-head { display: flex; align-items: center; gap: 10px; }
+.about-head b { font-size: 15px; }
+.about-version { font-family: var(--mono); font-size: 11px; color: var(--ink-soft); }
+.about-link { display: flex; align-items: center; gap: 8px; font-size: 13.5px; color: var(--ink); text-decoration: none; padding: 4px 0; }
+.about-link:hover { color: var(--ai); }
 .rail-new { font-size: 20px; font-weight: 400; opacity: 0.7; }
 .rail-new:hover, .rail-new.active { opacity: 1; }
 

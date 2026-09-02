@@ -333,6 +333,7 @@ export async function buildApp() {
       path === '/api/users' ||
       path === '/api/logout' ||
       path === '/api/spaces' ||
+      path === '/api/about' ||
       path === '/api/demo/start' ||
       path === '/api/demo/reset' ||
       (path.startsWith('/api/spaces/') && req.method === 'DELETE') ||
@@ -413,6 +414,11 @@ export async function buildApp() {
     const { on } = z.object({ on: z.boolean() }).parse(req.body);
     return setContactVerified(req.userId, id, on);
   });
+
+  app.get('/api/about', async () => ({
+    version: process.env.FRITH_VERSION ?? 'dev',
+    repoUrl: 'https://github.com/liywjl/frith',
+  }));
 
   app.get('/api/me', async (req) => getMe(req.userId));
 
