@@ -30,13 +30,8 @@ export function SpacePage({
           A space is a team, a crew, or a group of friends. It lives on its members' devices — nothing goes to a
           server — and you can be a different person in each one.
         </p>
-        <StartSpaceForm placeholder={placeholder} onDone={reloadIntoSpace} />
+        <StartSpaceForm placeholder={placeholder} onDone={reloadIntoSpace} onBack={onBack} />
         {footer && <div className="login-actions">{footer}</div>}
-        {onBack && (
-          <button className="login-space-link" onClick={onBack}>
-            ← Back
-          </button>
-        )}
       </aside>
       <div className="login-content">
         <JoinSpaceForm onDone={reloadIntoSpace} />

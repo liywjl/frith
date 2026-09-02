@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { SpaceListDto } from '@app/shared';
 import { api } from '../lib/api';
-
-const isPlaceholder = (s: { dir: string; name: string }) => s.dir === 'local' && s.name === 'local';
+import { isPlaceholderSpace } from '../lib/spaces';
 
 export function DeviceSpaces() {
   const [list, setList] = useState<SpaceListDto | null>(null);
@@ -11,7 +10,7 @@ export function DeviceSpaces() {
     api.spaces().then(setList).catch(console.error);
   }, []);
 
-  const spaces = (list?.spaces ?? []).filter((s) => !isPlaceholder(s));
+  const spaces = (list?.spaces ?? []).filter((s) => !isPlaceholderSpace(s));
   if (spaces.length === 0) return null;
 
   function remove(dir: string, name: string) {

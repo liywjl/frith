@@ -137,6 +137,7 @@ mark { background: var(--ai-soft); color: var(--ai); border-radius: 3px; padding
 .login-create { display: flex; flex-direction: column; gap: 10px; }
 .login-first { color: var(--ink); font-weight: 600; }
 .login-create-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+.login-create-actions .login-back { margin-right: auto; }
 .login-actions { display: flex; flex-direction: column; gap: 4px; }
 .login-new { width: 100%; margin-bottom: 12px; padding: 10px; }
 .login-space-link {

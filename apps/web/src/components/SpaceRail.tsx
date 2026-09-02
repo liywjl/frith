@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { SpaceListDto } from '@app/shared';
 import { api } from '../lib/api';
+import { isPlaceholderSpace } from '../lib/spaces';
 
 /** Emoji for a space, from its name; falls back to the first letter. */
 function spaceGlyph(name: string): string {
@@ -43,15 +44,17 @@ export function SpaceRail({
   }
 
   const activeDir = switching ?? list?.active;
+  const spaces = (list?.spaces ?? []).filter((s) => !isPlaceholderSpace(s));
+  const plusLit = newActive || spaces.length === 0;
   const switchingTo = list?.spaces.find((s) => s.dir === switching);
 
   return (
     <>
       <nav className="rail">
-        {(list?.spaces ?? []).map((s) => (
+        {spaces.map((s) => (
           <button
             key={s.dir}
-            className={`rail-space ${s.dir === activeDir && !newActive ? 'active' : ''}`}
+            className={`rail-space ${s.dir === activeDir && !plusLit ? 'active' : ''}`}
             title={s.name}
             onClick={() => switchTo(s.dir)}
           >
@@ -59,7 +62,7 @@ export function SpaceRail({
           </button>
         ))}
         {onNewSpace && (
-          <button className={`rail-space rail-new ${newActive ? 'active' : ''}`} title="Start or join a space" onClick={onNewSpace}>
+          <button className={`rail-space rail-new ${plusLit ? 'active' : ''}`} title="Start or join a space" onClick={onNewSpace}>
             +
           </button>
         )}
