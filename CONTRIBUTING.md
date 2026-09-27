@@ -21,10 +21,15 @@ To exercise the peer-to-peer path, run two instances and pair them — see
 pnpm check   # typecheck + lint + tests + dead-code analysis
 ```
 
-CI runs exactly this, so a green local `check` means a green PR. Tests run
-against a real scratch-dir Autobase space. The ACL suite in
+Checks run locally before a PR. Tests run against a real scratch-dir Autobase
+space. The ACL suite in
 `apps/server/test/api.test.ts` asserts a user can never read content from
 channels they can't access — keep it green; everything else is negotiable.
+
+For a Mac release, run `pnpm check`, then build installers locally with
+`bash apps/desktop/scripts/dist.sh --mac --arm64 --publish=never` and
+`bash apps/desktop/scripts/dist.sh --mac --x64 --publish=never`. Verify the
+packaged apps and upload the files from `apps/desktop/release/` manually.
 
 ## Scope
 
